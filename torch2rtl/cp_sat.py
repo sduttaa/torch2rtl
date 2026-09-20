@@ -20,20 +20,23 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
               for group, options in problem.choices.items() for option in options}
     for group, options in problem.choices.items():
         model.add_exactly_one(chosen[group, option.name] for option in options)
+    varying = {group for group, options in problem.choices.items() if len(options) > 1}
 
     def add(before, after, delay=0, frames=0, when=()):
         constraint = model.add(offsets[after] + frames * period >= offsets[before] + delay)
-        if when:
-            constraint.only_enforce_if([chosen[pair] for pair in when])
+        guards = [chosen[pair] for pair in when if pair[0] in varying]
+        if guards:
+            constraint.only_enforce_if(guards)
 
     for dependency in problem.dependencies:
         add(dependency.before, dependency.after, dependency.delay, dependency.frames, dependency.when)
     for fifo in problem.fifos:
         count = len(fifo.writes)
-        for writes_or_reads in (fifo.writes, fifo.reads):
-            for before, after in zip(writes_or_reads, writes_or_reads[1:]):
-                add(before, after, 1, when=fifo.when)
-            add(writes_or_reads[-1], writes_or_reads[0], 1, 1, fifo.when)
+        if fifo.order_transfers:
+            for writes_or_reads in (fifo.writes, fifo.reads):
+                for before, after in zip(writes_or_reads, writes_or_reads[1:]):
+                    add(before, after, 1, when=fifo.when)
+                add(writes_or_reads[-1], writes_or_reads[0], 1, 1, fifo.when)
         if not fifo.forward_delays:
             for write, read in zip(fifo.writes, fifo.reads):
                 add(write, read, 1, when=fifo.when)

@@ -15,8 +15,10 @@ Its complete graph now emits generic RTL and matches three real images in
 simulation with backpressure. That simulation uses oversized FIFOs. Selected
 actor costs also exceed LUT/BRAM budgets before graph FIFOs, even though
 separate reduction parallelism brought one configuration within the DSP budget. Accuracy,
-joint spatial scheduling/resource selection, fabric fit and full-design timing
-remain incomplete. [Spatial evidence](spatial-backend.md) records these limits.
+full-model joint scheduling/resource selection, fabric fit and full-design
+timing remain incomplete. Spatial event contracts and their smaller-graph
+solver/RTL deadline tests are now implemented; the full per-word scale probe
+returned UNKNOWN within its limits. [Spatial evidence](spatial-backend.md) records these limits.
 The target's DSP accounting now uses 96 byte-multiplier slots instead of 48
 18-bit slots; the selected FPGA and physical capacities have not changed.
 

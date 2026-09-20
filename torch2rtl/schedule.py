@@ -3,13 +3,13 @@
 from dataclasses import dataclass, field
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Option:
     name: str
     resources: dict[str, int] = field(default_factory=dict)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Dependency:
     before: str
     after: str
@@ -18,7 +18,7 @@ class Dependency:
     when: tuple[tuple[str, str], ...] = ()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Fifo:
     writes: tuple[str, ...]
     reads: tuple[str, ...]
@@ -27,6 +27,9 @@ class Fifo:
     when: tuple[tuple[str, str], ...] = ()
     replacement_delay: int = 0
     forward_delays: dict[str, int] = field(default_factory=dict)
+    # False only when surrounding actor contracts already imply ordered
+    # one-word-per-cycle transfers, including frame wrap.
+    order_transfers: bool = True
 
 
 @dataclass(frozen=True)
@@ -100,6 +103,8 @@ def validate(problem):
             raise ValueError("Monotone contracts require nonnegative delays and frame advances")
         guard(dependency.when)
     for fifo in problem.fifos:
+        if type(fifo.order_transfers) is not bool:
+            raise ValueError("FIFO transfer ordering must be explicitly boolean")
         if not fifo.writes or len(fifo.writes) != len(fifo.reads):
             raise ValueError("FIFO producer and consumer word counts must match")
         if not set(fifo.writes + fifo.reads) <= names:

@@ -26,7 +26,28 @@ def main():
     network_parser = sub.add_parser("emit-network", help="Emit spatial RTL from explicit actor/FIFO choices; does not optimize or prove fit")
     network_parser.add_argument("--configuration", type=Path, required=True)
     network_parser.add_argument("--output", type=Path, required=True)
+    schedule_parser = sub.add_parser("schedule-network", help="Jointly select spatial actors and FIFOs from an explicit cost catalogue")
+    schedule_parser.add_argument("--catalogue", type=Path, required=True)
+    schedule_parser.add_argument("--target", type=Path, required=True)
+    schedule_parser.add_argument("--seconds", type=float, default=30)
+    schedule_parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.command == "schedule-network":
+        from .graph import actors, read
+        from .schedule import Limits
+        from .spatial_compile import compile_network
+        catalogue = json.loads(args.catalogue.read_text())
+        model_path = Path(catalogue["model"])
+        model_hash = hashlib.sha256(model_path.read_bytes()).hexdigest()
+        if "model_sha256" in catalogue and catalogue["model_sha256"] != model_hash:
+            raise ValueError("Catalogue refers to different model contents")
+        catalogue["model_sha256"] = model_hash
+        _, module = load(model_path)
+        report = compile_network(actors(read(module)), catalogue, json.loads(args.target.read_text()), args.output,
+                                 Limits(seconds=args.seconds))
+        (args.output / "model.mlir").write_text(str(module))
+        print(json.dumps(report, indent=2))
+        return
     if args.command == "emit-network":
         from .graph import actors, read
         from .network import emit

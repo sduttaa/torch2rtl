@@ -5,13 +5,33 @@ import subprocess
 
 
 def simulate(directory: Path, rtl: str, input_bits: int, output_bits: int,
-             input_words: list[int], expected_words: list[int], stalls: bool, max_cycles: int | None = None):
+             input_words: list[int], expected_words: list[int], stalls: bool, max_cycles: int | None = None,
+             transfer_cycles: tuple[list[int], list[int]] | None = None):
     if max_cycles is None:
         max_cycles = 100 + (len(input_words) + len(expected_words)) * 30
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "inference.sv").write_text(rtl)
     (directory / "input.hex").write_text("\n".join(f"{x:x}" for x in input_words) + "\n")
     (directory / "expected.hex").write_text("\n".join(f"{x:x}" for x in expected_words) + "\n")
+    schedule_declarations = schedule_initial = schedule_checks = ""
+    input_offer = f"({int(not stalls)} || random_state[0])"
+    output_ready = f"{int(not stalls)} || random_state[1]"
+    if transfer_cycles is not None:
+        input_cycles, output_cycles = transfer_cycles
+        assert len(input_cycles) == len(input_words) and len(output_cycles) == len(expected_words)
+        assert all(a < b for a, b in zip(input_cycles, input_cycles[1:]))
+        assert all(a < b for a, b in zip(output_cycles, output_cycles[1:]))
+        (directory / "input_cycles.hex").write_text("\n".join(f"{t:x}" for t in input_cycles)+"\n")
+        (directory / "output_cycles.hex").write_text("\n".join(f"{t:x}" for t in output_cycles)+"\n")
+        schedule_declarations = f"integer input_cycles [0:{len(input_words)-1}]; integer output_cycles [0:{len(expected_words)-1}];"
+        schedule_initial = '$readmemh("input_cycles.hex",input_cycles); $readmemh("output_cycles.hex",output_cycles);'
+        input_offer = "cycle+1 >= input_cycles[sent]"
+        output_ready = f"received < {len(expected_words)} && cycle+1 == output_cycles[received]"
+        schedule_checks = f"""
+      if (input_accepted && cycle != input_cycles[sent]) $fatal(1, "Late input %0d at %0d, scheduled %0d", sent, cycle, input_cycles[sent]);
+      if (received < {len(expected_words)} && cycle == output_cycles[received] && !out_valid)
+        $fatal(1, "Late output %0d at scheduled cycle %0d", received, cycle);
+"""
     bench = f"""
 module tb;
   reg clk=0;
@@ -31,9 +51,11 @@ module tb;
   reg was_stalled=0;
   reg input_accepted=0;
   reg [{output_bits-1}:0] held_data;
+  {schedule_declarations}
   initial begin
     $readmemh("input.hex",inputs);
     $readmemh("expected.hex",expected);
+    {schedule_initial}
     repeat(3) @(negedge clk);
     rst=0;
   end
@@ -44,10 +66,10 @@ module tb;
       random_state = random_state ^ (random_state << 5);
       // Hold an offered input word until it is accepted.
       if (!in_valid || input_accepted) begin
-        in_valid = sent < {len(input_words)} && ({int(not stalls)} || random_state[0]);
+        in_valid = sent < {len(input_words)} && ({input_offer});
         if (sent < {len(input_words)}) in_data = inputs[sent];
       end
-      out_ready = {int(not stalls)} || random_state[1];
+      out_ready = {output_ready};
     end
   end
   always @(posedge clk) begin
@@ -58,6 +80,7 @@ module tb;
       was_stalled = out_valid && !out_ready;
       held_data = out_data;
       input_accepted = in_valid && in_ready;
+      {schedule_checks}
       if (input_accepted) begin
         $display("INPUT %0d %0d",sent,cycle);
         sent=sent+1;

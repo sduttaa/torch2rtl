@@ -8,9 +8,9 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | --- | --- |
 | Local toolchain under Documents | Installed and verified, including native torch-mlir |
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
-| Joint schedule/FIFO/resource solver | Implemented behind a plain-data interface |
+| Joint schedule/FIFO/resource solver | Spatial contracts and catalogue CLI implemented; full-model solve remains unresolved |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 223 passing, including spatial RTL, overflow, backpressure and integer training/export |
+| Tests | 244 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |

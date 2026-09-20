@@ -6,9 +6,12 @@ resamplers, two scale-aligned channel joins, and a byte comparison. These are
 generic operator/shape rules. No model names, layer names, board properties or
 resource budgets participate in lowering.
 
-This is an explicit-configuration emitter. The existing CP-SAT backend still
-needs the spatial actors' event contracts and resource-option catalogues wired
-into it. Emitting RTL does not establish a feasible schedule or hardware fit.
+The explicit-configuration emitter remains available. A new `schedule-network`
+command consumes actor/FIFO resource catalogues and translates the spatial RTL
+into the agreed joint CP-SAT model. Small repeated-frame deadline tests pass;
+the full per-word problem returned `UNKNOWN` in the bounded scale probe.
+The current measured full-model catalogue is resource-infeasible before timing
+expansion. Emitting RTL does not establish hardware fit or a routed clock.
 
 ## Verified full-graph result
 
@@ -140,6 +143,10 @@ Key artifacts:
 - [Earlier stem routing report](../build/convolution/stem-route/route-report.json)
 - [Proposed spatial event contracts](spatial-scheduling.md)
 
-The current test suite has **223 passing tests**, including independent reduction
+The current test suite has **244 passing tests**, including independent reduction
 widths, signed overflow, packed line storage, odd-size block pooling, frame
 boundaries, and input/output backpressure.
+
+The [spatial scheduling interface and scale measurements](spatial-scheduling.md)
+describe the implemented contracts, explicit input catalogue and remaining
+full-model solver limitation.

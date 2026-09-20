@@ -27,6 +27,8 @@ artifacts remain in `build/training/wide-stem-integer`. Aligned crop flips
 adopted. Factorization reduced raw convolution weights to 14,948 bytes and
 line-buffer screening storage to 31,758 bytes, but failed the accuracy criterion.
 A training-only threshold probe also failed to improve the previous integer model.
+A separate rank-one color projection retained only 0.647021 floating-point
+Dice after fine-tuning and was not adopted.
 Increasing the positive-class loss weight from 15 to 30 during the new QAT run
 raised recall but reduced Dice to 0.661634, so that candidate was not adopted.
 
@@ -129,9 +131,11 @@ still be correlated. The original model's earlier training split is unknown.
 
 The current compiler emits the complete retrained graph from explicit hardware
 parameters, and full-model RTL simulation matches three real images with stalls.
-The verification buffers exceed fabric memory. The spatial actors still need
-their joint schedule/FIFO translation, resource-feasible option selection and
-whole-design place-and-route. No board has been programmed with this model.
+The verification buffers exceed fabric memory. The spatial actors now have joint schedule/FIFO contracts and a catalogue CLI,
+validated against repeated-frame RTL deadlines in smaller graphs. The full
+per-word model hit the bounded solver/memory experiment limits, and the measured
+catalogue is resource-infeasible. Resource-feasible option selection and
+whole-design place-and-route remain incomplete. No board has been programmed with this model.
 Neither the small integration kernel's nor the isolated stem's routed clock
 can establish the full model's FPS.
 

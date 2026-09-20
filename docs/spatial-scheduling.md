@@ -1,9 +1,12 @@
 # Spatial actor event contracts
 
-These equations describe the intended translation of the new RTL into the
-already agreed periodic event model. The full spatial translation is not yet
-implemented or solver-validated. They do not replace the requirement to put
-FIFO occupancy and scheduling inside CP-SAT.
+These equations are implemented in `torch2rtl/spatial_schedule.py` using the
+agreed periodic event model. `schedule-network` accepts finite actor and FIFO
+catalogues, performs a necessary resource check, then solves their joint timing
+and occupancy problem with CP-SAT. Twenty spatial scheduling tests check
+repeated-frame RTL transfers against solver deadlines, including parameter
+selection, odd geometries, backpressure at joins and a deadlocking small FIFO
+allocation. This evidence does not establish a feasible full-model schedule.
 
 An event time is the clock edge at which a transfer or internal state update
 occurs. Frame `n` repeats at `n*T + t[event]`. Actor and FIFO choices remain finite
@@ -68,10 +71,13 @@ load while requantization and output transfer finish. Each tile's post event
 also depends on that tile's final dot issue plus `N+5` cycles. No input/output
 burst is assumed to be unstalled merely because it is contiguous in the tensor.
 
-The two pipeline-register delays are included in these constants. The equations
-must be checked against transfer/internal-event traces for representative
-parameters, frame boundaries and adversarial backpressure before being used as
-a throughput certificate.
+The two pipeline-register delays are included in these constants. Only the
+first post event can wait for the preceding output pixel. Later tile posts
+have fixed offsets from it, and release has a fixed offset from the last tile's
+start. The implementation eliminates these redundant internal events without
+restricting transfer schedules. Repeated-frame tests check the resulting
+solver deadlines against the emitted RTL for independent reduction/output
+parallelism and both line-memory layouts.
 
 ## Other actors
 
@@ -97,8 +103,8 @@ i[last[j]+1] >= c[j]
 Input transfers remain ordered at least one cycle apart, including ignored
 right/bottom remainders. Other input commits are exactly one cycle after their
 transfers and need no separate scheduling variable. Same-address forwarding
-preserves consecutive RAM updates. These new contract equations still need
-trace/solver validation before serving as a throughput certificate.
+preserves consecutive RAM updates. The timing tests cover rectangular blocks,
+odd trailing dimensions, and same-address updates.
 
 Nearest resampling reads a complete source row before issuing its first output
 read. Each synchronous RAM read reaches the output register one cycle before
@@ -130,8 +136,46 @@ For the new FIFO, `l=1` at depth one and `l=2` for larger synchronous-memory
 implementations; replacement can occur on the same edge as the retiring read.
 
 A literal word-event expansion of the real model is large, and this Mac has
-16 GiB RAM. Algebraically equivalent event aliases and duplicate-constraint
-elimination are possible implementation optimizations. Forcing dense pixel
-bursts would instead restrict the schedule family and could lose solutions;
-that change has not been adopted. No external simulation-based FIFO optimizer
-has been substituted for the requested CP-SAT occupancy model.
+16 GiB RAM. After exact event aliases, the current model/configuration still
+has **4,091,235 events**, **5,513,378 actor dependencies**, and **1,601,728 FIFO
+words** across 23 edges. The frontend constructed it in about five seconds,
+with a peak process footprint around 1.5 GB. FIFO word-order constraints are
+omitted only where the actor contracts already imply them, including frame
+wrap; availability and slot reuse remain explicit.
+
+A diagnostic full-model run with the oversized verification FIFOs and no
+resource budgets returned `UNKNOWN` after a 60-second solver limit. The memory
+monitor subsequently terminated the process when RSS crossed its 6-GiB
+ceiling. It found no schedule and proved no infeasibility. See
+[`scale-probe/result.json`](../build/scheduling/scale-probe/result.json) and
+[`monitor.json`](../build/scheduling/scale-probe/monitor.json).
+
+Pixel-grouped scheduling would restrict this schedule family and could lose
+solutions. The user has been asked whether that tradeoff is acceptable; it has
+not been adopted. No external simulation-based FIFO optimizer has replaced
+the requested CP-SAT occupancy model.
+
+## Catalogue interface
+
+`python -m torch2rtl schedule-network --catalogue INPUT.json --target TARGET.json
+--seconds 30 --output OUTPUT` imports the exported model through torch-mlir and
+uses these explicit catalogue fields:
+
+- `model`, optional `model_sha256`, and stream `lanes`;
+- `period_limit` and `offset_limit`, which bound the searched schedules;
+- `actor_options[actor_id][option_name]`, with `resources`, optional
+  `output_lanes`, `reduction_lanes`, and `memories`;
+- `fifo_options[edge_id][option_name]`, with logical `depth` and `resources`;
+- optional `fixed_resources` for explicitly budgeted wiring/control overhead.
+
+Costs must describe the corresponding emitted RTL and target. The FIFO template
+has one-cycle forward latency at depth one and two cycles otherwise. FIFO costs
+can be measured with `scripts/characterize-fifos.py`; actor costs can be measured
+with `scripts/characterize-actors.py`. A feasible result writes selected hardware
+parameters, RTL, and compressed per-event offsets. It still marks physical fit
+and timing unverified until whole-design synthesis and routing establish them.
+
+The current measured full-model catalogue is rejected by the resource check:
+its actor choices alone already exceed LUT/BRAM budgets, independent of FIFO
+choice. This is a result for that finite catalogue, not all possible circuits.
+The saved input and result are in `build/scheduling/short-requantizer`.

@@ -1,0 +1,253 @@
+"""Periodic event contracts for the spatial RTL, independent of any solver.
+
+Every stream word retains its own transfer event. There is no dense-burst
+assumption or simulation-driven FIFO sizing in this translation.
+"""
+
+from dataclasses import dataclass, field
+from math import ceil, prod
+
+import torch
+
+from .convolution import configuration
+from .graph import references
+from .network import edges
+from .schedule import Dependency, Fifo, Option, Problem
+
+
+@dataclass(frozen=True)
+class ActorConfig:
+    output_lanes: int | None = None
+    reduction_lanes: int | None = None
+    line_layout: str = "parallel"
+    resources: dict[str, int] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class FifoConfig:
+    depth: int
+    resources: dict[str, int] = field(default_factory=dict)
+
+
+def words(tensor, lanes):
+    return prod(tensor.shape[2:]) * ceil(tensor.shape[1] / lanes)
+
+
+class Events:
+    def __init__(self):
+        self.names = []
+        self.dependencies = []
+        self.when = ()
+
+    def series(self, prefix, count):
+        result = tuple(f"{prefix}.{index}" for index in range(count))
+        self.names.extend(result)
+        return result
+
+    def link(self, before, after, delay=0, frames=0):
+        self.dependencies.append(Dependency(before, after, delay, frames, self.when))
+
+    def order(self, events, delay=1):
+        for before, after in zip(events, events[1:]):
+            self.link(before, after, delay)
+        self.link(events[-1], events[0], delay, 1)
+
+
+def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilation, releases, layout):
+    _, channels, height, width = shape
+    kh, kw = kernel
+    sh, sw = stride
+    ph, pw = padding
+    dh, dw = dilation
+    effective_h, effective_w = (kh-1)*dh+1, (kw-1)*dw+1
+    channel_words = ceil(channels / lanes)
+    packed = layout == "packed" and effective_h > 1
+    issues, columns, readiness, completed = [], [], [], []
+    real_word = 0
+    for y in range(height + 2*ph):
+        for x in range(width + 2*pw):
+            column_padding = not pw <= x < pw+width
+            is_padding = column_padding or not ph <= y < ph+height
+            output = (y >= effective_h-1 and x >= effective_w-1 and
+                      (y-effective_h+1) % sh == 0 and (x-effective_w+1) % sw == 0)
+            for channel in range(channel_words):
+                if is_padding:
+                    event = events.series(f"{prefix}.pad{len(issues)}", 1)[0]
+                else:
+                    event = inputs[real_word]
+                    real_word += 1
+                issues.append(event)
+                columns.append(column_padding)
+                readiness.append(2*(effective_h-1)+1 if packed and not column_padding else 2)
+                if output and channel == channel_words-1:
+                    completed.append(len(issues)-1)
+    if real_word != len(inputs) or len(completed) != len(releases):
+        raise ValueError("Window geometry disagrees with actor streams")
+    for index, event in enumerate(issues):
+        following = (index+1) % len(issues)
+        if packed:
+            delay = readiness[index]
+        else:
+            delay = 2 if width*channel_words == 1 and not columns[index] and not columns[following] else 1
+        events.link(event, issues[following], delay, int(following == 0))
+    for index, (release, release_delay) in zip(completed, releases):
+        following = (index+1) % len(issues)
+        events.link(release, issues[following], release_delay, int(following == 0))
+    return [(issues[index], readiness[index]) for index in completed]
+
+
+def convolution(events, prefix, value, inputs, outputs, lanes, config):
+    parameters = configuration(value, lanes, config.output_lanes, config.reduction_lanes)
+    pixels = prod(value.tensor.shape[2:])
+    output_words = ceil(value.tensor.shape[1] / lanes)
+    blocks = parameters["GROUPS"] * ceil((parameters["OUTPUT_CHANNELS"] // parameters["GROUPS"]) / parameters["OUTPUT_LANES"])
+    dot = parameters["KERNEL_H"]*parameters["KERNEL_W"]*ceil(
+        (parameters["INPUT_CHANNELS"] // parameters["GROUPS"]) / parameters["REDUCTION_LANES"])
+    requant = parameters["ACCUMULATOR_BYTES"]*ceil(parameters["MULTIPLIER_BYTES"] / parameters["REDUCTION_LANES"])
+    tile_cycles = dot + requant + 5
+    starts = events.series(prefix+".start", pixels)
+    posts = events.series(prefix+".post", pixels)
+    # Only the first tile can wait for the previous output pixel. Subsequent
+    # tile commits have fixed offsets from it, and window release is fixed
+    # relative to the last tile's start. Eliminate those events exactly.
+    releases = [(starts[pixel], dot) if blocks == 1 else (posts[pixel], (blocks-2)*tile_cycles+dot)
+                for pixel in range(pixels)]
+    data, weight, _, stride, padding, dilation, *_ = value.args
+    ready = window(events, prefix, inputs, data.tensor.shape, lanes, weight.shape[2:],
+                   stride, padding, dilation, releases, config.line_layout)
+    for pixel in range(pixels):
+        events.link(ready[pixel][0], starts[pixel], ready[pixel][1])
+        events.link(starts[pixel], posts[pixel], tile_cycles)
+        events.link(outputs[(pixel*output_words-1) % len(outputs)], posts[pixel], frames=int(pixel == 0))
+        events.link(posts[pixel], starts[(pixel+1) % pixels], (blocks-1)*tile_cycles+1, int(pixel == pixels-1))
+        events.link(posts[pixel], outputs[pixel*output_words], (blocks-1)*tile_cycles+1)
+        for word in range(pixel*output_words+1, (pixel+1)*output_words):
+            events.link(outputs[word-1], outputs[word], 1)
+
+
+def pool(events, prefix, value, inputs, outputs, lanes):
+    data, kernel, stride, padding, dilation, ceil_mode = value.args
+    if ceil_mode:
+        raise ValueError("Pooling with ceil_mode is not implemented")
+    stride = stride or kernel
+    _, channels, height, width = data.tensor.shape
+    channel_words = ceil(channels / lanes)
+    commits = events.series(prefix+".commit", len(outputs))
+    for index, (commit, output) in enumerate(zip(commits, outputs)):
+        events.link(commit, output, 1)
+        events.link(outputs[index-1], commit, frames=int(index == 0))
+    if tuple(kernel) == tuple(stride) and tuple(padding) == (0, 0) and tuple(dilation) == (1, 1):
+        events.order(inputs)
+        index = 0
+        for y in range(kernel[0]-1, height, kernel[0]):
+            for x in range(kernel[1]-1, width, kernel[1]):
+                for channel in range(channel_words):
+                    last = (y*width+x)*channel_words+channel
+                    events.link(inputs[last], commits[index], 1)
+                    events.link(commits[index], inputs[(last+1) % len(inputs)], frames=int(last == len(inputs)-1))
+                    index += 1
+        if index != len(outputs):
+            raise ValueError("Block-pool geometry disagrees with its output")
+    else:
+        pixels = len(outputs) // channel_words
+        starts = events.series(prefix+".start", pixels)
+        releases = commits[channel_words-1::channel_words]
+        ready = window(events, prefix, inputs, data.tensor.shape, lanes, kernel, stride, padding, dilation,
+                       [(event, 0) for event in releases], "parallel")
+        for pixel in range(pixels):
+            events.link(ready[pixel][0], starts[pixel], ready[pixel][1])
+            events.link(starts[pixel], commits[pixel*channel_words], prod(kernel))
+            for word in range(pixel*channel_words+1, (pixel+1)*channel_words):
+                events.link(commits[word-1], commits[word], prod(kernel))
+            events.link(releases[pixel], starts[(pixel+1) % pixels], 1, int(pixel == pixels-1))
+
+
+def resize(events, prefix, value, inputs, outputs, lanes):
+    data, size, scale, mode, align_corners, recompute, antialias = value.args
+    if mode not in ("nearest", "nearest-exact") or align_corners is not None or antialias:
+        raise ValueError("Only nearest and nearest-exact resampling are implemented")
+    _, channels, height, width = data.tensor.shape
+    channel_words = ceil(channels / lanes)
+    output_height, output_width = value.tensor.shape[2:]
+    rows = torch.nn.functional.interpolate(torch.arange(height, dtype=torch.float64).reshape(1, 1, height),
+        size=None if size is None else (size[0],), scale_factor=None if scale is None else (scale[0],),
+        mode=mode, recompute_scale_factor=recompute).to(torch.int64).flatten().tolist()
+    if len(rows) != output_height:
+        raise ValueError("Resampling map disagrees with its output shape")
+    reads = events.series(prefix+".read", len(outputs))
+    events.order(inputs)
+    for index, (read, output) in enumerate(zip(reads, outputs)):
+        events.link(read, output, 1)
+        events.link(outputs[index-1], read, frames=int(index == 0))
+        source_row = rows[index // (output_width*channel_words)]
+        events.link(inputs[(source_row+1)*width*channel_words-1], read, 1)
+        if index == len(reads)-1 or rows[(index+1) // (output_width*channel_words)] != source_row:
+            following = (source_row+1)*width*channel_words
+            events.link(read, inputs[following % len(inputs)], 1, int(following == len(inputs)))
+
+
+def concatenate(events, value, inputs, outputs, lanes):
+    counts = [ceil(source.tensor.shape[1] / lanes) for source in references(value.args)]
+    output_words = ceil(value.tensor.shape[1] / lanes)
+    for pixel in range(prod(value.tensor.shape[2:])):
+        transfers = [event for stream, count in zip(inputs, counts) for event in stream[pixel*count:(pixel+1)*count]]
+        for before, after in zip(transfers, transfers[1:]):
+            events.link(before, after, 1)
+        events.link(transfers[-1], outputs[pixel*output_words], 1)
+        events.link(outputs[(pixel*output_words-1) % len(outputs)], transfers[0], 1, int(pixel == 0))
+        for index in range(pixel*output_words+1, (pixel+1)*output_words):
+            events.link(outputs[index-1], outputs[index], 1)
+
+
+def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, offset_limit, resource_weights=None, fixed_resources=None):
+    if lanes < 1 or any(value.tensor.bits != 8 or len(value.tensor.shape) != 4 or value.tensor.shape[0] != 1
+                        or min(value.tensor.shape) < 1 for value in graph.values):
+        raise ValueError("Spatial schedules require positive batch-one byte NCHW streams")
+    if set(actor_options) != {value.name for value in graph.values if value is not graph.input}:
+        raise ValueError("Supply an option catalogue for every actor")
+    channels = edges(graph)
+    if set(fifo_options) != {name for name, *_ in channels}:
+        raise ValueError("Supply a FIFO option catalogue for every edge")
+    events = Events()
+    anchor = events.series("epoch", 1)[0]
+    incoming, outgoing, choices, fifos = {}, {}, {}, []
+    for value in graph.values:
+        outgoing[value] = events.series(value.name+".out", words(value.tensor, lanes))
+        incoming[value] = tuple(events.series(f"{value.name}.in{port}", words(source.tensor, lanes))
+                                for port, source in enumerate(references(value.args)))
+        if value is graph.input:
+            events.order(outgoing[value])
+            continue
+        choice = "actor:"+value.name
+        choices[choice] = tuple(Option(name, config.resources) for name, config in actor_options[value.name].items())
+        for name, config in actor_options[value.name].items():
+            if config.line_layout not in ("parallel", "packed"):
+                raise ValueError("Unknown line memory layout")
+            events.when = ((choice, name),)
+            prefix = f"{value.name}.{name}"
+            inputs, outputs = incoming[value], outgoing[value]
+            if value.operation == "quantized_convolution":
+                convolution(events, prefix, value, inputs[0], outputs, lanes, config)
+            elif value.operation == "max_pool2d":
+                pool(events, prefix, value, inputs[0], outputs, lanes)
+            elif value.operation == "__interpolate.size_list_scale_list":
+                resize(events, prefix, value, inputs[0], outputs, lanes)
+            elif value.operation == "quantized_concat":
+                concatenate(events, value, inputs, outputs, lanes)
+            elif value.operation == "byte_lookup":
+                for index, (before, after) in enumerate(zip(inputs[0], outputs)):
+                    events.link(before, after, 1)
+                    events.link(outputs[index-1], before, frames=int(index == 0))
+            else:
+                raise ValueError(f"No spatial event contract for {value.operation}")
+        events.when = ()
+    for name, source, destination, port in channels:
+        choice = "fifo:"+name
+        options = fifo_options[name]
+        choices[choice] = tuple(Option(key, config.resources) for key, config in options.items())
+        fifos.append(Fifo(outgoing[source], incoming[destination][port], choice,
+                          {key: config.depth for key, config in options.items()},
+                          forward_delays={key: 1 if config.depth == 1 else 2 for key, config in options.items()},
+                          order_transfers=False))
+    return Problem(tuple(events.names), choices, tuple(events.dependencies), tuple(fifos), budgets,
+                   period_limit, offset_limit, anchor, fixed_resources=fixed_resources or {}, resource_weights=resource_weights or {})

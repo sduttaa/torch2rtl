@@ -21,6 +21,7 @@ passes RTL simulation, but accuracy, fabric fit and 30 FPS remain unmet. The
 - [Toolchain setup](docs/toolchain.md)
 - [Implemented subset and verification](docs/implementation.md)
 - [Spatial RTL and full-model simulation](docs/spatial-backend.md)
+- [Spatial scheduling catalogue and solver limits](docs/spatial-scheduling.md)
 
 All project-specific installations, source dependencies, environments, caches,
 and build outputs live in this directory under Documents. Existing Apple
