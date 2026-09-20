@@ -6,6 +6,7 @@ implement a user's external transport or establish inference on a physical board
 """
 import argparse
 import json
+import math
 from pathlib import Path
 import subprocess
 import sys
@@ -22,7 +23,12 @@ parser.add_argument("--output-bits", type=int)
 parser.add_argument("--target", type=Path, required=True)
 parser.add_argument("--constraints", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
+parser.add_argument("--clock-rtl", type=Path, help="Optional inference_clock module with clock_in, clock_out and locked ports")
+parser.add_argument("--reference-clock-hz", type=float, help="Reference frequency supplied to --clock-rtl; target clock_hz constrains its output")
 args = parser.parse_args()
+if ((args.clock_rtl is None) != (args.reference_clock_hz is None) or
+        (args.reference_clock_hz is not None and (not math.isfinite(args.reference_clock_hz) or args.reference_clock_hz <= 0))):
+    parser.error("Supply --clock-rtl and a positive --reference-clock-hz together")
 target = json.loads(args.target.read_text())
 if args.compiled:
     compiled = json.loads((args.compiled / "compile.json").read_text())
@@ -38,17 +44,31 @@ else:
 args.output.mkdir(parents=True, exist_ok=True)
 for name in ("routed.json", "route-report.json", "harness.fs"):
     (args.output / name).unlink(missing_ok=True)
+clock, reset, clock_setup = "clk", "rst", ""
+if args.clock_rtl:
+    clock, reset = "core_clock", "core_reset"
+    clock_setup = """
+  wire core_clock, clock_locked;
+  inference_clock clock_source(.clock_in(clk), .clock_out(core_clock), .locked(clock_locked));
+  wire reset_requested = rst || !clock_locked;
+  (* async_reg = "true" *) reg [1:0] reset_sync = 2'b11;
+  always @(posedge core_clock or posedge reset_requested)
+    if (reset_requested) reset_sync <= 2'b11;
+    else reset_sync <= {reset_sync[0], 1'b0};
+  wire core_reset = reset_sync[1];
+"""
 harness = f"""
 module harness(input wire clk, input wire rst, output wire observed);
+{clock_setup}
   reg [{input_bits-1}:0] source;
   wire in_ready;
   wire [{output_bits-1}:0] out_data;
   wire out_valid;
   reg [{output_bits-1}:0] checksum;
-  inference core(.clk(clk), .rst(rst), .in_data(source), .in_valid(1'b1),
+  inference core(.clk({clock}), .rst({reset}), .in_data(source), .in_valid(1'b1),
     .in_ready(in_ready), .out_data(out_data), .out_valid(out_valid), .out_ready(1'b1));
-  always @(posedge clk) begin
-    if (rst) begin source <= 0; checksum <= 0; end
+  always @(posedge {clock}) begin
+    if ({reset}) begin source <= 0; checksum <= 0; end
     else begin
       if (in_ready) source <= source + 1'b1;
       if (out_valid) checksum <= (checksum << 1) ^ out_data;
@@ -57,7 +77,7 @@ module harness(input wire clk, input wire rst, output wire observed);
   assign observed = ^checksum;
 endmodule
 """
-(args.output / "harness.sv").write_text(rtl.read_text() + harness)
+(args.output / "harness.sv").write_text(rtl.read_text() + harness + (args.clock_rtl.read_text() if args.clock_rtl else ""))
 config = target["synthesis"]
 if config["command"] != "synth_gowin":
     raise ValueError("This routing smoke script currently supports the Gowin family flow")
@@ -70,6 +90,11 @@ route_command = [pnr["executable"], "--device", pnr["device"], "--vopt", "family
                  "--freq", str(target["clock_hz"] / 1e6)]
 if "chipdb" in pnr:
     route_command += ["--chipdb", str(Path(pnr["chipdb"]).resolve(strict=True))]
+if args.clock_rtl:
+    (args.output / "clocks.py").write_text(
+        f'ctx.addClock("clk", {args.reference_clock_hz / 1e6!r})\n'
+        f'ctx.addClock("clock_source.clock_out", {target["clock_hz"] / 1e6!r})\n')
+    route_command += ["--pre-pack", str((args.output / "clocks.py").resolve())]
 commands = [
     ["yosys", "-Q", "-T", "-s", "synth.ys"],
     route_command + ["--pack-only", "--report", "packing-report.json"],

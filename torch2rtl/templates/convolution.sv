@@ -132,6 +132,7 @@ module integer_convolution #(
   reg operand_first_group, operand_last_group, operand_last_byte;
   reg product_valid, product_rq, product_last;
   reg product_first_group, product_last_group, product_last_byte;
+  reg pool_update, pool_first, pool_last;
   // The emitter proves this width covers the final result, or retains all
   // 32 bits. Modular addition permits the same narrowing at every MAC step.
   reg signed [ACCUMULATOR_BITS-1:0] accumulator [0:OUTPUT_LANES-1];
@@ -154,7 +155,8 @@ module integer_convolution #(
   generate for (output_lane = 0; output_lane < OUTPUT_LANES; output_lane = output_lane + 1) begin: mac
     wire [COEFFICIENT_BITS-1:0] coefficient =
       MULTIPLIERS[(32'(block)*OUTPUT_LANES+output_lane)*COEFFICIENT_BITS +: COEFFICIENT_BITS];
-    wire signed [PADDED_ACCUMULATOR_BITS-1:0] byte_accumulator = PADDED_ACCUMULATOR_BITS'($signed(accumulator[output_lane]));
+    wire signed [PADDED_ACCUMULATOR_BITS-1:0] byte_accumulator = PADDED_ACCUMULATOR_BITS'(
+      POOL_ITEMS > 1 && pool_update && pool_last ? selected_maximum[output_lane] : accumulator[output_lane]);
     wire [7:0] selected_byte = byte_accumulator[32'(accumulator_byte)*8 +: 8];
     always @(posedge clk) if (state == RQ)
       byte_operand[output_lane] <=
@@ -193,8 +195,8 @@ module integer_convolution #(
     end
     assign dot_sum[output_lane] = dot;
     assign completed_dot[output_lane] = accumulator[output_lane] + dot_sum[output_lane];
-    assign selected_maximum[output_lane] = pool_item == 0 || completed_dot[output_lane] > pool_maximum[output_lane] ?
-      completed_dot[output_lane] : pool_maximum[output_lane];
+    assign selected_maximum[output_lane] = pool_first || accumulator[output_lane] > pool_maximum[output_lane] ?
+      accumulator[output_lane] : pool_maximum[output_lane];
     assign group_sum[output_lane] = group_value;
     assign next_inner[output_lane] = group_sum[output_lane] +
       (product_first_group ? INNER_BITS'(0) : inner_sum[output_lane] << (8*REDUCTION_LANES));
@@ -230,9 +232,26 @@ module integer_convolution #(
       weight_address <= 0;
       operand_valid <= 0;
       product_valid <= 0;
+      pool_update <= 0;
       output_pending <= 0;
       output_word <= 0;
     end else begin
+      if (POOL_ITEMS > 1) begin
+        pool_update <= product_valid && !product_rq && product_last;
+        if (product_valid && !product_rq && product_last) begin
+          pool_first <= pool_item == 0;
+          pool_last <= pool_item == POOL_BITS'(POOL_ITEMS-1);
+        end
+        // Update the maximum after the final sum has reached its register.
+        // The next dot product is still in its operand pipeline at this point.
+        if (pool_update) begin
+          for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) begin
+            pool_maximum[channel] <= selected_maximum[channel];
+            accumulator[channel] <= pool_last ? selected_maximum[channel] :
+              ACCUMULATOR_BITS'(BIASES[(32'(block)*OUTPUT_LANES+channel)*32 +: 32]);
+          end
+        end
+      end
       operand_valid <= state == DOT || state == RQ;
       operand_rq <= state == RQ;
       operand_last <= dot_step == STEP_BITS'(DOT_STEPS-1);
@@ -269,14 +288,7 @@ module integer_convolution #(
           end
         end
         if (!product_rq && product_last) begin
-          if (POOL_ITEMS > 1) begin
-            for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) begin
-              pool_maximum[channel] <= selected_maximum[channel];
-              accumulator[channel] <= pool_item == POOL_BITS'(POOL_ITEMS-1) ? selected_maximum[channel] :
-                ACCUMULATOR_BITS'(BIASES[(32'(block)*OUTPUT_LANES+channel)*32 +: 32]);
-            end
-          end
-          if (pool_item == POOL_BITS'(POOL_ITEMS-1)) begin
+          if (POOL_ITEMS == 1 || pool_item == POOL_BITS'(POOL_ITEMS-1)) begin
             accumulator_byte <= BYTE_BITS'(ACCUMULATOR_BYTES-1);
             multiplier_group <= GROUP_BITS'(MULTIPLIER_GROUPS-1);
             for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) total_sum[channel] <= 0;

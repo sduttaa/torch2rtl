@@ -1,7 +1,39 @@
 import torch
 import pytest
 
-from training.train import make_model, loss_function, factor_convolutions
+from training.train import make_model, loss_function, factor_convolutions, lovasz_hinge
+
+
+def test_lovasz_hinge_matches_manual_jaccard_increments_and_gradient():
+    logits = torch.tensor([[[[.2, -.1, -.4]]]], dtype=torch.float64, requires_grad=True)
+    target = torch.tensor([[[[1., 0., 1.]]]], dtype=torch.float64)
+    # Descending errors 1.4, .9, .8 have Jaccard increments 1/2, 1/6, 1/3.
+    loss = lovasz_hinge(logits, target)
+    torch.testing.assert_close(loss, logits.new_tensor(67/60))
+    loss.backward()
+    torch.testing.assert_close(logits.grad, logits.new_tensor([[[[-1/3, 1/6, -1/2]]]]))
+    config = {"positive_weight": 1, "bce": 0, "dice": 0, "distillation": 0, "lovasz": .5}
+    torch.testing.assert_close(loss_function(logits, target, logits.detach(), config), loss/2)
+
+
+def test_lovasz_hinge_background_perfect_predictions_and_reduction():
+    logits = torch.tensor([[[[2., -1.]]], [[[0., 2.]]]], requires_grad=True)
+    target = torch.tensor([[[[0., 0.]]], [[[1., 1.]]]])
+    torch.testing.assert_close(lovasz_hinge(logits, target, "sample"), torch.tensor(1.75))
+    torch.testing.assert_close(lovasz_hinge(logits, target, "batch"), torch.tensor(4/3))
+    perfect = torch.tensor([[[[-3., -2., 2., 3.]]]], requires_grad=True)
+    loss = lovasz_hinge(perfect, torch.tensor([[[[0., 0., 1., 1.]]]]))
+    torch.testing.assert_close(loss, torch.tensor(0.))
+    loss.backward()
+    assert torch.equal(perfect.grad, torch.zeros_like(perfect))
+
+
+@pytest.mark.parametrize("weight", [-1, float("nan"), float("inf"), "1", True])
+def test_invalid_lovasz_weight(weight):
+    logits = torch.zeros(1, 1, 1, 1)
+    config = {"positive_weight": 1, "bce": 1, "dice": 0, "distillation": 0, "lovasz": weight}
+    with pytest.raises(ValueError, match="Lovasz weight"):
+        loss_function(logits, logits, logits, config)
 
 
 def test_focal_bce_weights_hard_pixels_without_changing_positive_weight():

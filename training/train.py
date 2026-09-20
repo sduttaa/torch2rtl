@@ -353,6 +353,24 @@ def load_teacher(config):
     return teacher.eval()
 
 
+def lovasz_hinge(logits, target, reduction="batch"):
+    """Binary Lovasz extension of Jaccard loss (Berman et al., CVPR 2018)."""
+    if reduction not in ("sample", "batch"):
+        raise ValueError("Lovasz reduction must be sample or batch")
+    if logits.numel() == 0:
+        return logits.sum() * 0
+    scores = logits.flatten(1) if reduction == "sample" else logits.reshape(1, -1)
+    labels = target.reshape_as(scores)
+    errors, order = (1 - scores * (2 * labels - 1)).sort(dim=1, descending=True)
+    sorted_labels = labels.gather(1, order)
+    positives = labels.sum(1, keepdim=True)
+    intersection = positives - sorted_labels.cumsum(1)
+    union = positives + (1 - sorted_labels).cumsum(1)
+    jaccard = 1 - intersection / union
+    gradient = torch.cat((jaccard[:, :1], jaccard[:, 1:] - jaccard[:, :-1]), dim=1)
+    return (errors.relu() * gradient).sum(1).mean()
+
+
 def loss_function(logits, target, teacher, config):
     positive_weight = logits.new_tensor(config["positive_weight"])
     probability = logits.sigmoid()
@@ -377,7 +395,13 @@ def loss_function(logits, target, teacher, config):
         distillation = F.mse_loss(probability, teacher.sigmoid())
     else:
         distillation = F.binary_cross_entropy_with_logits(logits, teacher.sigmoid(), pos_weight=positive_weight)
-    return config["bce"] * bce + config["dice"] * dice + config["distillation"] * distillation
+    loss = config["bce"] * bce + config["dice"] * dice + config["distillation"] * distillation
+    lovasz = config.get("lovasz", 0)
+    if type(lovasz) not in (int, float) or not math.isfinite(lovasz) or lovasz < 0:
+        raise ValueError("Lovasz weight must be finite and nonnegative")
+    if lovasz:
+        loss = loss + lovasz * lovasz_hinge(logits, target, config.get("lovasz_reduction", "batch"))
+    return loss
 
 
 def augment_batch(image, target, teacher, config):

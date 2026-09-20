@@ -18,6 +18,7 @@ parser.add_argument("--depths", type=int, nargs="+", required=True)
 parser.add_argument("--target", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--workers", type=int, default=1)
+parser.add_argument("--memory", choices=("auto", "block", "distributed"), default="auto")
 args = parser.parse_args()
 if min(args.bits, args.workers, *args.depths) < 1 or len(set(args.depths)) != len(args.depths):
     parser.error("Supply positive width, workers and distinct positive depths")
@@ -27,9 +28,12 @@ args.output.mkdir(parents=True, exist_ok=True)
 
 def measure(depth):
     directory = args.output / str(depth)
-    rtl = wrapped("stream_fifo", {"WIDTH": args.bits, "DEPTH": depth}, args.bits, ("fifo.sv",))
+    parameters = {"WIDTH": args.bits, "DEPTH": depth}
+    if args.memory != "auto":
+        parameters["MEMORY_STYLE"] = f'"{args.memory}"'
+    rtl = wrapped("stream_fifo", parameters, args.bits, ("fifo.sv",))
     record = {"bits": args.bits, "depth": depth, "forward_delay": 1 if depth == 1 else 2,
-              "rtl_sha256": hashlib.sha256(rtl.encode()).hexdigest()}
+              "memory": args.memory, "rtl_sha256": hashlib.sha256(rtl.encode()).hexdigest()}
     try:
         record["resources"] = synthesize(rtl, directory, target)
     except Exception as error:

@@ -1,4 +1,6 @@
 from dataclasses import replace
+from pathlib import Path
+import subprocess
 
 import numpy as np
 import pytest
@@ -7,6 +9,7 @@ import torch
 from rtl_check import pack, simulate
 from test_spatial_schedule import check_schedule
 from torch2rtl.convolution import configuration, emit
+from torch2rtl import convolution
 from torch2rtl.cp_sat import solve
 from torch2rtl.graph import Graph, Value, actors, evaluate, pooled_convolutions, reachable
 from torch2rtl.lower import Tensor
@@ -14,6 +17,50 @@ from torch2rtl.ranges import storage_bits
 from torch2rtl.network import edges
 from torch2rtl.schedule import Limits
 from torch2rtl.spatial_schedule import ActorConfig, Events, FifoConfig, problem
+
+
+@pytest.mark.parametrize("parameters", [
+    {"HEIGHT": 4, "WIDTH": 4, "INPUT_CHANNELS": 1, "OUTPUT_CHANNELS": 1, "POOL_H": 2, "POOL_W": 2},
+    {"HEIGHT": 7, "WIDTH": 9, "INPUT_CHANNELS": 3, "OUTPUT_CHANNELS": 5, "KERNEL_H": 2, "KERNEL_W": 2,
+     "LANES": 2, "REDUCTION_LANES": 1, "OUTPUT_LANES": 3, "POOL_H": 2, "POOL_W": 3, "MULTIPLIER_BYTES": 2},
+    {"HEIGHT": 8, "WIDTH": 8, "INPUT_CHANNELS": 4, "OUTPUT_CHANNELS": 6, "GROUPS": 2,
+     "LANES": 2, "REDUCTION_LANES": 2, "OUTPUT_LANES": 2, "POOL_H": 3, "POOL_W": 2},
+])
+def test_pool_comparison_uses_idle_accumulator_cycle(tmp_path, parameters):
+    root = Path(convolution.__file__).parent / "templates"
+    source = (root / "convolution.sv").read_text()
+    assertions = """
+  always @(posedge clk) if (!rst && POOL_ITEMS > 1 && pool_update) begin
+    assert (!product_valid);
+    assert (state == DOT || state == RQ);
+    if (pool_last) begin
+      assert (state == RQ);
+      assert (accumulator_byte == BYTE_BITS'(ACCUMULATOR_BYTES-1));
+      assert (multiplier_group == GROUP_BITS'(MULTIPLIER_GROUPS-1));
+    end else assert (state == DOT && dot_step == 0);
+  end
+"""
+    marker = source.rfind("endmodule")
+    (tmp_path / "convolution.sv").write_text(source[:marker] + assertions + source[marker:]
+                                            + (root / "window.sv").read_text())
+    assignments = " ".join(f"-set {key} {value}" for key, value in parameters.items())
+    (tmp_path / "proof.ys").write_text(f"""
+read_verilog -formal -sv convolution.sv
+chparam {assignments} integer_convolution
+hierarchy -top integer_convolution
+proc
+flatten
+memory_map
+opt
+async2sync
+chformal -lower
+sat -seq 6 -tempinduct -set-at 1 rst 1 -prove-asserts -verify
+""")
+    result = subprocess.run(["yosys", "-Q", "-T", "-s", "proof.ys"], cwd=tmp_path,
+                            capture_output=True, text=True, timeout=30)
+    (tmp_path / "proof.log").write_text(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Induction step proven: SUCCESS!" in result.stdout
 
 
 def example(shape=(1, 3, 7, 9), channels=5, kernel=(3, 3), stride=(1, 1), padding=(1, 1),

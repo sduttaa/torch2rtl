@@ -1,8 +1,11 @@
 # Implemented compiler path
 
 The current implementation is a bounded, working foundation for the agreed
-architecture. It does not yet implement the full model or the requested FP32 and
-convolution coverage. The [workload analysis](workload-feasibility.md) explains
+architecture. Integer spatial actors now compile and route the complete retrained
+graph; FP32 actors, the accuracy target and 30 FPS remain incomplete. The
+[spatial backend](spatial-backend.md) and [current results](../RESULTS.md) cover
+that path. The map/reduction kernel described below is the original smaller
+integration path. The [workload analysis](workload-feasibility.md) explains
 why the original export exceeds the tested storage budget. The user has since
 authorized retraining a smaller integer replacement, with all working storage
 still in fabric memory; see the [training notes](../training/README.md).
@@ -30,7 +33,8 @@ still in fabric memory; see the [training notes](../training/README.md).
 For this small map/reduction chain, configurations share a vector interface and
 are characterized as complete kernels. This avoids guessing composition costs.
 The solver data structures already support independent actor/edge option groups
-and compatibility guards; general graph lowering has not been implemented.
+and compatibility guards. The separate spatial path lowers the supported
+branched convolution, pooling, resampling and concatenation graphs.
 
 ## Numerical and interface contract
 

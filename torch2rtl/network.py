@@ -52,9 +52,10 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
     raise ValueError(f"No RTL actor for {value.operation}")
 
 
-def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None):
+def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None, fifo_memories=None):
     memories = memories or {}
     reduction_lanes = reduction_lanes or {}
+    fifo_memories = fifo_memories or {}
     convolutions = {value.name for value in graph.values if value.operation in ("quantized_convolution", "quantized_convolution_pool")}
     if not reduction_lanes.keys() <= convolutions:
         raise ValueError("Reduction parallelism refers to an unknown convolution")
@@ -66,6 +67,8 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
     channels = edges(graph)
     if set(depths) != {name for name, _, _, _ in channels} or any(type(depth) is not int or depth < 1 for depth in depths.values()):
         raise ValueError("Supply one positive logical FIFO depth for every graph edge")
+    if not fifo_memories.keys() <= depths.keys() or any(style not in ("auto", "block", "distributed") for style in fifo_memories.values()):
+        raise ValueError("Supply auto, block or distributed FIFO memory mappings for known edges")
     if set(output_lanes) != convolutions:
         raise ValueError("Supply output parallelism for every convolution")
     indices = {value: index for index, value in enumerate(graph.values)}
@@ -96,7 +99,9 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
                 lane_cast(f"packed_output_{edge_index}", f"edge_data_{edge_index}", stored_lanes, element_bits, 8, source.tensor.signed)]
         if stored_lanes < lanes:
             top.append(f"assign edge_data_{edge_index}[{bits-1}:{stored_lanes*8}] = '0;")
-        top += [f"stream_fifo #(.WIDTH({width}), .DEPTH({depths[name]})) fifo_{edge_index} (",
+        style = fifo_memories.get(name, "auto")
+        placement = f', .MEMORY_STYLE("{style}")' if style != "auto" else ""
+        top += [f"stream_fifo #(.WIDTH({width}), .DEPTH({depths[name]}){placement}) fifo_{edge_index} (",
                 f".clk(clk), .rst(rst), .in_data(packed_input_{edge_index}), .in_valid(valid_{index} && ready_{index}), .in_ready(space_{edge_index}),",
                 f".out_data(packed_output_{edge_index}), .out_valid(edge_valid_{edge_index}), .out_ready(edge_ready_{edge_index}));"]
     for source, connections in outgoing.items():

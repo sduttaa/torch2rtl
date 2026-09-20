@@ -63,6 +63,14 @@ retains ordinary BCE. Dice and teacher losses are unchanged. This follows the
 [focal-loss formulation](https://arxiv.org/abs/1708.02002); it is a training option,
 not a change to inference arithmetic.
 
+`loss.lovasz` optionally adds the binary
+[Lovász hinge loss](https://arxiv.org/abs/1705.08790), a Jaccard-loss surrogate
+computed from sorted logit-margin errors. Its nonnegative weight defaults to
+zero; `lovasz_reduction` selects `batch` (default) or `sample`. It changes only
+training, with hand-derived loss/gradient checks and background-only cases.
+An 80-epoch four-bit continuation retained its starting checkpoint and did not
+improve accuracy; see [the recorded experiment](../docs/training-results.md#lovasz-hinge-experiment).
+
 `quantize.py --resume PATH_TO_QAT` continues saved QAT weights and calibrated
 scales with a fresh AdamW optimizer and learning-rate schedule. The original
 floating checkpoint is still supplied through `--checkpoint` to construct the

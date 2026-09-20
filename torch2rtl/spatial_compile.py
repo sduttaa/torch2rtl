@@ -54,6 +54,7 @@ def compile_network(graph, catalogue, target, directory, limits=Limits()):
                       event_count=len(model.events), actor_dependency_count=len(model.dependencies))
         if solution.period is not None:
             selected = {name: catalogue["actor_options"][name][solution.selected["actor:"+name]] for name in actors}
+            selected_fifos = {edge: catalogue["fifo_options"][edge][solution.selected["fifo:"+edge]] for edge in fifos}
             configuration = {"model": catalogue["model"], "model_sha256": catalogue["model_sha256"],
                 "fusions": catalogue.get("fusions", []),
                 "lanes": catalogue["lanes"],
@@ -61,8 +62,10 @@ def compile_network(graph, catalogue, target, directory, limits=Limits()):
                 "reduction_lanes": {name: spec["reduction_lanes"] for name, spec in selected.items() if spec.get("reduction_lanes") is not None},
                 "memories": {name: spec["memories"] for name, spec in selected.items() if "memories" in spec},
                 "fifo_depths": {edge: fifos[edge][solution.selected["fifo:"+edge]].depth for edge in fifos}}
+            configuration["fifo_memories"] = {edge: spec["memory"] for edge, spec in selected_fifos.items()
+                                               if spec.get("memory", "auto") != "auto"}
             rtl = emit(graph, configuration["lanes"], configuration["output_lanes"], configuration["fifo_depths"],
-                       configuration["memories"], configuration["reduction_lanes"])
+                       configuration["memories"], configuration["reduction_lanes"], configuration["fifo_memories"])
             (directory / "inference.sv").write_text(rtl)
             (directory / "configuration.json").write_text(json.dumps(configuration, indent=2)+"\n")
             with gzip.open(directory / "offsets.jsonl.gz", "wt") as stream:

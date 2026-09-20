@@ -4,7 +4,7 @@
 The compiler now produces full-model RTL and CP-SAT schedules with independently
 checked constraints and RTL transfer deadlines. A four-bit-activation candidate
 now completes **full-model placement, routing and bitstream packing**, with setup
-and hold checks passing at 27 MHz using an explicitly corrected nextpnr database.
+and hold checks passing with a generated 108 MHz clock using an explicitly corrected nextpnr database.
 Its weights and activations fit fabric memory. Accuracy and 30-FPS throughput
 remain unmet; the toolflow harness has not been run as inference on a physical board.
 
@@ -42,6 +42,25 @@ SDRAM is excluded. The selected target remains explicit input in
 resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
+
+Retiming the fused pooling comparison and eliminating unreachable non-pooling
+hardware preserve all numerical results while improving physical timing. An
+externally supplied **108 MHz PLL clock** now routes and packs a bitstream with
+explicit reference/output constraints and timing checks enabled. The verified
+**9,630,209-cycle** period gives **11.21 scheduled FPS**, with all storage in
+fabric. Native utilization is 14,457 LUT4, 4,336 ALU, 5,908 FF, 46 BRAM and
+59 multiplier slots, plus 19,200 distributed-memory bits. This is a toolflow
+harness result, without physical-board inference or real input transport.
+The model's Dice remains 0.656095. The full regression suite passes **442 tests**.
+[Retiming, clock and provenance evidence](docs/direct-scheduling.md#retimed-pooling-and-generated-inference-clock).
+
+An additional Lovász-loss training continuation retains all 58 starting state
+tensors and the same accuracy; complete integer/export and torch-mlir checks pass.
+A new pool-row FIFO diagnostic proves a 6,160,715-cycle schedule and fits whole-core
+synthesis using distributed RAM, but its first physical placement attempt fails.
+It is not yet a routed throughput result.
+
+The preceding resize-only implementation provides the comparison below.
 
 Generic overlapping resize buffers improve the routed candidate's throughput
 by **45.40%**, to **2.804 FPS at 27 MHz**, without increasing BRAM use. CP-SAT

@@ -3,6 +3,7 @@ import json
 import pytest
 
 from torch2rtl.flow import synthesis_command, synthesize
+from torch2rtl.spatial import wrapped
 
 
 @pytest.mark.parametrize("flags", ["-noalu", ["-noalu; shell false"], ["-noalu\nclean"], [7]])
@@ -21,3 +22,16 @@ def test_synthesis_uses_the_explicit_mapping_flag(tmp_path):
     logic = json.loads((tmp_path / "logic/cells.json").read_text())
     assert carry.get("ALU", 0) > 0
     assert logic.get("ALU", 0) == 0
+
+
+def test_fifo_memory_mapping_changes_physical_storage(tmp_path):
+    target = {"synthesis": {"command": "synth_gowin", "family": "gw2a"}, "cell_costs": {"*": {"cells": 1}}}
+    cells = {}
+    for style in ("block", "distributed"):
+        rtl = wrapped("stream_fifo", {"WIDTH": 16, "DEPTH": 101, "MEMORY_STYLE": f'"{style}"'}, 16, ("fifo.sv",))
+        synthesize(rtl, tmp_path / style, target)
+        cells[style] = json.loads((tmp_path / style / "cells.json").read_text())
+    assert cells["block"].get("DPX9B", 0) == 1
+    assert cells["distributed"].get("DPX9B", 0) == 0
+    assert cells["distributed"].get("RAM16SDP4", 0) > 0
+    assert cells["block"].get("RAM16SDP4", 0) == 0

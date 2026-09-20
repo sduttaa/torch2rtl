@@ -60,7 +60,7 @@ def main():
         _, module = load(model_path)
         graph = actors(read(module), config.get("fusions", ()))
         rtl = emit(graph, config["lanes"], config["output_lanes"], config["fifo_depths"],
-                   config.get("memories"), config.get("reduction_lanes"))
+                   config.get("memories"), config.get("reduction_lanes"), config.get("fifo_memories"))
         args.output.mkdir(parents=True, exist_ok=True)
         (args.output / "inference.sv").write_text(rtl)
         (args.output / "model.mlir").write_text(str(module))
@@ -69,7 +69,8 @@ def main():
                               "value_range": bounds(value), "stream_storage_bits": storage_bits(value)}
                              for value in graph.values],
                   "fifos": [{"edge": name, "word_bits": fifo_width(source, config["lanes"]),
-                             "depth": config["fifo_depths"][name]} for name, source, *_ in edges(graph)],
+                             "depth": config["fifo_depths"][name], "memory": config.get("fifo_memories", {}).get(name, "auto")}
+                            for name, source, *_ in edges(graph)],
                   "solver_verified": False, "hardware_fit_verified": False, "timing_verified": False}
         (args.output / "emission.json").write_text(json.dumps(report, indent=2) + "\n")
         print(f"Explicit-configuration RTL emitted to {args.output.resolve()}; scheduling, fit and timing remain to be checked")

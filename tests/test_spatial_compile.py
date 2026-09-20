@@ -1,10 +1,12 @@
 import gzip
 import json
+import pytest
 
 from torch2rtl.graph import Graph, Value
 from torch2rtl.lower import Tensor
 from torch2rtl.schedule import Limits
 from torch2rtl.spatial_compile import compile_network
+from torch2rtl.network import emit
 
 
 def test_catalogue_compiles_and_resource_failure_removes_stale_outputs(tmp_path):
@@ -32,3 +34,27 @@ def test_catalogue_compiles_and_resource_failure_removes_stale_outputs(tmp_path)
     assert failure["status"] == "INFEASIBLE" and failure["stage"] == "resource_preflight"
     assert not failure["solver_verified"]
     assert not any((tmp_path / name).exists() for name in ("inference.sv", "configuration.json", "offsets.jsonl.gz"))
+
+
+def test_fifo_placement_selected_from_resource_budget(tmp_path):
+    source = Value("image", "input", (), Tensor((1, 1, 2, 3), 8, False))
+    output = Value("lookup", "byte_lookup", (source, tuple(range(256))), source.tensor)
+    graph = Graph(source, output, (source, output))
+    edge = "image->lookup:0"
+    catalogue = {"model": "explicit-input.pt2", "model_sha256": "test-metadata", "lanes": 1,
+        "period_limit": 100, "offset_limit": 200,
+        "actor_options": {"lookup": {"table": {"resources": {}}}},
+        "fifo_options": {edge: {
+            "block": {"depth": 17, "memory": "block", "resources": {"bram": 1}},
+            "distributed": {"depth": 17, "memory": "distributed", "resources": {"lutram_bits": 256}}}}}
+    target = {"resources": {"bram": 0, "lutram_bits": 256}}
+    report = compile_network(graph, catalogue, target, tmp_path, Limits(seconds=5))
+    assert report["solver_verified"]
+    config = json.loads((tmp_path / "configuration.json").read_text())
+    assert config["fifo_memories"] == {edge: "distributed"}
+    assert '.DEPTH(17), .MEMORY_STYLE("distributed")' in (tmp_path / "inference.sv").read_text()
+    default = emit(graph, 1, {}, {edge: 17})
+    assert default == emit(graph, 1, {}, {edge: 17}, fifo_memories={edge: "auto"})
+    for invalid in ({edge: "unknown"}, {"missing": "block"}):
+        with pytest.raises(ValueError, match="FIFO memory mappings"):
+            emit(graph, 1, {}, {edge: 17}, fifo_memories=invalid)

@@ -71,6 +71,36 @@ logit regression checks.
 - [Integer verification](../build/training/focal-integer/report.json)
 - [MLIR inspection](../build/training/focal-integer/inspection/analysis.json)
 
+## Lovasz hinge experiment
+
+An 80-epoch four-bit QAT continuation uses the
+[Lovász hinge Jaccard surrogate](https://arxiv.org/abs/1705.08790) with weight 0.50,
+batch Dice 0.20, weighted BCE 0.20 and teacher supervision 0.10. Learning rate
+is 0.00003; graph, calibrated quantizers, original split and zero prediction
+threshold remain unchanged. The best checkpoint is still epoch zero at
+**0.656095 Dice**. All 58 retained state tensors equal the starting checkpoint;
+no improved model is adopted.
+
+The saved integer model passes all 246 QAT/integer comparisons and 49 serialized
+export comparisons, contains no floating tensor nodes, and verifies through
+torch-mlir. Constants remain 27,576 bytes. Its serialization hash differs, but
+the checkpoint-state comparison establishes that training retained the same
+weights and quantizers. Existing validation has been used for many experiments;
+this is not an independent test-set result.
+
+- [Experiment input](../training/experiments/scratches-lovasz.json)
+- [History](../build/training/lovasz-integer/history.json)
+- [Integer verification](../build/training/lovasz-integer/report.json)
+- [Checkpoint comparison](../build/training/lovasz-integer/checkpoint-comparison.json)
+- [MLIR inspection](../build/training/lovasz-integer/inspection/analysis.json)
+
+```sh
+python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
+  --config training/experiments/scratches-lovasz.json \
+  --resume build/training/four-bit-calibrated/qat.pt \
+  --output build/training/lovasz-integer --epochs 80 --learning-rate 0.00003 --shift 16
+```
+
 ## Lower-operation architecture experiments
 
 Two 300-epoch floating-point runs replace selected dense convolutions with

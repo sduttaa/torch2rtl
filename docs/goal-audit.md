@@ -14,6 +14,24 @@ verification FIFOs. An 80-epoch focal-loss continuation retains exactly the same
 58 state tensors and score. The existing validation split has been used for
 many choices; no independent test set was supplied. [Training evidence](training-results.md).
 
+The current verified physical result uses a generated **108 MHz** clock and
+provides **11.21 scheduled FPS** from the unchanged 9,630,209-cycle complete
+CP-SAT proof. Three frames are bit-exact and meet every transfer deadline. The
+full graph's PLL harness routes and packs with explicit clock constraints and
+all timing checks enabled. Native utilization is 14,457 LUT4, 4,336 ALU,
+5,908 FFs, 46 BRAMs, 59 multiplier slots, 19,200 distributed-memory bits and one
+PLL. There is no physical-board inference or real image transport demonstration.
+Accuracy remains 0.656095 Dice. An 80-epoch Lovász continuation retains the
+starting checkpoint without improvement. All **442 regression tests** pass.
+[Current physical and scheduling evidence](direct-scheduling.md#retimed-pooling-and-generated-inference-clock).
+
+A further FIFO allocation proves a 6,160,715-cycle period and fits whole-core
+synthesis; its first routing attempt fails placement. It remains a diagnostic,
+not an adopted physical throughput result. Useful implementation progress
+continues; the accurate 30-FPS goal remains active and incomplete.
+
+The preceding resize-only result is retained below for comparison.
+
 The latest generic resize-buffer option improves throughput by **45.40%** while
 retaining fabric-only weights and activations. The complete CP-SAT model proves
 a **9,630,209-cycle** period for the fixed configuration; all 3,024,739 offsets

@@ -1,5 +1,83 @@
 # Optimized full-model schedules and narrower FIFOs
 
+## Retimed pooling and generated inference clock
+
+The generic convolution actor now registers a completed dot product before the
+fused pooling comparison. The comparison overlaps the next window's operand
+fetch; the final pooled result bypasses into the first requantization byte.
+Three temporal induction checks cover one-word, ragged/multiple-tile and grouped
+convolutions under arbitrary input validity, output backpressure and later
+resets. The actor event contract and frame period are unchanged. A static
+non-pooling guard also eliminates unreachable address multiplication hardware.
+The full regression suite, including FIFO placement and clock/reset tests,
+passes **442 tests**.
+
+For the two-row-resize configuration above, complete CP-SAT again proves
+**9,630,209 cycles** optimal. All 3,024,739 independently checked event offsets
+are identical to the preceding schedule; three bit-exact RTL frames meet every
+scheduled transfer deadline. Production emission is byte-identical to the routed
+core. The final no-ALU mapping uses 16,659 LUT sites, 5,906 FFs, 46 BRAMs, 59
+multiplier slots and 19,200 distributed-memory bits, with reported setup Fmax
+107.158 MHz. A separate carry-enabled 100 MHz routing control passes timing and
+reports 124.456 MHz setup Fmax.
+
+The routing harness now accepts an externally supplied `inference_clock` module
+and reference-clock frequency. It asynchronously asserts reset on external reset
+or loss of PLL lock, and releases reset after two inference-clock edges. No
+frequency or device is selected by compiler code. The explicit experiment uses
+an installed-tool-generated 27-to-108 MHz PLL (input divider 1, feedback 4,
+output divider 8; VCO 864 MHz). Both the reference and retained output net alias
+receive explicit nextpnr clock constraints. The original run's ignored alias
+warning is preserved as a control; the final run accepts both constraints.
+
+The final **108 MHz** PLL harness completes placement, routing and bitstream
+packing with all timing checks enabled and the corrected database. Its native
+utilization is **14,457 LUT4, 4,336 ALU, 5,908 DFF, 46 BRAM, 59 MULT9X9,
+300 RAM16SDP4 and one rPLL**. Native categories are reported separately; ALU and
+LUT4 counts must not be confused with the no-ALU cost basis. The reported setup
+limit is 153.327 MHz, while the configured generated clock is 108 MHz. The
+verified period gives **11.2147 scheduled FPS at 108 MHz**. This is a full-graph
+counter-source/checksum-sink toolflow harness, without real image transport or a
+physical-board inference measurement. Model Dice remains **0.656095**; accuracy
+and 30 FPS remain unmet. The CP resource certificate uses the separately routed
+no-ALU harness; the carry-mapped PLL harness passes its own native capacity checks.
+
+- [Clock, route, schedule and artifact provenance](../build/network/retimed-pool/summary.json)
+- [Complete CP-SAT proof](../build/scheduling/retimed-pool/report.json)
+- [Event-offset equivalence](../build/scheduling/retimed-pool/replay-equivalence.json)
+- [Bit-exact scheduled RTL frames](../build/network/retimed-pool/simulation/report.json)
+- [Pooling temporal proofs](../build/verification/retimed-pool/report.json)
+- [433 remeasured actor choices](../build/network/retimed-pool/measurements/report.json)
+- [Full regression log](../build/tests-pool-placement-clock.log)
+
+### Explicit FIFO memory placement
+
+FIFO catalogue entries can specify `memory: auto`, `block` or `distributed`.
+The solver still uses the existing depth-dependent ordered-slot-reuse constraints;
+placement changes measured resource costs only. The selected configuration
+preserves the choice in `fifo_memories`, keyed by graph edge. Defaults emit
+byte-identical RTL. A synthesis regression verifies that the placement hint
+changes the actual memory primitive; another test forces CP-SAT to select a
+distributed-memory option through its resource budget.
+
+A diagnostic reserves one output row after each standalone pooling actor using
+graph-derived sizes. It cuts the interval to **6,160,715 cycles**, with all three
+frames bit-exact, but automatic placement uses 48 BRAMs. Explicitly placing these
+two FIFOs in distributed RAM reduces whole-core synthesis to **46 BRAMs,
+28,928 distributed-memory bits, 15,346 LUT equivalents, 5,892 FFs and 59 multiplier
+slots**. Complete fixed-choice CP-SAT proves the same period and independently
+checks all 3,024,739 offsets. This is a 56.31% throughput gain in cycles.
+The first carry-enabled physical attempt fails placement; aggregate counts alone
+do not establish fit. Three bit-exact RTL frames meet every scheduled transfer deadline. Alternative
+mappings are being checked. This diagnostic is not yet an adopted physical
+throughput result.
+
+- [FIFO numerical simulation](../build/network/distributed-pool-fifos/simulation/report.json)
+- [Complete FIFO schedule](../build/scheduling/distributed-pool-fifos/report.json)
+- [Scheduled FIFO RTL replay](../build/scheduling/distributed-pool-fifos/simulation/report.json)
+- [Placement attempt](../build/network/distributed-pool-fifos/physical/status.json)
+
+
 ## Overlapping resampling rows
 
 Nearest and nearest-exact actors now accept an explicit
