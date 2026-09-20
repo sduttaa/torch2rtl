@@ -64,7 +64,7 @@ def emit_pool(actor, lanes, memory="auto"):
                    parameters["BITS"], data.tensor.signed)
 
 
-def emit_resize(actor, lanes, memory="auto"):
+def emit_resize(actor, lanes, memory="auto", row_buffers=1):
     if actor.operation != "__interpolate.size_list_scale_list":
         raise ValueError("Expected a static interpolation actor")
     data, size, scale, mode, align_corners, recompute, antialias = actor.args
@@ -76,6 +76,8 @@ def emit_resize(actor, lanes, memory="auto"):
         raise ValueError("Resampling cannot change element types")
     if memory not in ("auto", "block", "distributed"):
         raise ValueError("Unknown memory mapping option")
+    if type(row_buffers) is not int or row_buffers < 1:
+        raise ValueError("Row buffer count must be a positive integer")
     _, channels, height, width = data.tensor.shape
     if actor.tensor.shape[:2] != (1, channels):
         raise ValueError("Resampling cannot change batch or channels")
@@ -94,7 +96,7 @@ def emit_resize(actor, lanes, memory="auto"):
         maps.append(packed(indices, max(1, (length-1).bit_length())))
     parameters = {"HEIGHT": height, "WIDTH": width, "CHANNELS": channels,
                   "OUTPUT_HEIGHT": output_height, "OUTPUT_WIDTH": output_width,
-                  "LANES": lanes, "BITS": storage_bits(actor), "MEMORY_STYLE": f'"{memory}"',
+                  "LANES": lanes, "BITS": storage_bits(actor), "ROW_BUFFERS": row_buffers, "MEMORY_STYLE": f'"{memory}"',
                   "ROW_INDICES": maps[0], "COLUMN_INDICES": maps[1]}
     return wrapped("integer_nearest", parameters, lanes*data.tensor.bits, ("resize.sv",),
                    parameters["BITS"], data.tensor.signed)

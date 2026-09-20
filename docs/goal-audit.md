@@ -14,6 +14,19 @@ verification FIFOs. An 80-epoch focal-loss continuation retains exactly the same
 58 state tensors and score. The existing validation split has been used for
 many choices; no independent test set was supplied. [Training evidence](training-results.md).
 
+The latest generic resize-buffer option improves throughput by **45.40%** while
+retaining fabric-only weights and activations. The complete CP-SAT model proves
+a **9,630,209-cycle** period for the fixed configuration; all 3,024,739 offsets
+pass independent checking, and three bit-exact RTL frames meet every scheduled
+transfer deadline. The full-model harness routes and packs a bitstream with
+timing checks enabled. It uses 17,269 LUT sites, 5,915 FFs, 46 BRAMs, 64 multiplier
+slots and 19,200 distributed-memory bits. At 27 MHz it provides **2.804 FPS**.
+Reported setup Fmax is 78.296 MHz, with no faster clock or physical-board inference
+demonstrated. Accuracy remains 0.656095 Dice. The regression suite passes
+**429 tests**. [Latest proof and route evidence](direct-scheduling.md#overlapping-resampling-rows).
+
+The preceding single-row implementation provides the comparison below.
+
 A lower-accuracy four-bit-hidden candidate now completes full-model placement,
 routing and bitstream packing. Its final report uses 17,197 LUT sites, 5,911 FFs,
 46 BRAM blocks, 64 multiplier slots and 19,200 distributed-memory bits. Both

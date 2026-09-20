@@ -28,6 +28,8 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
     memories = memories or {}
     convolution_actor = value.operation in ("quantized_convolution", "quantized_convolution_pool")
     allowed = {"weight", "line", "line_layout"} if convolution_actor else {"storage"}
+    if value.operation == "__interpolate.size_list_scale_list":
+        allowed |= {"row_buffers"}
     if not memories.keys() <= allowed:
         raise ValueError(f"Unknown memory mapping for {value.operation}")
     if convolution_actor:
@@ -38,7 +40,7 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
     if value.operation == "max_pool2d":
         return spatial.emit_pool(value, lanes, memories.get("storage", "auto"))
     if value.operation == "__interpolate.size_list_scale_list":
-        return spatial.emit_resize(value, lanes, memories.get("storage", "auto"))
+        return spatial.emit_resize(value, lanes, memories.get("storage", "auto"), memories.get("row_buffers", 1))
     if memories:
         raise ValueError(f"No memory mapping choices for {value.operation}")
     if value.operation == "quantized_concat":

@@ -23,7 +23,8 @@ def compile_network(graph, catalogue, target, directory, limits=Limits()):
     if set(catalogue["fifo_options"]) != {name for name, *_ in edges(graph)}:
         raise ValueError("Supply a FIFO option catalogue for every edge")
     actors = {actor: {name: ActorConfig(spec.get("output_lanes"), spec.get("reduction_lanes"),
-                    spec.get("memories", {}).get("line_layout", "parallel"), spec["resources"])
+                    spec.get("memories", {}).get("line_layout", "parallel"), spec["resources"],
+                    spec.get("memories", {}).get("row_buffers", 1))
                     for name, spec in options.items()} for actor, options in catalogue["actor_options"].items()}
     fifos = {edge: {name: FifoConfig(spec["depth"], spec["resources"]) for name, spec in options.items()}
              for edge, options in catalogue["fifo_options"].items()}

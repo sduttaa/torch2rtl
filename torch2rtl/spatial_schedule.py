@@ -21,6 +21,7 @@ class ActorConfig:
     reduction_lanes: int | None = None
     line_layout: str = "parallel"
     resources: dict[str, int] = field(default_factory=dict)
+    row_buffers: int = 1
 
 
 @dataclass(frozen=True)
@@ -202,10 +203,12 @@ def pool(events, prefix, value, inputs, outputs, lanes):
             events.link(releases[pixel], starts[(pixel+1) % pixels], 1, int(pixel == pixels-1))
 
 
-def resize(events, prefix, value, inputs, outputs, lanes):
+def resize(events, prefix, value, inputs, outputs, lanes, row_buffers=1):
     data, size, scale, mode, align_corners, recompute, antialias = value.args
     if mode not in ("nearest", "nearest-exact") or align_corners is not None or antialias:
         raise ValueError("Only nearest and nearest-exact resampling are implemented")
+    if type(row_buffers) is not int or row_buffers < 1:
+        raise ValueError("Row buffer count must be a positive integer")
     _, channels, height, width = data.tensor.shape
     channel_words = ceil(channels / lanes)
     output_height, output_width = value.tensor.shape[2:]
@@ -217,14 +220,22 @@ def resize(events, prefix, value, inputs, outputs, lanes):
     reads = events.series(prefix+".read", len(outputs))
     events.period_bound(reads[0], len(outputs))
     events.order(inputs)
+    releases = {}
     for index, (read, output) in enumerate(zip(reads, outputs)):
         events.link(read, output, 1)
         events.link(outputs[index-1], read, frames=int(index == 0))
         source_row = rows[index // (output_width*channel_words)]
         events.link(inputs[(source_row+1)*width*channel_words-1], read, 1)
         if index == len(reads)-1 or rows[(index+1) // (output_width*channel_words)] != source_row:
-            following = (source_row+1)*width*channel_words
-            events.link(read, inputs[following % len(inputs)], 1, int(following == len(inputs)))
+            releases[source_row] = read
+            if row_buffers == 1:
+                following = (source_row+1)*width*channel_words
+                events.link(read, inputs[following % len(inputs)], 1, int(following == len(inputs)))
+    if row_buffers > 1:
+        used = list(releases)
+        for index, source_row in enumerate(used):
+            frame, following = divmod(index+row_buffers, len(used))
+            events.link(releases[source_row], inputs[used[following]*width*channel_words], 1, frame)
 
 
 def concatenate(events, value, inputs, outputs, lanes):
@@ -273,7 +284,7 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
             elif value.operation == "max_pool2d":
                 pool(events, prefix, value, inputs[0], outputs, lanes)
             elif value.operation == "__interpolate.size_list_scale_list":
-                resize(events, prefix, value, inputs[0], outputs, lanes)
+                resize(events, prefix, value, inputs[0], outputs, lanes, config.row_buffers)
             elif value.operation == "quantized_concat":
                 concatenate(events, value, inputs, outputs, lanes)
             elif value.operation == "byte_lookup":

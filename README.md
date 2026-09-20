@@ -65,15 +65,16 @@ nearest resampling, aligned concatenation and byte comparisons using explicit
 actor/FIFO configurations. It supports branched raster networks and preserves
 integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
-full-model diagnostic schedule now passes RTL deadline checks with oversized
-FIFOs, including an optimized period for a fixed actor configuration.
-A slower optimized schedule also passes with finite FIFOs and the catalogue's
-resource budgets, but nextpnr packing exceeds LUT capacity. A smaller-logic
-allocation passes aggregate packing capacity and still fails placement.
-Physical fit remains unresolved.
+full-model schedule passes RTL deadline checks with finite fabric-only FIFOs.
+A lower-accuracy retrained candidate completes placement, routing and bitstream
+packing at 27 MHz using an explicitly corrected nextpnr database. Its latest
+fixed-choice optimum is 9,630,209 cycles (2.804 FPS); the requested accuracy and
+30-FPS result remain unmet. See [the measured evidence](RESULTS.md).
 Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
 while preserving byte tensor semantics. Training precision is always explicit.
+Nearest-resampling actors accept `memories.row_buffers` to overlap row capture
+and reads. Their ordered buffer reuse is included in the CP-SAT contract.
 The optional `"fusions": ["convolution_pool"]` configuration entry enables an
 exact, proved convolution/max-pool fusion. See its [contract and measured
 tradeoffs](docs/convolution-pool.md); it is not enabled by default.

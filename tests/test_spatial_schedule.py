@@ -25,6 +25,8 @@ def check_schedule(directory, graph, lanes, actor_options, fifo_depths=(1, 2, 8)
     outputs = {name: config.output_lanes for name, config in choices.items() if config.output_lanes is not None}
     reductions = {name: config.reduction_lanes for name, config in choices.items() if config.reduction_lanes is not None}
     memories = {name: {"line_layout": config.line_layout} for name, config in choices.items() if config.output_lanes is not None}
+    memories.update({value.name: {"row_buffers": choices[value.name].row_buffers} for value in graph.values
+                     if value.operation == "__interpolate.size_list_scale_list"})
     depths = {name: fifo_options[name][solution.selected["fifo:"+name]].depth for name in fifo_options}
     rtl = emit(graph, lanes, outputs, depths, memories, reductions)
     torch.manual_seed(81)
@@ -77,19 +79,35 @@ def test_pool_deadlines(tmp_path, shape, kernel, stride, padding, dilation):
     check_schedule(tmp_path, Graph(source, output, (source, output)), 2, {output.name: {"selected": ActorConfig()}})
 
 
+@pytest.mark.parametrize("row_buffers", [1, 2, 3])
 @pytest.mark.parametrize("shape,size,scale,mode,recompute", [
     ((1, 3, 3, 5), None, (2., 2.), "nearest", None),
     ((1, 3, 7, 9), (3, 4), None, "nearest-exact", None),
     ((1, 3, 9, 7), (1, 1), None, "nearest-exact", None),
     ((1, 3, 5, 7), None, (1.3, 1.7), "nearest", False),
 ])
-def test_resize_deadlines(tmp_path, shape, size, scale, mode, recompute):
+def test_resize_deadlines(tmp_path, shape, size, scale, mode, recompute, row_buffers):
     source = Value("image", "input", (), Tensor(shape, 8, False))
     result_shape = tuple(torch.nn.functional.interpolate(torch.zeros(shape), size=size, scale_factor=scale,
                          mode=mode, recompute_scale_factor=recompute).shape)
     output = Value("resize", "__interpolate.size_list_scale_list",
                    (source, size, scale, mode, None, recompute, False), Tensor(result_shape, 8, False))
-    check_schedule(tmp_path, Graph(source, output, (source, output)), 2, {output.name: {"selected": ActorConfig()}})
+    check_schedule(tmp_path, Graph(source, output, (source, output)), 2,
+                   {output.name: {"selected": ActorConfig(row_buffers=row_buffers)}}, frames=6)
+
+
+def test_row_buffer_choice_improves_resampling_overlap(tmp_path):
+    source = Value("image", "input", (), Tensor((1, 1, 3, 5), 8, False))
+    output = Value("resize", "__interpolate.size_list_scale_list",
+                   (source, None, (2., 2.), "nearest", None, None, False), Tensor((1, 1, 6, 10), 8, False))
+    graph = Graph(source, output, (source, output))
+    options = {output.name: {str(count): ActorConfig(row_buffers=count, resources={"row_slots": count})
+                             for count in (1, 2)}}
+    single = check_schedule(tmp_path/'single', graph, 1, options, (1, 2), frames=6, budgets={"row_slots": 1})
+    double = check_schedule(tmp_path/'double', graph, 1, options, (1, 2), frames=6, budgets={"row_slots": 2})
+    assert single.selected['actor:resize'] == '1'
+    assert double.selected['actor:resize'] == '2'
+    assert double.period < single.period
 
 
 def branched(activation_bits=8):

@@ -43,6 +43,19 @@ resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
 
+Generic overlapping resize buffers improve the routed candidate's throughput
+by **45.40%**, to **2.804 FPS at 27 MHz**, without increasing BRAM use. CP-SAT
+proves its **9,630,209-cycle** fixed-choice period; all 3,024,739 offsets pass
+independent checking and three bit-exact RTL frames meet every transfer deadline.
+Placement, routing and bitstream packing succeed with all timing checks enabled.
+Final use is **17,269 LUT sites, 5,915 FFs, 46 BRAMs and 64 multiplier slots**,
+plus 19,200 distributed-memory bits. Reported setup Fmax is **78.296 MHz**;
+that clock and physical-board inference have not been demonstrated.
+The model's Dice remains 0.656095. [Row-buffer contracts, tests and physical
+evidence](docs/direct-scheduling.md#overlapping-resampling-rows).
+
+The previous single-row result provides the comparison below.
+
 The combined `-noalu -nowidelut` mapping completes full place-and-route after
 correcting a nextpnr RAM timing-table generator error. The controlled original
 database run reproduces 376 hold violations; the corrected database restores
@@ -110,7 +123,7 @@ or physical fit. [Layout measurements](docs/window-layouts.md).
 - Solver-independent periodic event contracts with actor choices, FIFO depths,
   occupancy and resource constraints in CP-SAT; every feasible result checked
   against the original model.
-- **385 tests pass**, including numerical overflow, branches, backpressure,
+- **429 tests pass**, including numerical overflow, branches, backpressure,
   periodic schedules, signed storage, training and export.
 - A small integration kernel synthesizes, routes at 27 MHz and packs a bitstream.
   That result is distinct from the requested full model. Physical-board inference
@@ -141,4 +154,4 @@ Increasing shallow depth from two to eight improves throughput by only about
 - [Fusion proof and synthesis measurements](docs/convolution-pool.md)
 - [Original-export feasibility analysis](docs/workload-feasibility.md)
 - [Goal audit and remaining requirements](docs/goal-audit.md)
-- [Test log](build/tests.log)
+- [Test log](build/tests-resize.log)

@@ -1,5 +1,82 @@
 # Optimized full-model schedules and narrower FIFOs
 
+## Overlapping resampling rows
+
+Nearest and nearest-exact actors now accept an explicit
+`memories.row_buffers` positive integer. One retains the previous single-row
+implementation; larger counts store selected source rows in a circular queue.
+Input capture can overlap output reads from a different row. Unused source rows
+are discarded without allocating a queue slot. Shapes, coordinate maps and the
+row count come from the graph and option catalogue, with no board/model rule.
+
+This uses the agreed ordered-slot-reuse scheduling formulation. For `m` used
+source rows per inference and `B` buffers, the last read of used row `j` must
+precede the first write of used row `(j+B) mod m` by one cycle, at frame distance
+`floor((j+B)/m)`. A row's last input write must precede its reads by one cycle.
+Input ordering and output-register backpressure remain explicit constraints.
+The bank pointers continue across frame boundaries, including when `B > m`.
+Thus the buffer capacity and its scheduling effects remain inside CP-SAT.
+
+The full regression suite passes **429 tests**. Stream tests cover five frames
+with and without stalls, fractional scaling, downsampling, nearest-exact,
+discarded rows and ragged vectors. Scheduled RTL tests exercise one, two and
+three buffers, including choosing between configurations under a resource
+budget. Temporal induction checks address ranges and simultaneous-read/write
+collision freedom for three geometries with arbitrary valid/backpressure
+signals. These are elaborated proofs, not a proof over all parameter values.
+
+The bottleneck investigation starts with an independently checked tight-cycle
+witness from the previous 14,002,180-cycle schedule. The witness contains no
+large skip FIFO; doubling both large skip FIFOs also leaves its RTL interval
+unchanged and exceeds BRAM capacity. It instead passes through the resize actors
+and neighboring compute actors. This motivated overlapping row capture.
+
+Selecting two row buffers for both resize actors reduces the complete model's
+bit-exact RTL interval to **9,630,209 cycles**, a **45.40% throughput increase**.
+Whole-core synthesis uses **14,761 LUT equivalents, 5,870 FFs, 46 BRAM blocks,
+64 multiplier slots and 19,200 distributed-memory bits**. Both resized row stores
+still occupy one BRAM each. The complete fixed-choice CP-SAT model proves the
+same minimum period within a 20-million period cap and 40-million offset cap;
+all 3,024,739 event offsets pass independent checking. The solver takes 57.7
+seconds; the monitored run takes 134.7 seconds and peaks at 6.15 GB sampled RSS.
+At 27 MHz this period is **2.804 FPS**, below 30 FPS. The unchanged four-bit-hidden
+graph still scores 0.656095 Dice, below the 0.676843 requirement.
+
+The observable full-model harness also completes placement, routing and bitstream
+packing with the corrected device database and all timing checks enabled. Final
+utilization is **17,269 LUT sites, 5,915 FF sites, 46 BRAMs, 64 multiplier slots
+and 19,200 distributed-memory bits**. Timing passes at 27 MHz; reported setup
+Fmax is **78.296 MHz**. This is not a generated/tested faster clock or a board
+inference measurement. The scheduled RTL is byte-identical to the routed core.
+Three bit-exact frames meet every input/output deadline, completing at
+11,039,506; 20,669,715; and 30,299,924 cycles. The schedule resource term uses
+whole-core synthesis; routed harness overhead is accounted for separately here.
+
+The combined mapping's resource survey now covers 433 successful actor choices,
+including six resize choices, and remeasured FIFO costs. Its necessary
+actor-rate/resource relaxation is infeasible at three and four million cycles
+for this finite catalogue and fixed FIFO allocation. Five and six million are
+feasible in the relaxation. Those screens omit graph occupancy and are not
+network throughput claims.
+
+A follow-up with four rows per resize actor produces three bit-exact frames at
+9,626,403-cycle intervals, less than 0.04% faster than two rows. It uses 48 BRAM
+blocks, exceeding the 46-block budget, and is not adopted or routed. Increasing
+these two row stores further is therefore not the current priority. The new
+checked critical-cycle witness includes backpressure through the encoder and
+context actors as well as the decoder.
+
+- [Row-buffer measurements](../build/network/overlapped-resize/measurements/report.json)
+- [Full-model numerical simulation](../build/network/overlapped-resize/simulation/report.json)
+- [Complete schedule proof](../build/scheduling/overlapped-resize/report.json)
+- [Scheduled RTL replay](../build/scheduling/overlapped-resize/simulation/report.json)
+- [Route, bitstream and artifact hashes](../build/network/overlapped-resize/summary.json)
+- [Previous schedule's critical-cycle witness](../build/scheduling/routed-fixed/critical/report.json)
+- [New schedule's critical-cycle witness](../build/scheduling/overlapped-resize/critical/report.json)
+- [Four-row diagnostic](../build/network/deeper-resize/simulation/report.json)
+- [Refreshed actor measurements](../build/network/lut4-logic-options/combined-report.json)
+- [Regression log](../build/tests-resize.log)
+
 ## Complete place-and-route result
 
 The fixed four-bit-hidden candidate now completes placement, routing and bitstream
