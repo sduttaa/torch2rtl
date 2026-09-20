@@ -4,40 +4,46 @@
 
 The user authorized training a smaller INT8 replacement if it matches or exceeds
 0.676843 validation Dice, with both weights and activations in FPGA fabric memory.
-The goal remains **active and incomplete**. This removes the earlier deployment
-decision blocker; no new user authorization is needed for the ongoing work.
+The goal remains **active and incomplete**. No new user authorization is needed
+for the ongoing work; no external/user-input blocker has been established.
 
-The best verified integer candidate now reaches **0.667590 Dice**, with 27,576
-bytes of constants. It passes all 246 QAT/integer and 49 saved-export comparisons
-and torch-mlir verification. The existing validation split has been used for
-many architecture/checkpoint choices; there is no independent test set.
-[Training evidence](training-results.md).
+The best verified full-range integer candidate remains **0.667590 Dice**, with
+27,576 bytes of constants. All 246 QAT/integer and 49 saved-export comparisons
+pass, along with torch-mlir and three-image RTL verification using oversized
+verification FIFOs. An 80-epoch focal-loss continuation retains exactly the same
+58 state tensors and score. The existing validation split has been used for
+many choices; no independent test set was supplied. [Training evidence](training-results.md).
 
-The generic packed row store now pipelines reads and writes, reducing refill
-latency without changing the agreed scheduling/FIFO formulation. CP-SAT proves
-a 14,007,135-cycle optimum for a fixed smaller-logic four-bit configuration;
-all 3,024,739 offsets pass independent checking and all three RTL frames meet
-their transfer deadlines. Three induction cases prove the row-access safety
-properties. Remeasuring 198 actor options finds a smaller allocation, but it
-still fails placement after packing 18,853 LUT sites, 46 BRAMs and 64 byte
-multiplier slots. Its observed interval is 14,002,180 cycles and its Dice remains
-0.656095. [Scheduling and placement evidence](direct-scheduling.md).
+A lower-accuracy four-bit-hidden candidate now completes full-model placement,
+routing and bitstream packing. Its final report uses 17,197 LUT sites, 5,911 FFs,
+46 BRAM blocks, 64 multiplier slots and 19,200 distributed-memory bits. Both
+weights and working storage are in fabric. Timing checks pass at 27 MHz using
+an explicit locally corrected nextpnr database. The correction moves dual-port
+B-address timing from an incorrect single-port entry to the proper dual-port
+entries. The original database control reproduces 376 hold violations; the
+corrected database restores missing checks and passes without disabling checks.
+All eight speed grades and 14 B-address bits pass the timing-table regression.
+[Physical toolflow and correction evidence](direct-scheduling.md#complete-place-and-route-result).
 
-These are verified implementation and training advances, not a complete,
-accurate 30-FPS design or a repeated no-progress blocking condition. The complete
-suite passes 378 tests. No full-model routed clock, physical inference result,
-or accuracy-qualified fabric-only deployment is available. Board/model specifics
-remain explicit external inputs. The earlier fixed full-range schedule used
-oversized FIFOs and does not establish fabric fit.
+The complete CP-SAT model proves 14,002,180 cycles optimal for this fixed
+configuration within the stated caps. All 3,024,739 event offsets are independently
+checked, and the emitted RTL is byte-identical to the routed input. Three
+bit-exact RTL frames meet every scheduled transfer deadline. At the configured
+27 MHz, the period gives 1.928 inferences/s. The reported setup limit is 75.654
+MHz, but no clock at that rate or physical-board inference has been tested.
+The routed graph scores only 0.656095 Dice. Thus physical toolflow progress does
+not meet the required accuracy or 30-FPS throughput.
 
-Two subsequent 300-epoch depthwise/pointwise architecture trials reduce direct
-operation counts but reach only 0.647327 and 0.644617 floating-point Dice, so
-neither is adopted. Training-only threshold calibration leaves the best INT8
-score unchanged. A four-input-LUT mapping reaches 20 placement iterations before
-an external fifteen-minute diagnostic stop; it supplies no completed physical
-certificate. Generic synthesis flags and a QAT module-ReLU fix have regression
-coverage. These bounded investigations add measured progress without meeting
-the full goal, and no external/user-input blocker has been established.
+Thirty-nine additional actor memory mappings yield 26 successful measurements.
+Moving selected ROMs into logic permits doubling either large skip FIFO within
+whole-core synthesis capacity, but neither three-image simulation improves the
+14,002,180-cycle interval. The solver mathematics is unchanged. The complete
+regression suite passes 385 tests. FP32 actors and a full board transport remain
+incomplete. Board/model details remain explicit inputs, and no model-specific
+compiler rule has been introduced.
+
+These are verified implementation and toolchain advances, not a complete goal
+or a repeated no-progress blocking condition.
 
 The historical audit below concerns the original supplied export. It is not an
 impossibility theorem about retrained models or other hardware implementations.

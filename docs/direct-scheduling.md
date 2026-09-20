@@ -1,5 +1,62 @@
 # Optimized full-model schedules and narrower FIFOs
 
+## Complete place-and-route result
+
+The fixed four-bit-hidden candidate now completes placement, routing and bitstream
+packing with all nextpnr timing checks enabled. Combining the explicit Yosys
+flags `-noalu -nowidelut` reduces initial packing to 16,054 LUT sites. A corrected
+nextpnr device database resolves the subsequent RAM timing-table failure described
+below. This is the complete inference graph inside the observable source/sink
+harness; it is not a physical-board inference demonstration or a completed I/O
+transport.
+
+The final routed report uses **17,197 LUT sites, 5,911 FF sites, 46 BRAM blocks,
+64 byte multiplier slots and 19,200 distributed-memory bits**. Both weights and
+working storage remain in fabric memory. Setup and hold checks pass at the
+supplied **27 MHz** constraint, and the reported setup Fmax is **75.654 MHz**.
+The existing three-image bit-exact RTL interval is 14,002,180 cycles, equivalent
+to **1.928 inferences/s at 27 MHz**. Merely dividing by the reported setup limit
+would give about 5.40 FPS; that clock has not been generated or tested on a board.
+The graph's Dice remains **0.656095**, below the required 0.676843. The requested
+accuracy-qualified 30-FPS result remains unmet.
+
+The complete agreed CP-SAT model proves **14,002,180 cycles optimal for these
+fixed actor/FIFO choices**, under a 20-million-cycle period cap and 40-million
+offset cap. All 3,024,739 event offsets pass independent checking. The solver
+takes 73.8 seconds; the full monitored run takes 143.3 seconds and peaks at
+6.51 GB sampled RSS. Its emitted RTL is byte-identical to the routed input.
+The fixed resource term uses the final routed utilization, including the
+source/sink harness; per-option costs are zero to avoid double counting. This
+is a scoped optimum, not a proof that other actor parameters cannot improve it.
+The full RTL replay meets every scheduled input/output deadline for three images,
+with 387,840 input words, 96,768 bit-exact output words and completion cycles
+15,636,950; 29,639,130; and 43,641,310.
+
+The stock database finishes routing but reports 376 hold violations. Investigation
+of [nextpnr commit `3e53a0bf`](https://github.com/YosysHQ/nextpnr/blob/3e53a0bf/himbaechel/uarch/gowin/gowin_arch_gen.py#L2052) finds a one-variable error in its Gowin database
+generator: dual-port B-address timing is added to the last single-port variant
+instead of the dual-port variant. The four dual-port variants therefore add four
+duplicate arcs to `SPX9` and omit their own B-address arcs. The local patch corrects
+the destination; it does not disable or relax a timing check. The regression
+checks all 14 B-address bits in all eight speed grades. Regenerated original and
+corrected databases share a byte-identical 50,531,510-byte routing-graph prefix.
+Controlled runs use the same synthesized netlist: the original again fails hold
+analysis, while the corrected database passes and packs a bitstream. This remains
+validation against the locally corrected open-source timing model, not independent
+vendor signoff or silicon measurement.
+
+- [Result and artifact hashes](../build/network/pipelined-row-lut4-logic/summary.json)
+- [Corrected-database route report](../build/network/pipelined-row-lut4-logic/corrected-database/route-report.json)
+- [Successful route/pack status](../build/network/pipelined-row-lut4-logic/corrected-database/status.json)
+- [Toolflow harness bitstream](../build/network/pipelined-row-lut4-logic/corrected-database/harness.fs)
+- [Original-database control](../build/network/pipelined-row-lut4-logic/original-database/status.json)
+- [Generic generator correction](../patches/nextpnr-gowin-bram-timing.patch)
+- [Timing-table regression](../build/verification/hold-timing/regression.json)
+- [Database build provenance](../build/verification/hold-timing/build.json)
+- [Explicit target with database override](../build/network/pipelined-row-lut4-logic/target-corrected.json)
+- [Complete fixed-configuration CP-SAT proof](../build/scheduling/routed-fixed/report.json)
+- [Scheduled three-image RTL replay](../build/scheduling/routed-fixed/simulation/report.json)
+
 ## Pipelined packed row memory
 
 The generic packed row store now overlaps each row write with the next row's
@@ -36,8 +93,8 @@ screen chooses slightly smaller actors while reserving the same FIFO storage:
 | New measured selection | 17,005 / 5,877 | 46 / 64 | 18,853 / 7,711 | Placement fails |
 
 Both use 19,200 distributed-memory bits and produce bit-exact outputs for three
-images. The new selection's observed interval is 14,002,180 cycles; it does not
-have a full CP-SAT optimality proof. The screen omits graph occupancy and its
+images. The new selection's observed interval is 14,002,180 cycles; the complete
+fixed-choice proof is now recorded above. The screen omits graph occupancy and its
 six-million-cycle screening period is not an achieved network period. Doubling
 the two large skip buffers is infeasible within this finite actor catalogue even
 at a 16-million-cycle screening period. This is a scoped catalogue result, not
@@ -61,6 +118,39 @@ PYTHONPATH="$PWD" python build/scheduling/replay.py \
 ```
 
 ## Synthesis mapping investigation
+
+### Explicit memory-placement choices
+
+A survey of 39 explicit actor memory placements synthesizes 26 successfully.
+All 13 forced distributed-ROM choices are rejected by Yosys's memory mapper;
+they are excluded from the resource screen. Line-buffer migration to distributed
+RAM is expensive in LUTs. Logic ROMs provide some cheaper trades: one small
+actor saves a BRAM block for 202 LUTs. Extending the measured catalogue still
+cannot double both large skip FIFOs within the default synthesis resource
+budgets, even at the 16-million-cycle necessary actor-rate bound. This remains
+a finite-catalogue result, not a general impossibility statement.
+
+Doubling each skip FIFO separately does fit whole-core synthesis. Neither
+improves the observed network interval:
+
+| FIFO change | Whole-core LUT / FF | BRAM / multiplier slots | Observed interval |
+| --- | ---: | ---: | ---: |
+| Middle skip: 2,048 to 4,096 words | 17,830 / 5,945 | 46 / 64 | 14,002,180 cycles |
+| Shallow skip: 8,192 to 16,384 words | 19,384 / 6,009 | 46 / 64 | 14,002,180 cycles |
+
+Both use 19,200 distributed-memory bits and match all 96,768 output words over
+three real images. Their completion cycles are 15,636,948; 29,639,128; and
+43,641,308. These are simulation/synthesis diagnostics; neither has a new
+complete CP-SAT certificate or physical timing result. They are not adopted as
+throughput improvements. Memory placements are existing generic actor choices,
+and the agreed joint scheduling/FIFO formulation is unchanged.
+
+- [Actor memory survey](../build/network/memory-alternatives/measurements/report.json)
+- [Accepted/rejected measurement provenance](../build/network/memory-alternatives/screen-provenance.json)
+- [Middle-skip simulation](../build/network/memory-middle-fifo/simulation/report.json)
+- [Shallow-skip simulation](../build/network/memory-shallow-fifo/simulation/report.json)
+
+### Mapping flags
 
 Two bounded mapping diagnostics use the same new allocation and RTL above:
 

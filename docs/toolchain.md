@@ -128,6 +128,45 @@ the corresponding resource catalogue rather than reusing costs from another
 mapping. Only standalone option names are accepted; this field is not a Yosys
 script or a shell command.
 
+Actor characterization reports now retain the complete supplied target, including
+mapping flags, alongside RTL/model hashes. The routing harness also accepts an
+explicit `place_route.chipdb` path. It resolves that file before invoking nextpnr;
+no database override is selected by default.
+
+The full-model routing experiment uncovered a RAM timing-table error in the
+installed nextpnr revision `3e53a0bf`. The [local generator patch](../patches/nextpnr-gowin-bram-timing.patch)
+changes the B-address timing destination from the stale single-port variable to
+the current dual-port variable. The [controlled comparison](direct-scheduling.md#complete-place-and-route-result)
+restores missing checks rather than suppressing hold failures. The installed
+stock database remains intact; the corrected database is an explicit target path.
+
+The matching upstream archive and source are under `.tools/downloads` and
+`.tools/src/nextpnr-3e53a0bf`. Generation uses the bundled Apicula database and
+`PYTHONHASHSEED=0`. A [binary-only CLI adapter](../patches/nextpnr-bbasm-binary-cli.patch)
+lets the upstream BBA assembler build with the local C++ compiler without adding
+Boost headers. Its serialization body is unchanged. Reproduce the corrected
+database from the patched source with:
+
+```sh
+cp .tools/src/nextpnr-3e53a0bf/bba/main.cc .tools/build/nextpnr-chipdb/bbasm-binary.cc
+patch .tools/build/nextpnr-chipdb/bbasm-binary.cc < patches/nextpnr-bbasm-binary-cli.patch
+clang++ -std=c++17 -O2 .tools/build/nextpnr-chipdb/bbasm-binary.cc \
+  -o .tools/bin/bbasm-binary
+PYTHONHASHSEED=0 tabbypy3 \
+  .tools/src/nextpnr-3e53a0bf/himbaechel/uarch/gowin/gowin_arch_gen.py \
+  -d GW2A-18C -o .tools/build/nextpnr-chipdb/corrected.bba
+bbasm-binary .tools/build/nextpnr-chipdb/corrected.bba \
+  .tools/build/nextpnr-chipdb/corrected.bin
+python scripts/route-smoke.py \
+  --rtl build/network/pipelined-row-selected/rtl/inference.sv \
+  --input-bits 32 --output-bits 32 \
+  --target build/network/pipelined-row-lut4-logic/target-corrected.json \
+  --constraints inputs/smoke.cst --output build/network/reproduced-route
+```
+
+The part, database and pinout above are recorded experiment inputs. Compiler
+lowering contains no board-specific choice of database or timing workaround.
+
 ## Official references
 
 - [OSS CAD Suite releases and installation](https://github.com/YosysHQ/oss-cad-suite-build)

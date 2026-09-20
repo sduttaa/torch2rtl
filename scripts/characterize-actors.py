@@ -75,7 +75,7 @@ with ThreadPoolExecutor(max_workers=args.workers) as executor:
 totals = Counter()
 for record in records:
     totals.update(record.get("resources", {}))
-report = {"model_sha256": model_hash, "options" if args.options else "actors": records,
+report = {"target": target, "model_sha256": model_hash, "options" if args.options else "actors": records,
           "fusions": config.get("fusions", []),
           "all_succeeded": all("error" not in record for record in records),
           "whole_design_routed": False}

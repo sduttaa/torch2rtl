@@ -68,6 +68,8 @@ pnr = target["place_route"]
 route_command = [pnr["executable"], "--device", pnr["device"], "--vopt", "family=" + pnr["family"],
                  "--vopt", "cst=" + str(args.constraints.resolve()), "--json", "netlist.json",
                  "--freq", str(target["clock_hz"] / 1e6)]
+if "chipdb" in pnr:
+    route_command += ["--chipdb", str(Path(pnr["chipdb"]).resolve(strict=True))]
 commands = [
     ["yosys", "-Q", "-T", "-s", "synth.ys"],
     route_command + ["--pack-only", "--report", "packing-report.json"],

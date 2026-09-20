@@ -2,12 +2,11 @@
 
 **The requested accurate, fabric-memory-only 30-FPS design is not achieved.**
 The compiler now produces full-model RTL and CP-SAT schedules with independently
-checked constraints and RTL transfer deadlines. Accuracy, a resource-feasible
-optimized schedule and full-design physical timing remain unresolved. A slower
-four-bit-activation candidate passes complete RTL simulation and whole-design
-synthesis within the supplied budgets, but nextpnr packing exceeds LUT capacity.
-A smaller-logic allocation passes aggregate packing capacity and still fails
-placement. Neither result is a physical fabric-fit certificate.
+checked constraints and RTL transfer deadlines. A four-bit-activation candidate
+now completes **full-model placement, routing and bitstream packing**, with setup
+and hold checks passing at 27 MHz using an explicitly corrected nextpnr database.
+Its weights and activations fit fabric memory. Accuracy and 30-FPS throughput
+remain unmet; the toolflow harness has not been run as inference on a physical board.
 
 ## Accuracy and deployment scope
 
@@ -15,7 +14,7 @@ placement. Neither result is a physical fabric-fit certificate.
 | --- | ---: | ---: | --- |
 | Supplied integer export | 0.676843 | 291,240 bytes | Baseline; contains FP32 computation and exceeds the tested fabric-storage budget |
 | Best retrained full-range INT8 | 0.667590 | 27,576 bytes | Integer export verified; accuracy target unmet |
-| Retrained INT8 weights / four-bit hidden activations | 0.656095 | 27,576 bytes | Smaller exact storage; accuracy target unmet |
+| Retrained INT8 weights / four-bit hidden activations | 0.656095 | 27,576 bytes | Routes with fabric-only storage; accuracy and 30 FPS unmet |
 
 The retained full-range model matches QAT on all 246 supplied images and its
 serialized export on all 49 validation images. It has no floating-point tensor
@@ -33,6 +32,8 @@ Two lower-operation architectures complete 300 epochs each, reducing direct work
 to 128.6M and 165.0M MACs. Their floating-point Dice scores are only 0.647327 and
 0.644617; neither is adopted. Training-only threshold calibration of the best
 INT8 checkpoint retains zero and its existing 0.667590 score.
+An 80-epoch focal-loss continuation also retains the exact starting checkpoint;
+its integer/export and torch-mlir checks pass, with no accuracy improvement.
 
 The user requires **both weights and activations in FPGA fabric memory**.
 SDRAM is excluded. The selected target remains explicit input in
@@ -41,6 +42,25 @@ SDRAM is excluded. The selected target remains explicit input in
 resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
+
+The combined `-noalu -nowidelut` mapping completes full place-and-route after
+correcting a nextpnr RAM timing-table generator error. The controlled original
+database run reproduces 376 hold violations; the corrected database restores
+missing dual-port address checks and passes without suppressing timing errors.
+The final report uses **17,197 LUT sites, 5,911 FFs, 46 BRAM blocks and 64 byte
+multiplier slots**, plus 19,200 distributed-memory bits. Bitstream packing succeeds.
+
+CP-SAT proves a **14,002,180-cycle minimum period** for these fixed actor/FIFO
+choices, with all 3,024,739 event offsets independently checked. This is
+**1.928 FPS at the configured 27 MHz**. The reported setup limit is 75.654 MHz,
+but no clock at that rate or physical-board inference has been demonstrated.
+Three images pass bit-exact RTL replay with every scheduled transfer on time.
+This remains the lower-accuracy four-bit-hidden graph. [Route, timing correction
+and artifact evidence](docs/direct-scheduling.md#complete-place-and-route-result).
+
+Moving selected weight ROMs into logic permits doubling either large skip FIFO
+within whole-core synthesis capacity, but both three-image simulations retain
+the same interval. Those allocations provide no measured throughput gain.
 
 Pipelining the generic packed row memory reduces its refill latency, with
 simulation assertions and three induction proofs checking collision freedom.
@@ -51,8 +71,9 @@ transfer deadline is met across three images. This improves throughput by about
 
 After remeasuring 198 packed actor options, a new selection uses 18,853 packed
 LUT sites, 46 BRAM blocks and 64 multiplier slots. It produces three bit-exact
-frames at 14,002,180-cycle intervals, then fails placement. No full-model routed
-clock is available. [Row-memory and placement evidence](docs/direct-scheduling.md#pipelined-packed-row-memory).
+frames at 14,002,180-cycle intervals, then fails placement with the default
+mapping. The combined mapping above resolves that placement failure.
+[Row-memory and placement evidence](docs/direct-scheduling.md#pipelined-packed-row-memory).
 
 A four-input-LUT synthesis mapping reduces packed use to 18,155 LUT sites and
 progresses through 20 placement iterations, but the diagnostic is interrupted
@@ -89,7 +110,7 @@ or physical fit. [Layout measurements](docs/window-layouts.md).
 - Solver-independent periodic event contracts with actor choices, FIFO depths,
   occupancy and resource constraints in CP-SAT; every feasible result checked
   against the original model.
-- **378 tests pass**, including numerical overflow, branches, backpressure,
+- **385 tests pass**, including numerical overflow, branches, backpressure,
   periodic schedules, signed storage, training and export.
 - A small integration kernel synthesizes, routes at 27 MHz and packs a bitstream.
   That result is distinct from the requested full model. Physical-board inference
@@ -112,7 +133,7 @@ The smaller-logic allocation with depth-eight shallow FIFOs produces three
 bit-exact images at **14,114,637-cycle intervals**. It packs at **18,954/20,736 LUT
 sites, 46/46 BRAM blocks and 70/96 multiplier slots**, then fails placement.
 Increasing shallow depth from two to eight improves throughput by only about
-1.96%. No full-design routed clock or board inference rate is available.
+1.96%. That earlier allocation has no routed clock or board inference measurement.
 
 - [Implementation and reproduction](docs/implementation.md)
 - [Installed toolchain](docs/toolchain.md)
