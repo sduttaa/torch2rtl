@@ -10,6 +10,11 @@ The latest exact convolution/pool fusion and implied window-path timing bounds
 are documented in [the fusion report](convolution-pool.md). They add verified
 implementation progress; they do not establish the missing accuracy, full-model
 schedule, physical fit or 30-FPS result.
+The subsequent [line-layout survey](window-layouts.md) measured 191 more
+configurations and improved the same four-bit graph's observed RTL throughput
+by about 4.6%, with bit-exact outputs. Its verification FIFOs remain oversized.
+A targeted lighting-augmentation experiment did not improve accuracy. These
+are completed investigations with useful measured progress, not a completed goal.
 Training runs, exact integer verification and their limits are documented in
 [the training notes](../training/README.md). The historical audit below applies
 to the original export, not a theorem about retrained models.

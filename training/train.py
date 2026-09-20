@@ -11,6 +11,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import math
 import random
 import operator
 import sys
@@ -432,6 +433,21 @@ def training_batch(image, target, teacher, config):
         image, target, teacher = crop_batch(image, target, teacher, config["crop"])
     if after_crop:
         image, target, teacher = augment_batch(image, target, teacher, config)
+    if config.get("augment", True) and "photometric" in config:
+        # Per-image lighting variation is a training-only invariance target.
+        # Spatial labels and cached teacher predictions remain aligned.
+        spec = config["photometric"]
+        if set(spec) != {"brightness", "contrast"}:
+            raise ValueError("Photometric augmentation requires brightness and contrast intervals")
+        factors = {}
+        for name, interval in spec.items():
+            if len(interval) != 2 or not all(math.isfinite(value) for value in interval) or interval[0] > interval[1]:
+                raise ValueError("Photometric intervals must be finite and ordered")
+            if name == "contrast" and interval[0] < 0:
+                raise ValueError("Contrast must be nonnegative")
+            factors[name] = torch.empty((len(image), 1, 1, 1), device=image.device, dtype=image.dtype).uniform_(*interval)
+        center = image.mean(dim=(1, 2, 3), keepdim=True)
+        image = ((image-center)*factors["contrast"] + center + factors["brightness"]).clamp(0, 1)
     return image, target, teacher
 
 

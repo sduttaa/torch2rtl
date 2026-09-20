@@ -356,7 +356,7 @@ def resume_qat(model, checkpoint, config, shift):
     # choices may change; graph, data and quantization contracts must not.
     training_keys = {"seed", "threads", "batch_size", "epochs", "learning_rate", "weight_decay",
                      "loss", "crop", "augment", "augmentation_axes", "augmentation_after_crop", "device",
-                     "calibrate_prediction_threshold"}
+                     "calibrate_prediction_threshold", "photometric"}
     def contract(source):
         result = {key: value for key, value in source.items() if key not in training_keys}
         for key, value in (("unsigned_activation_bits", 8), ("signed_activation_bits", 8),

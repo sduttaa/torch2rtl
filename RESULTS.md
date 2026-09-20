@@ -10,7 +10,7 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Spatial contracts and catalogue CLI implemented; full-model solve remains unresolved |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 313 passing, including spatial RTL, overflow, backpressure and integer training/export |
+| Tests | 318 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
@@ -50,6 +50,13 @@ tradeoffs, and full-network RTL verification remains bit-exact. The observed
 frame interval is still about 3.98 million cycles because another actor limits
 the rate. Exact window-path bounds strengthen CP-SAT without restricting
 per-word schedules. [Fusion, proof and measurements](docs/convolution-pool.md).
+
+Measuring 191 additional parallel-line configurations and using the window-aware
+bounds subsequently reduced the same graph's observed interval to **3.81 million
+cycles**, about **4.6% higher throughput** than the 3.98-million-cycle selection.
+All 96,768 checked pixels match. The verification buffers still exceed fabric
+memory, and mild lighting augmentation did not improve the best accuracy.
+[Layout selection and evidence](docs/window-layouts.md).
 
 The user authorized retraining while keeping weights and activations in fabric
 memory. The compact verified replacement reaches **0.659503 validation Dice**,

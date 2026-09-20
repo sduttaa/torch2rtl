@@ -142,6 +142,11 @@ still be correlated. The original model's earlier training split is unknown.
 
 ## Remaining deployment work
 
+A later 50-epoch QAT continuation with explicit mild brightness/contrast
+augmentation retained its starting checkpoint as best (Dice 0.667115). It did
+not close the accuracy gap and was not adopted. See the
+[experiment and verification evidence](window-layouts.md).
+
 The current compiler emits the complete retrained graph from explicit hardware
 parameters, and full-model RTL simulation matches three real images with stalls.
 The verification buffers exceed fabric memory. The spatial actors now have joint schedule/FIFO contracts and a catalogue CLI,

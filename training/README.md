@@ -1,5 +1,14 @@
 # Hardware-constrained model training
 
+An optional `photometric` training configuration supplies `brightness` and
+`contrast` intervals. Brightness is an additive offset on normalized pixels;
+contrast is a nonnegative gain around each image's mean. Per-image samples are
+applied after cropping and clipped to `[0,1]`. Labels and cached teacher logits
+remain spatially aligned and serve as invariant targets. This affects training
+only and is disabled by `augment: false`; deployment preprocessing is unchanged.
+The [lighting experiment](../docs/window-layouts.md) did not improve validation
+accuracy.
+
 These training experiments are separate from compiler lowering. Dataset paths,
 preprocessing, architectures and numerical budgets are explicit JSON inputs.
 They do not introduce model names or board-specific rules into the compiler.
