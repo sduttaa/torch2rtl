@@ -115,3 +115,13 @@ def test_selected_forward_latency_matches_explicit_guarded_constraints(delays, b
         for option, delay in delays.items() for write, read in zip(fifo.writes, fifo.reads)))
     selected, explicit = solve(selected_delay), solve(explicit_guards)
     assert (selected.status, selected.period, selected.selected) == (explicit.status, explicit.period, explicit.selected)
+
+
+def test_large_period_cycle_is_optimized_without_an_explicit_cycle_sum():
+    # Summing the two inequalities gives T >= 1,000,000. The event offsets
+    # float relative to the anchor, so this bound must be found by CP-SAT.
+    model = Problem(("epoch", "a", "b"), {},
+        (Dependency("a", "b", 123457), Dependency("b", "a", 876543, 1)),
+        (), {}, 2000000, 3000000, "epoch")
+    solution = solve(model, Limits(seconds=5))
+    assert solution.status == "OPTIMAL" and solution.period == 1000000

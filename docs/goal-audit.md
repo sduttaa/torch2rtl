@@ -6,6 +6,12 @@ The user has authorized training a smaller INT8 replacement on the supplied
 dataset, provided it matches or exceeds the existing model's accuracy. Both
 weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
 This removes the earlier decision blocker. The goal is active and incomplete.
+Interval branching now proves the fixed finite-FIFO candidate's 12,978,517-cycle
+optimum, and all three frames meet their RTL deadlines. A smaller-logic candidate
+passes aggregate packing capacity but fails placement. Per-channel activation
+calibration produces verified integer exports without closing the accuracy gap.
+The suite passes 363 tests. These changes make measured progress without meeting
+the requested accurate, fabric-only 30-FPS result.
 The latest [solver investigation](direct-scheduling.md) proves a 4,591,040-cycle
 minimum period for a fixed full-model actor/FIFO configuration and verifies
 every RTL input/output deadline over three images. It uses oversized FIFOs and

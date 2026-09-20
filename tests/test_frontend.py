@@ -31,3 +31,23 @@ def test_import_preserves_reference_and_detects_real_dtypes(tmp_path):
     assert {f["code"] for f in report["findings"]} >= {
         "CONSTANT_STORAGE_EXCEEDS_FABRIC_MEMORY", "FLOATING_CONVOLUTION",
         "DIRECT_REPLAY_EXCEEDS_FABRIC_MEMORY"}
+
+
+def test_serialized_tensor_lists_and_multiple_returns_preserve_reference(tmp_path):
+    class SplitAndReduce(torch.nn.Module):
+        def forward(self, x):
+            left, right = x.split([2, 3], dim=1)
+            maximum, _ = left.max(dim=1, keepdim=True)
+            return right + maximum
+
+    model = SplitAndReduce()
+    data = torch.arange(35).reshape(1, 5, 7).to(torch.int32)
+    path = tmp_path / "split.pt2"
+    torch.export.save(torch.export.export(model, (data,)), path)
+    program, module = load(path)
+    assert module.operation.verify()
+    assert torch.equal(program.module()(data), model(data))
+    # The importer owns its metadata normalization; the original program stays
+    # available for independent accounting and execution.
+    split = next(node for node in program.graph.nodes if node.target == torch.ops.aten.split_with_sizes.default)
+    assert isinstance(split.meta['val'], tuple)

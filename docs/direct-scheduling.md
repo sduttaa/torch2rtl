@@ -1,5 +1,92 @@
 # Optimized full-model schedules and narrower FIFOs
 
+## Interval search and physical-resource checks
+
+CP-SAT now proves the finite-FIFO candidate's **12,978,517-cycle optimum** in
+24.6 seconds of solver wall time. The period is free up to 20 million cycles;
+the offset cap is 30 million. All 3,024,739 offsets pass the independent checker.
+The full RTL replay accepts all 387,840 input words and produces all 96,768
+bit-exact output words at their scheduled deadlines across three images:
+
+```text
+14,383,892; 27,362,409; 40,340,926
+```
+
+The backend branches on the lower half of the period interval instead of its
+minimum value. This prevents an infeasible cycle from advancing a large period
+domain one value at a time. Boolean choices retain the same zero-first order.
+No actor contract, FIFO constraint or feasible schedule has been removed. The
+complete monitored run took 95.8 seconds and peaked at 6.69 GB sampled RSS.
+This optimum fixes both actors and FIFO choices. The physical candidate still
+exceeds packed LUT capacity, and 30 FPS would require 389.35551 MHz.
+
+Allowing the four join-input FIFOs to choose depths again remains harder. With
+the same finite catalogue, a 20-million-cycle period cap and an 80-million-cycle
+offset cap, interval branching raises the reported lower bound from 5,936,884
+to 9,452,664 cycles. It returns no solution before the external monitor stops
+the process at 601.3 seconds, despite a 300-second CP-SAT time limit. Peak sampled
+RSS is 6.58 GB. This is an interrupted run, not an infeasibility proof or an
+optimized FIFO allocation; the fixed-configuration result above is unaffected.
+A bounded comparison that branches on FIFO options before the period also
+returns no solution; it is stopped at 241.4 seconds with a 7.67 GB sampled peak.
+It does not improve the initial 5,936,884-cycle bound. The production adapter
+therefore keeps period-first interval branching. Both comparisons preserve the
+same constraints and are inconclusive about the best variable-depth allocation.
+
+A separate necessary actor-rate/resource screen reserves the verified skip
+buffers and minimizes the supplied LUT/FF cost weights. At a six-million-cycle
+screening period, its selected actors with depth-two shallow FIFOs total
+17,107 LUT equivalents, 5,866 FFs, 46 BRAMs, 65 multiplier slots and 19,200
+distributed-memory bits. This screen omits network occupancy and is not a
+feasible six-million-cycle schedule. It produces a slower RTL interval:
+
+| Shallow FIFO depth | Observed RTL interval | Packed LUT sites | Placement |
+| ---: | ---: | ---: | --- |
+| 2 | 14,391,256 cycles | Not checked | Not checked |
+| 8 | 14,114,637 cycles | 18,954 / 20,736 | Failed |
+
+Both numerical checks pass three real images. The deeper shallow FIFOs improve
+throughput by about 1.96%, without using more BRAM. The depth-eight whole design
+packs at 46/46 BRAM blocks, 70/96 multiplier slots and 7,840/15,552 FFs, but HeAP
+cannot find a legal placement. A diagnostic log shows repeated legalization of
+ordinary LUT cells at failure. The alternative SA placer exits with a segmentation
+fault before completing initial placement. Aggregate packing capacity is
+therefore only a necessary check; neither attempt establishes fabric fit.
+
+A further generic implementation trial removed the product register's enable,
+leaving every consumer guarded by `product_valid`. All 363 tests still passed,
+but the complete candidate's packed LUT count increased from 18,954 to 19,205
+and placement still failed. That trial was reverted; the production actor and
+its timing contract remain unchanged. Its [resource comparison](../build/network/ungated-product/comparison.json)
+and [placement log](../build/network/ungated-product/physical/place-route.log)
+are retained to avoid repeating the unsuccessful experiment.
+
+The complete suite passes **363 tests**, including saved per-channel integer
+exports through torch-mlir and RTL, and a large-period scheduling regression.
+The training experiments remain below the accuracy target; see
+[their results](training-results.md).
+
+- [Optimized finite-FIFO schedule](../build/scheduling/binary-period-probe/report.json)
+- [Schedule monitor](../build/scheduling/binary-period-probe/monitor.json)
+- [Variable-depth run monitor](../build/scheduling/binary-fifo-probe/monitor.json)
+- [Choices-first comparison monitor](../build/scheduling/choices-first-fifo-probe/monitor.json)
+- [RTL deadline replay](../build/scheduling/binary-period-probe/simulation/report.json)
+- [Logic-first resource screen](../build/scheduling/logic-reserved-options/depth-8-period-6000000/screen.json)
+- [Depth-two numerical check](../build/network/logic-reserved/depth-2/simulation/report.json)
+- [Depth-eight numerical check](../build/network/logic-reserved/depth-8/simulation/report.json)
+- [Depth-eight packing report](../build/network/logic-reserved/depth-8/physical/packing-report.json)
+- [Placement diagnostic](../build/network/logic-reserved/depth-8/physical/place-debug-summary.json)
+
+The saved finite-FIFO schedule can be replayed after sourcing `env.sh`:
+
+```sh
+PYTHONPATH="$PWD" python build/scheduling/replay.py \
+  --schedule build/scheduling/binary-period-probe \
+  --vectors build/network/window-layouts/fused/simulation --frames 3
+```
+
+## Earlier full-range INT8 scheduling evidence
+
 CP-SAT proves a **4,591,040-cycle minimum period** for the retained full-range
 INT8 model with its fixed actor configuration and oversized verification FIFOs.
 All 4,091,235 event offsets pass the independent checker. Newly emitted RTL

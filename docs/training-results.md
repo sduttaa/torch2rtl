@@ -6,6 +6,57 @@ The most accurate verified integer replacement now reaches **0.667115 Dice** ver
 accuracy or complete 30-FPS deployment requirement.
 Weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
 
+## Per-channel calibration investigation
+
+Explicit per-channel activation scales did not close the accuracy gap. Both
+experiments started from the preserved wider-stem floating checkpoint and kept
+the original preprocessing, split and fixed zero prediction threshold:
+
+| Activation contract | QAT epochs | Best validation Dice | Constants |
+| --- | ---: | ---: | ---: |
+| Full-range INT8/UINT8, per-channel scales | 40 | 0.663091 | 27,912 bytes |
+| Four-bit hidden activations, per-channel scales | 80 | 0.656158 | 27,912 bytes |
+
+Both use INT8 weights, a fixed requantization shift of 16 and 240,583,680 MACs per
+inference. They match QAT on all 246 images and the saved integer export on all
+49 validation images, contain no floating tensor nodes, and pass torch-mlir
+verification. The best full-range model remains the earlier 0.667115 candidate;
+neither new model is adopted as satisfying the accuracy requirement. The tiny
+change from 0.656095 to 0.656158 in the four-bit experiment is not a meaningful
+demonstration of better generalization.
+
+The generic training option folds input-channel scales into convolution weights
+before weight quantization and uses explicit merge requantizers. Grouped
+convolutions, ragged concatenation, signed outputs, quantization gradients and
+saved-model-to-RTL execution have regression coverage. A saved-export test
+exposed a PyTorch/torch-mlir metadata mismatch: a `Tensor[]` operator result
+reloads with tuple metadata. The frontend now normalizes that metadata according
+to the operator schema on its private import copy; genuine multiple-return
+tuples and the caller's program remain unchanged.
+
+- [INT8 report](../build/training/channel-int8/report.json)
+- [INT8 MLIR/workload inspection](../build/training/channel-int8/inspection/analysis.json)
+- [Four-bit report](../build/training/channel-four-bit/report.json)
+- [Four-bit MLIR/workload inspection](../build/training/channel-four-bit/inspection/analysis.json)
+- [INT8 experiment input](../training/experiments/scratches-channel-int8.json)
+- [Four-bit experiment input](../training/experiments/scratches-channel-four-bit.json)
+
+Reproduction from the repository root after sourcing `env.sh`:
+
+```sh
+python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
+  --config training/experiments/scratches-channel-int8.json \
+  --output build/training/channel-int8 --epochs 40 --learning-rate 0.0001 --shift 16
+python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
+  --config training/experiments/scratches-channel-four-bit.json \
+  --output build/training/channel-four-bit --epochs 80 --learning-rate 0.0001 --shift 16
+```
+
+These runs also use the existing validation split for checkpoint selection.
+They do not provide independent test-set evidence or a complete physical fit.
+
+## Earlier precision and training experiments
+
 Explicit six-bit and four-bit hidden-activation experiments reached 0.660259 and
 0.656095 Dice, respectively, and were not adopted. Their integer exports and
 full-graph RTL checks pass. Proven storage narrowing brings one four-bit actor
@@ -151,9 +202,11 @@ The current compiler emits the complete retrained graph from explicit hardware
 parameters, and full-model RTL simulation matches three real images with stalls.
 The verification buffers exceed fabric memory. The spatial actors now have joint schedule/FIFO contracts and a catalogue CLI,
 validated against repeated-frame RTL deadlines in smaller graphs. The full
-per-word model hit the bounded solver/memory experiment limits, and the measured
-catalogue is resource-infeasible. Resource-feasible option selection and
-whole-design place-and-route remain incomplete. No board has been programmed with this model.
+per-word model now has optimized fixed-configuration schedules and complete
+RTL deadline checks. A finite fabric-budget candidate still fails physical
+placement. Resource-feasible option selection and whole-design place-and-route
+remain incomplete; see [the current scheduling evidence](direct-scheduling.md).
+No board has been programmed with this model.
 Neither the small integration kernel's nor the isolated stem's routed clock
 can establish the full model's FPS.
 

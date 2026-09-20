@@ -48,17 +48,50 @@ def activation_range(unsigned, bits):
     return (0, (1 << bits)-1) if unsigned else (-(1 << (bits-1)), (1 << (bits-1))-1)
 
 
+def channel_scale(scale):
+    return scale[None, :, None, None] if scale.ndim == 1 else scale
+
+
+def calibrated_scale(maximum, unsigned, bits):
+    if isinstance(maximum, torch.Tensor):
+        # An observed all-zero channel supplies no scale information. Give it
+        # the largest observed channel magnitude (unit magnitude if all zero)
+        # instead of manufacturing an enormous fixed-point multiplier.
+        largest = maximum.max()
+        fallback = torch.where(largest > 0, largest, torch.ones_like(largest))
+        floor = torch.where(maximum > 0, maximum, fallback).clamp_min(1e-8)
+    else:
+        floor = max(maximum, 1e-8)
+    return floor / activation_range(unsigned, bits)[1]
+
+
 class Calibration:
     """Training-only magnitude calibration; optional bounded-memory quantiles."""
-    def __init__(self, quantile=1.0):
+    def __init__(self, quantile=1.0, scale_axis="tensor"):
         if not 0 < quantile <= 1:
             raise ValueError("Activation calibration quantile must be in (0, 1]")
+        if scale_axis not in ("tensor", "channel"):
+            raise ValueError("Activation scale axis must be tensor or channel")
+        self.channelwise = scale_axis == "channel"
         self.quantile, self.histogram_mode = quantile, False
         self.maxima, self.histograms = {}, {}
         self.bins = 2048
 
     def observe(self, key, value):
         magnitude = value.detach().abs().float()
+        if self.channelwise:
+            if magnitude.ndim != 4:
+                raise ValueError("Channel calibration requires NCHW tensors")
+            channels = magnitude.movedim(1, 0).flatten(1)
+            if not self.histogram_mode:
+                maximum = channels.amax(1)
+                self.maxima[key] = torch.maximum(self.maxima.get(key, torch.zeros_like(maximum)), maximum)
+            else:
+                counts = torch.stack([torch.histc(values, bins=self.bins, min=0, max=float(maximum))
+                                      if maximum > 0 else torch.zeros(self.bins, device=values.device)
+                                      for values, maximum in zip(channels, self.maxima[key])])
+                self.histograms[key] = self.histograms.get(key, 0) + counts.to(torch.int64)
+            return
         if not self.histogram_mode:
             self.maxima[key] = max(self.maxima.get(key, 0), float(magnitude.max()))
         elif self.maxima[key] > 0:
@@ -68,6 +101,11 @@ class Calibration:
     def limits(self):
         result = dict(self.maxima)
         for key, histogram in self.histograms.items():
+            if self.channelwise:
+                cumulative = histogram.cumsum(1)
+                indices = torch.searchsorted(cumulative, (self.quantile*cumulative[:, -1:]).contiguous()).squeeze(1)
+                result[key] = result[key] * (indices.clamp_max(self.bins-1)+1) / self.bins
+                continue
             cumulative = histogram.cumsum(0)
             index = int(torch.searchsorted(cumulative, self.quantile * int(cumulative[-1])))
             result[key] *= (min(index, self.bins-1)+1) / self.bins
@@ -83,30 +121,44 @@ class QuantizedTrainingConv(nn.Module):
         self.relu = relu
         self.shift = shift
         self.low, self.high = activation_range(relu, bits)
-        self.register_buffer("input_scale", torch.tensor(float(input_scale)))
-        self.register_buffer("output_scale", torch.tensor(float(output_scale)))
+        for name, scale, channels in (("input_scale", input_scale, conv.in_channels),
+                                      ("output_scale", output_scale, conv.out_channels)):
+            scale = torch.as_tensor(scale, dtype=torch.float32).clone()
+            if scale.ndim > 1 or (scale.ndim == 1 and scale.numel() != channels) or not torch.isfinite(scale).all() or (scale <= 0).any():
+                raise ValueError("Supply a positive scalar scale or one scale per convolution channel")
+            self.register_buffer(name, scale)
+
+    def scaled_weight(self):
+        if self.input_scale.ndim == 0:
+            return self.weight, self.input_scale
+        outputs, inputs, height, width = self.weight.shape
+        weight = self.weight.reshape(self.groups, outputs//self.groups, inputs, height, width)
+        scales = self.input_scale.reshape(self.groups, 1, inputs, 1, 1)
+        return (weight*scales).reshape_as(self.weight), self.input_scale.new_tensor(1)
 
     def parameters_integer(self):
-        scale = self.weight.detach().abs().flatten(1).amax(1).clamp_min(1e-8) / 127
-        multiplier = torch.round(self.input_scale * scale / self.output_scale * (1 << self.shift)).to(torch.int64)
-        bias_value = torch.round(self.bias.detach() / (self.input_scale * scale))
+        weight, input_scale = self.scaled_weight()
+        scale = weight.detach().abs().flatten(1).amax(1).clamp_min(1e-8) / 127
+        multiplier = torch.round(input_scale * scale / self.output_scale * (1 << self.shift)).to(torch.int64)
+        bias_value = torch.round(self.bias.detach() / (input_scale * scale))
         if not torch.isfinite(bias_value).all() or (bias_value.double().abs() > (1 << 31) - 1).any():
             raise ValueError("Quantized bias does not fit INT32")
         bias = bias_value.to(torch.int32)
-        weight = torch.round(self.weight.detach() / scale[:, None, None, None]).clamp(-127, 127).to(torch.int8)
+        weight = torch.round(weight.detach() / scale[:, None, None, None]).clamp(-127, 127).to(torch.int8)
         return weight, bias, multiplier, scale
 
     def forward(self, x):
         _, _, multiplier, scale = self.parameters_integer()
-        weight = round_ste(self.weight / scale[:, None, None, None]).clamp(-127, 127)
-        bias = round_ste(self.bias / (self.input_scale * scale))
-        quantized = round_ste(x / self.input_scale)
+        weight, input_scale = self.scaled_weight()
+        weight = round_ste(weight / scale[:, None, None, None]).clamp(-127, 127)
+        bias = round_ste(self.bias / (input_scale * scale))
+        quantized = round_ste(x / channel_scale(self.input_scale))
         accumulator = F.conv2d(quantized, weight, bias, self.stride, self.padding, self.dilation, self.groups)
         # Integer products and sums are exactly representable in FP32 for the
         # checked bounds. FP64 preserves the requantization integer numerator.
         scaled = accumulator.double() * multiplier[None, :, None, None] / (1 << self.shift)
         rounded = scaled + (torch.floor(scaled + 0.5) - scaled).detach()
-        return rounded.clamp(self.low, self.high).float() * self.output_scale
+        return rounded.clamp(self.low, self.high).float() * channel_scale(self.output_scale)
 
 
 class IntegerConv(nn.Module):
@@ -174,21 +226,41 @@ class QuantizedMerge(nn.Module):
         super().__init__()
         self.operation, self.relu, self.shift, self.dim = operation, relu, shift, dim
         self.low, self.high = activation_range(relu, bits)
-        self.register_buffer("input_scales", torch.tensor(input_scales))
-        self.register_buffer("output_scale", torch.tensor(float(output_scale)))
-        self.register_buffer("multipliers", torch.round(self.input_scales / self.output_scale * (1 << shift)).to(torch.int64))
+        scales = [torch.as_tensor(scale, dtype=torch.float32) for scale in input_scales]
+        output_scale = torch.as_tensor(output_scale, dtype=torch.float32).clone()
+        self.scale_lengths = None
+        if any(scale.ndim for scale in scales) or output_scale.ndim:
+            if dim != 1 or any(scale.ndim != 1 for scale in scales) or output_scale.ndim != 1:
+                raise ValueError("Channel merges require channel vectors and concatenation on dimension one")
+            self.scale_lengths = tuple(scale.numel() for scale in scales)
+            expected = sum(self.scale_lengths) if operation == "cat" else self.scale_lengths[0]
+            if output_scale.numel() != expected or (operation != "cat" and len(set(self.scale_lengths)) != 1):
+                raise ValueError("Merge scales disagree with channel counts")
+            destinations = output_scale.split(self.scale_lengths) if operation == "cat" else [output_scale]*len(scales)
+            ratios = torch.cat([scale/destination for scale, destination in zip(scales, destinations)])
+            packed_scales = torch.cat(scales)
+        else:
+            packed_scales = torch.stack(scales)
+            ratios = packed_scales/output_scale
+        if not torch.isfinite(packed_scales).all() or (packed_scales <= 0).any() or not torch.isfinite(output_scale).all() or (output_scale <= 0).any():
+            raise ValueError("Merge scales must be finite and positive")
+        self.register_buffer("input_scales", packed_scales)
+        self.register_buffer("output_scale", output_scale)
+        self.register_buffer("multipliers", torch.round(ratios * (1 << shift)).to(torch.int64))
         bound = 255 * sum(abs(int(value)) for value in self.multipliers) + (1 << (shift - 1))
         if bound >= 1 << 53:
             raise ValueError("The exact merge requantizer exceeds FP64's integer precision")
 
     def forward(self, *arguments):
         values = arguments[0] if self.operation == "cat" else arguments
-        aligned = [round_ste(value / self.input_scales[index]).double() * self.multipliers[index]
-                   for index, value in enumerate(values)]
+        scales = self.input_scales.split(self.scale_lengths) if self.scale_lengths else self.input_scales
+        multipliers = self.multipliers.split(self.scale_lengths) if self.scale_lengths else self.multipliers
+        aligned = [round_ste(value / channel_scale(scale)).double() * channel_scale(multiplier)
+                   for value, scale, multiplier in zip(values, scales, multipliers)]
         total = torch.cat(aligned, dim=self.dim) if self.operation == "cat" else sum(aligned)
         scaled = total / (1 << self.shift)
         rounded = scaled + (torch.floor(scaled + 0.5) - scaled).detach()
-        return rounded.clamp(self.low, self.high).float() * self.output_scale
+        return rounded.clamp(self.low, self.high).float() * channel_scale(self.output_scale)
 
 
 class IntegerMerge(nn.Module):
@@ -196,18 +268,20 @@ class IntegerMerge(nn.Module):
         super().__init__()
         self.operation, self.relu, self.shift, self.dim = source.operation, source.relu, source.shift, source.dim
         self.low, self.high = source.low, source.high
+        self.scale_lengths = source.scale_lengths
         self.register_buffer("multipliers", source.multipliers.clone())
 
     def forward(self, *arguments):
         values = arguments[0] if self.operation == "cat" else arguments
-        aligned = [value.to(torch.int64) * self.multipliers[index] for index, value in enumerate(values)]
+        multipliers = self.multipliers.split(self.scale_lengths) if self.scale_lengths else self.multipliers
+        aligned = [value.to(torch.int64) * channel_scale(multiplier) for value, multiplier in zip(values, multipliers)]
         total = torch.cat(aligned, dim=self.dim) if self.operation == "cat" else sum(aligned)
         rounded = (total + (1 << (self.shift - 1))) >> self.shift
         return rounded.clamp(self.low, self.high).to(torch.uint8 if self.relu else torch.int8)
 
 
 @torch.no_grad()
-def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0):
+def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0, scale_axis="tensor"):
     model = copy.deepcopy(model).eval()
     active = set(model.graph.nodes)
     for node in list(model.graph.nodes):
@@ -225,7 +299,7 @@ def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits
                 active.remove(users[0])
                 model.graph.erase_node(users[0])
     model.recompile()
-    calibration = Calibration(quantile)
+    calibration = Calibration(quantile, scale_axis)
     class Observer(torch.fx.Interpreter):
         def run_node(self, node):
             value = super().run_node(node)
@@ -244,11 +318,11 @@ def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits
         relu_user = (users[0] if len(users) == 1 and users[0].op == "call_function" and
                      users[0].target in (F.relu, torch.relu) else None)
         if node.op == "placeholder":
-            scales[node] = 1 / 255
+            scales[node] = torch.full_like(maxima[node.name], 1/255) if calibration.channelwise else 1/255
             unsigned[node] = True
         elif node.op == "call_module" and isinstance(model.get_submodule(node.target), nn.Conv2d):
             bits = unsigned_bits if relu_user else signed_bits
-            scale = max(maxima[(relu_user or node).name], 1e-8) / activation_range(bool(relu_user), bits)[1]
+            scale = calibrated_scale(maxima[(relu_user or node).name], bool(relu_user), bits)
             conv = QuantizedTrainingConv(model.get_submodule(node.target), scales[node.args[0]], scale, bool(relu_user), shift, bits)
             model.set_submodule(node.target, conv)
             scales[node] = scale
@@ -258,7 +332,7 @@ def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits
             parents = node.args[0] if is_cat else node.args
             nonnegative = bool(relu_user) or (is_cat and all(unsigned[parent] for parent in parents))
             bits = unsigned_bits if nonnegative else signed_bits
-            scale = max(maxima[(relu_user or node).name], 1e-8) / activation_range(nonnegative, bits)[1]
+            scale = calibrated_scale(maxima[(relu_user or node).name], nonnegative, bits)
             name = "quantize_" + node.name
             model.add_submodule(name, QuantizedMerge("cat" if is_cat else "add", [scales[parent] for parent in parents],
                                                      scale, nonnegative, shift, node.kwargs.get("dim", 1), bits))
@@ -280,11 +354,11 @@ def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits
 
 
 @torch.no_grad()
-def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0):
+def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0, scale_axis="tensor"):
     if isinstance(model, torch.fx.GraphModule):
-        return prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits, signed_bits, quantile)
+        return prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits, signed_bits, quantile, scale_axis)
     model = fold(model)
-    calibration, hooks = Calibration(quantile), []
+    calibration, hooks = Calibration(quantile, scale_axis), []
     for index, layer in enumerate(model):
         if isinstance(layer, nn.Conv2d):
             relu = index + 1 < len(model) and isinstance(model[index + 1], nn.ReLU)
@@ -298,13 +372,13 @@ def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, si
     for hook in hooks:
         hook.remove()
     layers = []
-    input_scale = 1 / 255
+    input_scale = torch.full((images.shape[1],), 1/255) if calibration.channelwise else 1/255
     source = list(model.children())
     for index, layer in enumerate(source):
         if isinstance(layer, nn.Conv2d):
             relu = index + 1 < len(source) and isinstance(source[index + 1], nn.ReLU)
             bits = unsigned_bits if relu else signed_bits
-            output_scale = max(maxima[index], 1e-8) / activation_range(relu, bits)[1]
+            output_scale = calibrated_scale(maxima[index], relu, bits)
             layers.append(QuantizedTrainingConv(layer, input_scale, output_scale, relu, shift, bits))
             input_scale = output_scale
         elif not isinstance(layer, nn.ReLU):
@@ -330,6 +404,8 @@ def integer_threshold(model, threshold):
         final = list(model.children())[-1]
     if not isinstance(final, (QuantizedTrainingConv, QuantizedMerge)):
         raise ValueError("Threshold calibration requires a final quantized convolution or merge")
+    if final.output_scale.numel() != 1:
+        raise ValueError("Scalar threshold calibration requires a single output scale")
     # Enumerating the byte domain also handles FP32 multiplication rounding and
     # the threshold below the smallest score; division/floor need not be exact.
     codes = torch.arange(final.low, final.high+1)
@@ -360,7 +436,7 @@ def resume_qat(model, checkpoint, config, shift):
     def contract(source):
         result = {key: value for key, value in source.items() if key not in training_keys}
         for key, value in (("unsigned_activation_bits", 8), ("signed_activation_bits", 8),
-                           ("activation_calibration_quantile", 1.0)):
+                           ("activation_calibration_quantile", 1.0), ("activation_scale_axis", "tensor")):
             result.setdefault(key, value)
         return result
     if checkpoint["shift"] != shift or contract(checkpoint["config"]) != contract(config):
@@ -379,7 +455,8 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None,
     floating.load_state_dict(checkpoint["state"])
     unsigned_bits, signed_bits = config.get("unsigned_activation_bits", 8), config.get("signed_activation_bits", 8)
     quantile = config.get("activation_calibration_quantile", 1.0)
-    model = prepare(floating, images, train_indices, config["batch_size"], shift, unsigned_bits, signed_bits, quantile)
+    scale_axis = config.get("activation_scale_axis", "tensor")
+    model = prepare(floating, images, train_indices, config["batch_size"], shift, unsigned_bits, signed_bits, quantile, scale_axis)
     del floating
     if resume_path:
         resume_qat(model, torch.load(resume_path, weights_only=True), config, shift)
@@ -448,6 +525,7 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None,
                 "activation_precision": {"unsigned_bits": unsigned_bits, "signed_bits": signed_bits,
                                          "storage_containers": "uint8/int8; clamp bounds are explicit in the graph"},
                 "activation_calibration_quantile": quantile,
+                "activation_scale_axis": scale_axis,
                 "prediction_threshold": {"floating": best_threshold, "integer": deployed_threshold,
                     "selection": "training only" if config.get("calibrate_prediction_threshold", False) else "fixed zero"},
                 "qat_integer_match_samples": len(train_indices) + len(validation_indices),

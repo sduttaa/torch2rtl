@@ -4,8 +4,10 @@
 The compiler now produces full-model RTL and CP-SAT schedules with independently
 checked constraints and RTL transfer deadlines. Accuracy, a resource-feasible
 optimized schedule and full-design physical timing remain unresolved. A slower
-four-bit-activation candidate now passes complete RTL simulation and whole-design
+four-bit-activation candidate passes complete RTL simulation and whole-design
 synthesis within the supplied budgets, but nextpnr packing exceeds LUT capacity.
+A smaller-logic allocation passes aggregate packing capacity and still fails
+placement. Neither result is a physical fabric-fit certificate.
 
 ## Accuracy and deployment scope
 
@@ -20,7 +22,10 @@ serialized export on all 49 validation images. It has no floating-point tensor
 nodes and passes torch-mlir verification. The existing validation split has been
 used to select many experiments; no independent test set was supplied.
 Further training, decision calibration and lighting augmentation did not improve
-the retained checkpoint. [Training evidence](docs/training-results.md).
+the retained checkpoint. New per-channel activation calibration also falls short:
+0.663091 Dice for full-range INT8 and 0.656158 for four-bit hidden activations.
+Both pass all 246 QAT/integer and 49 saved-export comparisons and verify through
+torch-mlir. [Training evidence](docs/training-results.md).
 
 The user requires **both weights and activations in FPGA fabric memory**.
 SDRAM is excluded. The selected target remains explicit input in
@@ -57,7 +62,7 @@ or physical fit. [Layout measurements](docs/window-layouts.md).
 - Solver-independent periodic event contracts with actor choices, FIFO depths,
   occupancy and resource constraints in CP-SAT; every feasible result checked
   against the original model.
-- **341 tests pass**, including numerical overflow, branches, backpressure,
+- **363 tests pass**, including numerical overflow, branches, backpressure,
   periodic schedules, signed storage, training and export.
 - A small integration kernel synthesizes, routes at 27 MHz and packs a bitstream.
   That result is distinct from the requested full model. Physical-board inference
@@ -71,11 +76,16 @@ uses **43 BRAM blocks, 19,606 LUT equivalents, 6,795 FFs, 94 multiplier slots an
 19,200 distributed-memory bits**, within the supplied budgets. Placement/routing
 then exposes a physical overrun: packing requires **21,539 LUT sites versus
 20,736 available**. Placement was stopped; physical fit remains unmet.
-CP-SAT independently verifies every event and FIFO constraint for this same
-candidate at a fixed **15-million-cycle period**, and full RTL meets its deadlines
-on three images. This is a feasibility point under the catalogue cost estimates,
-not an optimized throughput or physical-fit result. Its validation Dice remains
-0.656095, and it does not meet the requested 30 FPS.
+CP-SAT now proves **12,978,517 cycles** optimal for this fixed actor/FIFO
+configuration within the stated caps, and full RTL meets all scheduled deadlines
+on three images. Interval branching reduces the solver check to about 24.6
+seconds. Its validation Dice remains 0.656095, and it does not meet 30 FPS.
+
+The smaller-logic allocation with depth-eight shallow FIFOs produces three
+bit-exact images at **14,114,637-cycle intervals**. It packs at **18,954/20,736 LUT
+sites, 46/46 BRAM blocks and 70/96 multiplier slots**, then fails placement.
+Increasing shallow depth from two to eight improves throughput by only about
+1.96%. No full-design routed clock or board inference rate is available.
 
 - [Implementation and reproduction](docs/implementation.md)
 - [Installed toolchain](docs/toolchain.md)

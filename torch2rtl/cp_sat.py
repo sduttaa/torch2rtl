@@ -32,7 +32,10 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
     # Once period and options are fixed, every remaining constraint is a
     # difference inequality. Its propagated lower bounds form a valid event
     # assignment; branching on those offsets cannot improve the objective.
-    model.add_decision_strategy([period, *chosen.values()], cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
+    # Split the period interval so an infeasible short period rules out a range,
+    # rather than advancing a million-cycle domain one value at a time.
+    # On Boolean option variables the lower half is simply zero.
+    model.add_decision_strategy([period, *chosen.values()], cp_model.CHOOSE_FIRST, cp_model.SELECT_LOWER_HALF)
     varying = {group for group, options in problem.choices.items() if len(options) > 1}
 
     def add(before, after, delay=0, frames=0, when=()):

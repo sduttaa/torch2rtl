@@ -67,8 +67,10 @@ integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
 full-model diagnostic schedule now passes RTL deadline checks with oversized
 FIFOs, including an optimized period for a fixed actor configuration.
-A slower schedule also passes with finite FIFOs and the catalogue's resource
-budgets, but nextpnr packing exceeds LUT capacity. Physical fit remains unresolved.
+A slower optimized schedule also passes with finite FIFOs and the catalogue's
+resource budgets, but nextpnr packing exceeds LUT capacity. A smaller-logic
+allocation passes aggregate packing capacity and still fails placement.
+Physical fit remains unresolved.
 Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
 while preserving byte tensor semantics. Training precision is always explicit.

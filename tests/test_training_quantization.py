@@ -63,7 +63,8 @@ def test_export_roundtrip_has_only_integer_tensors(tmp_path):
                for node in program.graph.nodes)
 
 
-def test_residual_concat_quantization_and_export():
+@pytest.mark.parametrize("scale_axis", ["tensor", "channel"])
+def test_residual_concat_quantization_and_export(scale_axis):
     class Residual(torch.nn.Module):
         def __init__(self):
             super().__init__()
@@ -80,7 +81,7 @@ def test_residual_concat_quantization_and_export():
     torch.manual_seed(7)
     model = torch.fx.symbolic_trace(Residual()).eval()
     images = torch.randint(0, 256, (3, 1, 8, 10), dtype=torch.uint8)
-    qat = prepare(model, images, [0, 1, 2], 1, 24)
+    qat = prepare(model, images, [0, 1, 2], 1, 24, scale_axis=scale_axis)
     integer = integer_model(qat)
     verify(qat, integer, images, [0, 1, 2], 1)
     program = torch.export.export(integer, (images[:1],), strict=True)
@@ -147,6 +148,7 @@ def test_qat_continuation_preserves_scales_and_rejects_semantic_changes():
     assert all(torch.equal(value, target.state_dict()[name]) for name, value in source.state_dict().items())
     assert torch.equal(integer_model(source)(images), integer_model(target)(images))
     for changed, shift in (({**config, "signed_activation_bits": 4}, 16),
+                           ({**config, "activation_scale_axis": "channel"}, 16),
                            ({**config, "layers": [{"channels": 3}]}, 16), (config, 24)):
         with pytest.raises(ValueError, match="same graph, data and quantization contract"):
             resume_qat(target, checkpoint, changed, shift)
@@ -242,3 +244,110 @@ def test_threshold_selection_handles_ties_and_all_positive_predictions(labels):
         prediction = scores > value
         return float(2 * (prediction & target).sum() / (prediction.sum() + target.sum()))
     assert dice(threshold) == max(dice(value) for value in [-1., 0., 0.5, 1., 1.5, 2., 3.])
+
+
+@pytest.mark.parametrize("groups", [1, 2, 4])
+@pytest.mark.parametrize("relu", [False, True])
+@pytest.mark.parametrize("bits", [4, 8])
+def test_channel_scales_fold_into_grouped_integer_weights(groups, relu, bits):
+    from quantize import channel_scale
+    torch.manual_seed(73)
+    conv = torch.nn.Conv2d(4, 8, 3, padding=1, groups=groups)
+    input_scale = torch.tensor([0.003, 0.02, 0.17, 0.009])
+    output_scale = torch.linspace(0.02, 0.2, 8)
+    qat = QuantizedTrainingConv(conv, input_scale, output_scale, relu, 24, bits)
+    inputs = torch.randint(0, 256, (2, 4, 7, 9), dtype=torch.uint8)
+    floating = inputs.float()*channel_scale(input_scale)
+    folded, unit = qat.scaled_weight()
+    assert unit == 1
+    assert torch.allclose(torch.nn.functional.conv2d(inputs.float(), folded, qat.bias, padding=1, groups=groups),
+                          conv(floating), atol=1e-5)
+    simulated = qat(floating)
+    actual = IntegerConv(qat)(inputs)
+    assert torch.equal(torch.round(simulated/channel_scale(output_scale)).to(actual.dtype), actual)
+    simulated.mean().backward()
+    assert torch.isfinite(qat.weight.grad).all()
+
+
+@pytest.mark.parametrize("operation", ["add", "cat"])
+@pytest.mark.parametrize("relu", [False, True])
+def test_channel_merge_preserves_ragged_concat_and_integer_export(operation, relu):
+    from quantize import channel_scale
+    channels = [2, 3] if operation == "cat" else [3, 3]
+    scales = [torch.linspace(0.01, 0.05, count) for count in channels]
+    output_scale = torch.linspace(0.03, 0.09, sum(channels) if operation == "cat" else channels[0])
+    qat = QuantizedMerge(operation, scales, output_scale, relu, 24, bits=4)
+    inputs = [torch.randint(-128, 128, (2, count, 3, 5), dtype=torch.int8) for count in channels]
+    floating = [value.float()*channel_scale(scale) for value, scale in zip(inputs, scales)]
+    simulated = qat(floating) if operation == "cat" else qat(*floating)
+    integer = IntegerMerge(qat)
+    arguments = (inputs,) if operation == "cat" else tuple(inputs)
+    actual = integer(*arguments)
+    assert torch.equal(torch.round(simulated/channel_scale(output_scale)).to(actual.dtype), actual)
+    program = torch.export.export(integer, arguments, strict=True)
+    assert torch.equal(program.module()(*arguments), actual)
+    assert all(not value.is_floating_point() for value in program.state_dict.values())
+
+
+def test_channel_quantiles_keep_small_and_zero_channels_separate():
+    calibration = Calibration(0.99, "channel")
+    values = torch.ones(1, 3, 1, 1000)
+    values[:, 0, :, -1] = 100
+    values[:, 1] = 0.25
+    values[:, 2] = 0
+    calibration.observe("hidden", values)
+    calibration.histogram_mode = True
+    calibration.observe("hidden", values)
+    limits = calibration.limits()["hidden"]
+    assert 1 <= limits[0] < 1.05
+    assert limits[1] == 0.25 and limits[2] == 0
+
+
+def test_unobserved_channel_scale_uses_a_finite_calibrated_fallback():
+    from quantize import calibrated_scale
+    assert torch.equal(calibrated_scale(torch.tensor([3.0, 0.25, 0.0]), True, 4),
+                       torch.tensor([3.0, 0.25, 3.0])/15)
+    assert torch.equal(calibrated_scale(torch.zeros(3), True, 4), torch.ones(3)/15)
+
+
+def test_channel_quantized_branches_import_and_match_full_rtl(tmp_path):
+    from torch2rtl.frontend import load
+    from torch2rtl.graph import actors, evaluate, read
+    from torch2rtl.network import edges, emit
+    from rtl_check import pack, simulate
+
+    class Branches(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.stem = torch.nn.Conv2d(2, 3, 3, padding=1)
+            self.narrow = torch.nn.Conv2d(3, 2, 1)
+            self.wide = torch.nn.Conv2d(3, 5, 3, padding=1)
+            self.head = torch.nn.Conv2d(7, 1, 1)
+
+        def forward(self, image):
+            stem = torch.relu(self.stem(image))
+            return self.head(torch.cat((torch.relu(self.narrow(stem)), torch.relu(self.wide(stem))), dim=1))
+
+    torch.manual_seed(51)
+    images = torch.randint(0, 256, (3, 2, 7, 9), dtype=torch.uint8)
+    qat = prepare(torch.fx.symbolic_trace(Branches()).eval(), images, [0, 1], 1, 24,
+                  unsigned_bits=4, quantile=0.99, scale_axis="channel")
+    integer = integer_model(qat)
+    verify(qat, integer, images, [0, 1, 2], 1)
+    program = torch.export.export(integer.layers, (images[:1],), strict=True)
+    path = tmp_path / "quantized.pt2"
+    torch.export.save(program, path)
+    _, module = load(path)
+    graph = actors(read(module))
+    assert "quantized_concat" in {value.operation for value in graph.values}
+    lanes = 4
+    output_lanes = {value.name: min(2, value.tensor.shape[1]) for value in graph.values
+                    if value.operation == "quantized_convolution"}
+    rtl = emit(graph, lanes, output_lanes, {name: 128 for name, *_ in edges(graph)})
+    inputs, expected = [], []
+    for image in images.split(1):
+        reference = integer.layers(image)
+        assert torch.equal(evaluate(graph, image), reference)
+        inputs.extend(word for pixel in image.permute(0, 2, 3, 1).reshape(-1, 2) for word in pack(pixel, 8, lanes))
+        expected.extend(word for pixel in reference.permute(0, 2, 3, 1).reshape(-1, 1) for word in pack(pixel, 8, lanes))
+    simulate(tmp_path, rtl, 8*lanes, 8*lanes, inputs, expected, True)

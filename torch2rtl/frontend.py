@@ -37,7 +37,18 @@ def import_program(program):
     # boundaries and introduce expensive broadcasts before hardware selection.
     # The frozen importer rewrites lifted constants in its ExportedProgram.
     # Preserve the user's graph for independent accounting and reference runs.
-    module = fx.export_and_import(deepcopy(program), output_type="torch", decomposition_table={}, hooks=IntegerLiterals())
+    imported = deepcopy(program)
+    for node in imported.graph.nodes:
+        schema = getattr(node.target, "_schema", None)
+        # Serialized exports store Tensor[] metadata as tuples, while the
+        # torch-mlir importer expects a list. Follow the operator schema so
+        # genuine multiple-return tuples retain their meaning.
+        if (schema is not None and len(schema.returns) == 1
+                and schema.returns[0].type.kind() == "ListType"
+                and schema.returns[0].type.getElementType().kind() == "TensorType"
+                and isinstance(node.meta.get("val"), tuple)):
+            node.meta["val"] = list(node.meta["val"])
+    module = fx.export_and_import(imported, output_type="torch", decomposition_table={}, hooks=IntegerLiterals())
     if not module.operation.verify():
         raise ValueError("torch-mlir verification failed")
     return module

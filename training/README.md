@@ -117,6 +117,20 @@ is unknown.
 
 ## Integer contract
 
+Optional `activation_scale_axis: "channel"` calibrates a separate fixed scale
+for each NCHW channel. The default remains `"tensor"`. Convolution input scales
+are folded into its weights before per-output-channel INT8 weight quantization,
+including grouped convolutions. Concatenation and addition use explicit integer
+requantization coefficients. No runtime floating-point scale is introduced, and
+the existing integer RTL actors implement the resulting graph.
+
+For an unobserved all-zero channel, calibration uses the largest observed
+channel magnitude, or unit magnitude if all channels are zero. This is a
+declared training convention, not a proof that future activations remain zero.
+Changing the scale axis requires a new calibration/training run; QAT continuation
+rejects that contract change. Per-channel experiments and their accuracy limits
+are recorded in [the training results](../docs/training-results.md).
+
 Calibration uses training images only. Batch normalization is folded into
 convolution weights and biases before quantization-aware training. Deployment
 uses INT8 weights, UINT8 activations after ReLU, signed INT8 values before
