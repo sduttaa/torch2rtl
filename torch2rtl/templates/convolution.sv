@@ -176,7 +176,9 @@ module integer_convolution #(
            coefficient_byte[7], coefficient_byte};
       if (PRODUCT_MASK[INDEX]) begin: used
         reg signed [17:0] value;
-        always @(posedge clk) if (operand_valid) value <= data_operand * weight_operand;
+        // Consumers are gated by product_valid; an enable here is redundant
+        // and prevents sharing the same clock control across DSP registers.
+        always @(posedge clk) value <= data_operand * weight_operand;
         assign product[INDEX] = value;
       end else begin: constant_zero
         assign product[INDEX] = 18'sd0;
