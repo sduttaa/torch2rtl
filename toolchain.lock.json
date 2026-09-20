@@ -14,5 +14,12 @@
     "numpy": "2.4.6",
     "msgspec": "0.21.1",
     "fastcrc": "0.5.0"
+  },
+  "gowin_education": {
+    "version": "1.9.11.03",
+    "platform": "darwin-arm64",
+    "url": "https://cdn.gowinsemi.com.cn/Gowin_V1.9.11.03Education_macOS.dmg",
+    "sha256": "95efaf06e4df1d902ec3307ce5e52fceb76cf5937b0eae5001555df94330c500",
+    "launcher": "scripts/gowin-shell.sh"
   }
 }

@@ -28,6 +28,7 @@ startup files. Source it in each new project terminal.
 | Verilator | 5.053 development build, v5.052-119-g014c9820d |
 | Icarus Verilog | 14.0 development build, s20260301-474-g5591c2dde |
 | openFPGALoader | 1.1.1 |
+| Gowin Education | Native macOS 1.9.11.03, optional independent vendor checks |
 | uv | 0.12.17 |
 | Python | Managed native CPython 3.11.16 |
 | PyTorch | 2.15.0.dev20260917, as pinned by torch-mlir |
@@ -48,6 +49,23 @@ It leaves the tool binaries unchanged.
 The CAD suite's separate bundled Python also has NumPy, msgspec, and fastcrc installed
 locally for faster Apicula packing. This is separate from the compiler's virtual
 environment; the two interpreters do not mix package directories.
+
+## Independent vendor timing tools
+
+The [official Gowin Education macOS release](https://www.gowinsemi.com/en/document/main/database/1865/)
+is installed at `.tools/gowin/GowinIDE.app`. Its bundled release note lists the
+selected device and says no license application is needed. The downloaded
+archive digest is recorded in `toolchain.lock.json`; it is a local provenance
+hash, not a vendor-published checksum.
+
+Run Tcl scripts with `sh scripts/gowin-shell.sh /path/to/script.tcl`. The wrapper
+uses the app's bundled libraries and Tcl framework, offscreen Qt, and a local
+macOS cache root at `.tools/gowin/state`. It leaves system frameworks and shell
+startup files untouched. A registered-multiplier smoke design completed vendor
+synthesis, routing, setup/hold analysis, SDF export and bitstream generation.
+The report includes paths into and out of the DSP. This validates the additional
+tool installation, not the full network's timing or nextpnr's missing DSP model.
+Evidence is under `build/verification/vendor-timing/multiplier`.
 
 ## torch-mlir native build
 
