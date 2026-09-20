@@ -1,5 +1,7 @@
 // DEPTH counts all live words, including the output register. The memory has
 // one spare slot, avoiding ambiguous same-address block-RAM reads and writes.
+// Readiness depends only on registered occupancy: a retired slot is reusable
+// on the following edge, breaking combinational backpressure across actors.
 module stream_fifo #(
   parameter integer WIDTH = 8, DEPTH = 2,
   parameter MEMORY_STYLE = "auto"
@@ -11,14 +13,17 @@ module stream_fifo #(
   generate if (DEPTH == 1) begin: single
     reg [WIDTH-1:0] data;
     reg valid;
-    assign in_ready = !rst && (!valid || out_ready);
+    assign in_ready = !rst && !valid;
     assign out_valid = !rst && valid;
     assign out_data = data;
     always @(posedge clk) begin
       if (rst) valid <= 0;
-      else if (in_ready) begin
-        valid <= in_valid;
-        if (in_valid) data <= in_data;
+      else begin
+        if (out_ready) valid <= 0;
+        if (in_valid && in_ready) begin
+          valid <= 1;
+          data <= in_data;
+        end
       end
     end
   end else begin: buffered
@@ -32,7 +37,7 @@ module stream_fifo #(
     wire pop = out_valid && out_ready;
     wire push = in_valid && in_ready;
     wire read_word = !rst && (!valid || out_ready) && count > COUNT_BITS'(valid);
-    assign in_ready = !rst && (count < COUNT_BITS'(DEPTH) || pop);
+    assign in_ready = !rst && count < COUNT_BITS'(DEPTH);
     assign out_valid = !rst && valid;
     assign out_data = data;
     always @(posedge clk) begin

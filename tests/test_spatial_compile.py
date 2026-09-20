@@ -22,12 +22,12 @@ def test_catalogue_compiles_and_resource_failure_removes_stale_outputs(tmp_path)
     target = {"resources": {"lut": 12}, "resource_weights": {"lut": 1}}
     report = compile_network(graph, catalogue, target, tmp_path, Limits(seconds=5))
     assert report["solver_verified"] and not report["hardware_fit_verified"] and not report["timing_verified"]
-    assert report["solution"]["period"] == 6
+    assert report["solution"]["period"] == 9
     configuration = json.loads((tmp_path / "configuration.json").read_text())
-    assert configuration["fifo_depths"] == {"image->lookup:0": 1}
+    assert configuration["fifo_depths"] == {"image->lookup:0": 2}
     with gzip.open(tmp_path / "offsets.jsonl.gz", "rt") as stream:
         offsets = dict(json.loads(line) for line in stream)
-    assert offsets["lookup.out.0"] >= offsets["image.out.0"] + 2
+    assert offsets["lookup.out.0"] >= offsets["image.out.0"] + 3
     assert "stream_fifo" in (tmp_path / "inference.sv").read_text()
     target["resources"]["lut"] = 10
     failure = compile_network(graph, catalogue, target, tmp_path, Limits(seconds=5))

@@ -53,6 +53,13 @@ resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
 
+Registered FIFO readiness breaks long backpressure paths and raises the reported
+routed limit to **93.21 MHz**. CP-SAT is re-solved with a one-cycle slot-reuse gap:
+the fixed allocation takes **5,033,085 cycles**, and three complete frames meet
+all transfer deadlines. It still needs 150.99255 MHz for 30 FPS; DSP timing
+coverage and physical-board performance remain unverified.
+[Evidence](docs/direct-scheduling.md#registered-fifo-readiness).
+
 Window-read pipelining preserves the 5,033,075-cycle schedule and raises the
 reported routed setup limit from 61.80 to **77.48 MHz** with the expanded LUT/RAM
 checks. It still fails 156 MHz and needs at least **150.99225 MHz** for 30 FPS.

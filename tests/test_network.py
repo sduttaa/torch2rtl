@@ -38,7 +38,9 @@ endmodule
         first_input = next(int(line.split()[2]) for line in (tmp_path / "simulation.log").read_text().splitlines()
                            if line.startswith("INPUT"))
         assert cycles[0] - first_input == (1 if depth == 1 else 2)
-        assert cycles[-1] - cycles[0] == len(words)-1
+        transfers = len(words)-1
+        elapsed = 2*transfers if depth == 1 else transfers + transfers//2 if depth == 2 else transfers
+        assert cycles[-1] - cycles[0] == elapsed
 
 
 class TinyBranched(torch.nn.Module):

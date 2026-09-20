@@ -19,6 +19,14 @@ longest reported path now crosses actor/FIFO backpressure signals. Complete
 DSP timing validation remains outstanding. None of these frequencies is a
 complete certified limit because multiplier timing is still missing.
 
+Registered FIFO readiness subsequently improves the reported limit to 93.21 MHz.
+CP-SAT directly models the one-cycle reuse gap and proves 5,033,085 cycles for
+the fixed allocation; all offsets and three scheduled RTL frames pass. The
+remaining reported critical path is address prefetch logic. The official native
+Gowin tool is now installed under Documents and passes a registered-DSP smoke
+design, offering an independent route for the unresolved timing validation.
+The goal remains active; 30 FPS is not demonstrated.
+
 ## Current scope after the user's deployment decision
 
 The user now accepts validation Dice >= 0.65, superseding the earlier requirement

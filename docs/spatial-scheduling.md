@@ -167,14 +167,18 @@ For logical capacity `d` and selected forward latency `l`:
 
 ```text
 read[k]  >= write[k] + l
-write[k] >= read[k-d]
+write[k] >= read[k-d] + 1
 ```
 
 Indices wrap across frames using `T`, exactly as in the existing CP-SAT backend.
 Writes and reads retain their one-word-per-cycle ordering constraints. Fanout
 edges share the same producer write events, because their writes are atomic.
-For the new FIFO, `l=1` at depth one and `l=2` for larger synchronous-memory
-implementations; replacement can occur on the same edge as the retiring read.
+For the spatial FIFO, `l=1` at depth one and `l=2` for larger synchronous-memory
+implementations. Readiness uses registered occupancy, so a full slot is reusable
+one edge after its retiring read. This breaks combinational backpressure paths.
+Depths of at least three support one word per cycle; the solver accounts for
+the lower throughput at depths one and two. Historical schedules below used
+same-edge replacement and must be re-solved for this implementation.
 
 A literal word-event expansion of the real model is large, and this Mac has
 16 GiB RAM. After the initial exact event aliases, the measured configuration

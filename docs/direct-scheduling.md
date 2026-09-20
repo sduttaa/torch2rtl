@@ -8,6 +8,38 @@ models and RAM input checks. Schedule-derived FPS figures are conditional on
 the configured clock being safe. Complete timing closure and physical-board
 throughput remain unverified. [Audit and evidence](timing-coverage.md).
 
+## Registered FIFO readiness
+
+Spatial FIFO readiness now depends only on registered occupancy. A retired
+slot becomes reusable on the next edge; `replacement_delay=1` puts this exact
+gap directly into CP-SAT. This breaks the previous combinational ready path
+across multiple actors. A depth-one FIFO transfers every two cycles, depth two
+averages two words per three cycles, and depth three or greater can sustain one
+word per cycle. Capacity still counts all live words, including the output.
+
+The fixed allocation is re-solved at **5,033,085 cycles**, ten cycles longer
+than before. All 3,024,739 event offsets pass the independent constraint check;
+three bit-exact frames meet every input/output deadline, completing at cycles
+6,076,346, 11,109,431 and 16,142,516. Whole-core synthesis uses 16,305 LUT,
+6,483 FF, 46 BRAM, 86 multiplier slots and 24,576 distributed-memory bits.
+The 448-test suite has 447 passes and one obsolete expected-period assertion;
+after updating that catalogue expectation, both tests in that file pass.
+All 31 scheduling/deadline tests also pass with the new FIFO contract.
+
+Placement and routing complete, with the expanded timing checks reporting
+**93.2140 MHz**, versus 77.4773 MHz before. This still fails 156 MHz; 30 FPS
+requires 150.99255 MHz. The longest reported path is now window-coordinate
+prefetch logic. DSP timing remains incomplete and no board measurement exists.
+
+Evidence: [summary](../build/network/registered-fifo-ready/summary.json),
+[CP-SAT report](../build/scheduling/registered-fifo-ready/report.json),
+[scheduled replay](../build/scheduling/registered-fifo-ready/simulation/simulation.log),
+[regression](../build/tests-registered-fifo-ready.log),
+[updated catalogue test](../build/tests-registered-fifo-catalogue.log),
+[DSP register proof](../build/verification/multiplier-registers/registered-ready-port-proof/report.json).
+Earlier schedules with same-edge FIFO replacement are historical and do not
+certify the current RTL.
+
 ## Pipelined window read
 
 The circular window now optionally registers its decoded row/offset and wrapped

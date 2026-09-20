@@ -302,6 +302,6 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
         fifos.append(Fifo(outgoing[source], incoming[destination][port], choice,
                           {key: config.depth for key, config in options.items()},
                           forward_delays={key: 1 if config.depth == 1 else 2 for key, config in options.items()},
-                          order_transfers=False))
+                          replacement_delay=1, order_transfers=False))
     return Problem(tuple(events.names), choices, tuple(events.dependencies), tuple(fifos), budgets,
                    period_limit, offset_limit, anchor, fixed_resources=fixed_resources or {}, resource_weights=resource_weights or {})
