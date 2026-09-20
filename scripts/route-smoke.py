@@ -10,17 +10,27 @@ from pathlib import Path
 import subprocess
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--compiled", type=Path, required=True)
+source = parser.add_mutually_exclusive_group(required=True)
+source.add_argument("--compiled", type=Path)
+source.add_argument("--rtl", type=Path)
+parser.add_argument("--input-bits", type=int)
+parser.add_argument("--output-bits", type=int)
 parser.add_argument("--target", type=Path, required=True)
 parser.add_argument("--constraints", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 args = parser.parse_args()
 target = json.loads(args.target.read_text())
-compiled = json.loads((args.compiled / "compile.json").read_text())
-candidate = compiled["candidates"][compiled["solution"]["selected"]["hardware"]]
-kernel = compiled["kernel"]
-input_bits = kernel["input"]["bits"] * candidate["lanes"]
-output_bits = kernel["output"]["bits"] * (1 if kernel["reduction"] else candidate["lanes"])
+if args.compiled:
+    compiled = json.loads((args.compiled / "compile.json").read_text())
+    candidate = compiled["candidates"][compiled["solution"]["selected"]["hardware"]]
+    kernel = compiled["kernel"]
+    input_bits = kernel["input"]["bits"] * candidate["lanes"]
+    output_bits = kernel["output"]["bits"] * (1 if kernel["reduction"] else candidate["lanes"])
+    rtl = args.compiled / "inference.sv"
+else:
+    if not args.input_bits or not args.output_bits or min(args.input_bits, args.output_bits) < 1:
+        parser.error("--rtl requires positive --input-bits and --output-bits")
+    input_bits, output_bits, rtl = args.input_bits, args.output_bits, args.rtl
 args.output.mkdir(parents=True, exist_ok=True)
 harness = f"""
 module harness(input wire clk, input wire rst, output wire observed);
@@ -41,7 +51,7 @@ module harness(input wire clk, input wire rst, output wire observed);
   assign observed = ^checksum;
 endmodule
 """
-(args.output / "harness.sv").write_text((args.compiled / "inference.sv").read_text() + harness)
+(args.output / "harness.sv").write_text(rtl.read_text() + harness)
 config = target["synthesis"]
 if config["command"] != "synth_gowin":
     raise ValueError("This routing smoke script currently supports the Gowin family flow")

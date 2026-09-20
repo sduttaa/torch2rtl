@@ -10,6 +10,15 @@ Training runs, exact integer verification and their limits are documented in
 [the training notes](../training/README.md). The historical audit below applies
 to the original export, not a theorem about retrained models.
 
+The latest retrained export reaches 0.663747 Dice versus the required 0.676843.
+Its complete graph now emits generic RTL and matches three real images in
+simulation with backpressure. That simulation uses oversized FIFOs. Selected
+actor costs also exceed LUT/DSP/BRAM budgets before graph FIFOs. Accuracy,
+joint spatial scheduling/resource selection, fabric fit and full-design timing
+remain incomplete. [Spatial evidence](spatial-backend.md) records these limits.
+The target's DSP accounting now uses 96 byte-multiplier slots instead of 48
+18-bit slots; the selected FPGA and physical capacities have not changed.
+
 ## Original-export audit
 
 The objective remains compiling the supplied INT8 export for the selected FPGA

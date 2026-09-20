@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Check a ready/valid RTL stream against hex vectors using Verilator.
+
+Word widths are explicit inputs and limited to 64 bits by this small harness.
+The simulator checks output stability during stalls and reports frame timing.
+"""
+
+import argparse
+import json
+from pathlib import Path
+import subprocess
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--rtl", type=Path, required=True)
+parser.add_argument("--input", type=Path, required=True)
+parser.add_argument("--expected", type=Path, required=True)
+parser.add_argument("--input-bits", type=int, required=True)
+parser.add_argument("--output-bits", type=int, required=True)
+parser.add_argument("--outputs-per-frame", type=int, required=True)
+parser.add_argument("--max-cycles", type=int, required=True)
+parser.add_argument("--stalls", action="store_true")
+parser.add_argument("--output", type=Path, required=True)
+args = parser.parse_args()
+if not 1 <= args.input_bits <= 64 or not 1 <= args.output_bits <= 64:
+    parser.error("The simulator accepts stream words from 1 to 64 bits")
+if min(args.max_cycles, args.outputs_per_frame) < 1:
+    parser.error("Cycle and frame sizes must be positive")
+args.output.mkdir(parents=True, exist_ok=True)
+for source, name in ((args.rtl, "inference.sv"), (args.input, "input.hex"), (args.expected, "expected.hex")):
+    (args.output / name).write_bytes(source.read_bytes())
+bench = f"""
+#include "Vinference.h"
+#include "verilated.h"
+#include <cstdint>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <vector>
+
+std::vector<uint64_t> words(const char* path, unsigned bits) {{
+  std::ifstream file(path);
+  std::vector<uint64_t> values;
+  uint64_t value;
+  while (file >> std::hex >> value) {{
+    if (bits < 64 && (value >> bits)) throw std::runtime_error("Word exceeds declared width");
+    values.push_back(value);
+  }}
+  if (!file.eof() || values.empty()) throw std::runtime_error("Invalid or empty vector file");
+  return values;
+}}
+int main(int argc, char** argv) {{
+  Verilated::commandArgs(argc, argv);
+  const auto input = words("input.hex", {args.input_bits});
+  const auto expected = words("expected.hex", {args.output_bits});
+  if (expected.size() % {args.outputs_per_frame}) throw std::runtime_error("Partial expected frame");
+  Vinference dut;
+  dut.rst = 1; dut.in_valid = 0; dut.out_ready = 0; dut.in_data = 0;
+  for (int i=0; i<3; ++i) {{ dut.clk=0; dut.eval(); dut.clk=1; dut.eval(); }}
+  dut.rst = 0;
+  size_t sent=0, received=0;
+  uint32_t random=0x9e3779b9;
+  bool accepted=false, stalled=false;
+  uint64_t held=0;
+  std::vector<uint64_t> frames;
+  for (uint64_t cycle=1; cycle<={args.max_cycles}ULL; ++cycle) {{
+    random ^= random << 13; random ^= random >> 17; random ^= random << 5;
+    if (!dut.in_valid || accepted) {{
+      dut.in_valid = sent < input.size() && ({int(not args.stalls)} || (random & 1));
+      if (sent < input.size()) dut.in_data = input[sent];
+    }}
+    dut.out_ready = {int(not args.stalls)} || (random & 2);
+    dut.clk=0; dut.eval();
+    if (stalled && (!dut.out_valid || uint64_t(dut.out_data) != held)) {{
+      std::cerr << "Output changed while stalled at cycle " << cycle << '\\n'; return 1;
+    }}
+    stalled = dut.out_valid && !dut.out_ready; held = dut.out_data;
+    accepted = dut.in_valid && dut.in_ready;
+    if (accepted) ++sent;
+    if (dut.out_valid && dut.out_ready) {{
+      if (received >= expected.size() || uint64_t(dut.out_data) != expected[received]) {{
+        std::cerr << "Mismatch at word " << received << ": actual " << std::hex << dut.out_data
+                  << " expected " << (received < expected.size() ? expected[received] : 0) << '\\n'; return 1;
+      }}
+      ++received;
+      if (received % {args.outputs_per_frame} == 0) frames.push_back(cycle);
+    }}
+    dut.clk=1; dut.eval();
+    if (received == expected.size() && sent == input.size()) {{
+      std::cout << "{{\\\"cycles\\\":" << cycle << ",\\\"input_words\\\":" << sent
+                << ",\\\"output_words\\\":" << received << ",\\\"frame_completion_cycles\\\":[";
+      for (size_t i=0; i<frames.size(); ++i) std::cout << (i ? "," : "") << frames[i];
+      std::cout << "]}}\\n";
+      return 0;
+    }}
+  }}
+  std::cerr << "Cycle limit exceeded; received " << received << " of " << expected.size() << '\\n';
+  return 1;
+}}
+"""
+(args.output / "simulate.cpp").write_text(bench)
+with (args.output / "build.log").open("w") as log:
+    subprocess.run(["verilator", "--cc", "--exe", "--build", "--top-module", "inference",
+                    "--Mdir", "obj_dir", "inference.sv", "simulate.cpp", "-o", "sim"],
+                   cwd=args.output, check=True, stdout=log, stderr=subprocess.STDOUT)
+result = subprocess.run(["obj_dir/sim"], cwd=args.output, text=True, capture_output=True)
+(args.output / "simulation.log").write_text(result.stdout + result.stderr)
+result.check_returncode()
+report = json.loads(result.stdout)
+report["stalls"] = args.stalls
+report["bit_exact"] = True
+(args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
+print(json.dumps(report, indent=2))

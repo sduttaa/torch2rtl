@@ -10,10 +10,24 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Implemented behind a plain-data interface |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 59 passing, including exact integer training/export checks |
+| Tests | 149 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
+
+The complete **retrained** model now emits generic spatial RTL and matches its
+integer reference on three real validation images, with and without random
+stalls. Both observed inter-frame intervals were 4,582,512 cycles in the
+two-lane simulation with oversized verification FIFOs. That interval would require 137.47536 MHz for
+30 FPS, but its 6,213,376-byte logical FIFO allocation exceeds fabric memory.
+No full-model routed clock or feasible buffer allocation has been established.
+See [the spatial backend and reproduction](docs/spatial-backend.md).
+
+The newest verified INT8 candidate reaches **0.663747 Dice**, with **27,576 bytes**
+of constants and **240,583,680 MACs** per inference. It remains below the required
+0.676843. The latest four-lane actor-only synthesis totals 23,968 LUT equivalents,
+7,337 FFs, 98 byte-multiplier slots and 62 BRAM blocks, before graph FIFOs. This
+configuration exceeds the supplied LUT, DSP and BRAM budgets and is not deployable.
 
 The user authorized retraining while keeping weights and activations in fabric
 memory. The compact verified replacement reaches **0.659503 validation Dice**,
@@ -24,8 +38,9 @@ not a measured speedup. The serialized model uses integer tensors throughout,
 matches its QAT simulation on all 246 images, and imports through torch-mlir.
 See [training results](docs/training-results.md) and the
 [integer model report](build/training/cropped-integer/report.json).
-A wider integer candidate reaches **0.660307 Dice** with 37,644 bytes of constants
-and 240,556,032 MACs per inference. Both remain below the accuracy requirement.
+A previous wider-context integer candidate reaches **0.660307 Dice** with 37,644
+bytes of constants and 240,556,032 MACs per inference. All candidates remain below
+the accuracy requirement.
 
 The integration kernel improves from a 14-cycle frame period with one lane to
 five cycles with four lanes, selected by CP-SAT. Simulation confirms the periods.

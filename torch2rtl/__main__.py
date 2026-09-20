@@ -23,7 +23,31 @@ def main():
     compile_parser.add_argument("--depths", type=int, nargs="+", required=True)
     compile_parser.add_argument("--seconds", type=float, default=30)
     compile_parser.add_argument("--output", type=Path, required=True)
+    network_parser = sub.add_parser("emit-network", help="Emit spatial RTL from explicit actor/FIFO choices; does not optimize or prove fit")
+    network_parser.add_argument("--configuration", type=Path, required=True)
+    network_parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.command == "emit-network":
+        from .graph import actors, read
+        from .network import emit
+        config = json.loads(args.configuration.read_text())
+        model_path = Path(config["model"])
+        model_hash = hashlib.sha256(model_path.read_bytes()).hexdigest()
+        if "model_sha256" in config and config["model_sha256"] != model_hash:
+            raise ValueError("Configuration refers to different model contents")
+        _, module = load(model_path)
+        graph = actors(read(module))
+        rtl = emit(graph, config["lanes"], config["output_lanes"], config["fifo_depths"])
+        args.output.mkdir(parents=True, exist_ok=True)
+        (args.output / "inference.sv").write_text(rtl)
+        (args.output / "model.mlir").write_text(str(module))
+        report = {"model_sha256": model_hash, "configuration": config,
+                  "actors": [{"name": value.name, "operation": value.operation, "tensor": asdict(value.tensor)}
+                             for value in graph.values],
+                  "solver_verified": False, "hardware_fit_verified": False, "timing_verified": False}
+        (args.output / "emission.json").write_text(json.dumps(report, indent=2) + "\n")
+        print(f"Explicit-configuration RTL emitted to {args.output.resolve()}; scheduling, fit and timing remain to be checked")
+        return
     target = json.loads(args.target.read_text())
     program, module = load(args.model)
     if args.command == "compile":

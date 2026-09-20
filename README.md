@@ -11,14 +11,16 @@ works. The requested Scratches model has not been compiled to a 30-FPS design.**
 The original export exceeds the tested fabric-storage budget. The user has
 authorized retraining a smaller, genuinely integer model while retaining both
 weights and activations in fabric memory. Training and verification are in
-[the training directory](training/README.md); full-model RTL and 30 FPS remain
-unproven. The [workload findings](docs/workload-feasibility.md) concern the original export.
+[the training directory](training/README.md). The complete retrained graph now
+passes RTL simulation, but accuracy, fabric fit and 30 FPS remain unmet. The
+[workload findings](docs/workload-feasibility.md) concern the original export.
 
 - [Optimization proposal](docs/optimization-model.md)
 - [Current results](RESULTS.md)
 - [Joint scheduling and FIFO mathematics](docs/scheduling-model.md)
 - [Toolchain setup](docs/toolchain.md)
 - [Implemented subset and verification](docs/implementation.md)
+- [Spatial RTL and full-model simulation](docs/spatial-backend.md)
 
 All project-specific installations, source dependencies, environments, caches,
 and build outputs live in this directory under Documents. Existing Apple
@@ -56,8 +58,13 @@ the verified torch-mlir module, fuses compatible pointwise operations, proves
 integer ranges for narrower internal storage, synthesizes candidate hardware,
 and solves the joint parameter/schedule/FIFO problem using CP-SAT.
 
-FP32, convolution, general branched actor networks, transport integration and
-the full model remain work to do. Unsupported operations fail explicitly.
+The separate `emit-network` command now emits integer convolution, pooling,
+nearest resampling, aligned concatenation and byte comparisons using explicit
+actor/FIFO configurations. It supports branched raster networks and preserves
+integer overflow and rounding. Its spatial event-contract translation and full
+joint optimization remain to be completed; emission is not a fit certificate.
+FP32 actors and board transport integration also remain work to do.
+Unsupported operations fail explicitly.
 Scheduled throughput is labeled as such; it is not a physical-board measurement.
 The solver interface is plain dataclasses; OR-Tools is confined to `cp_sat.py`.
 

@@ -3,10 +3,13 @@ name = "torch2rtl"
 version = "0.0.0"
 description = "A small torch-mlir to streaming RTL compiler"
 requires-python = ">=3.11"
-dependencies = ["torch", "ortools"]
+dependencies = ["torch", "ortools", "numpy"]
 
 [project.optional-dependencies]
 training = ["numpy", "pillow", "onnx"]
+
+[tool.setuptools.package-data]
+torch2rtl = ["templates/*.sv"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

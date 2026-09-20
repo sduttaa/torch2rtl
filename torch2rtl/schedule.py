@@ -26,6 +26,7 @@ class Fifo:
     depths: dict[str, int]
     when: tuple[tuple[str, str], ...] = ()
     replacement_delay: int = 0
+    forward_delays: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -111,4 +112,7 @@ def validate(problem):
             raise ValueError("Registered FIFO depths must be positive integers")
         if fifo.replacement_delay < 0:
             raise ValueError("FIFO replacement delay must be nonnegative")
+        if fifo.forward_delays and (set(fifo.forward_delays) != set(fifo.depths) or
+                                   any(type(delay) is not int or delay < 1 for delay in fifo.forward_delays.values())):
+            raise ValueError("Each FIFO option needs a positive forward latency")
         guard(fifo.when)

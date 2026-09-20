@@ -34,10 +34,14 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
             for before, after in zip(writes_or_reads, writes_or_reads[1:]):
                 add(before, after, 1, when=fifo.when)
             add(writes_or_reads[-1], writes_or_reads[0], 1, 1, fifo.when)
-        for write, read in zip(fifo.writes, fifo.reads):
-            add(write, read, 1, when=fifo.when)
+        if not fifo.forward_delays:
+            for write, read in zip(fifo.writes, fifo.reads):
+                add(write, read, 1, when=fifo.when)
         for option, depth in fifo.depths.items():
             active = fifo.when + ((fifo.choice, option),)
+            if fifo.forward_delays:
+                for write, read in zip(fifo.writes, fifo.reads):
+                    add(write, read, fifo.forward_delays[option], when=active)
             for index, write in enumerate(fifo.writes):
                 frame, word = divmod(index - depth, count)
                 # write_j >= read_h + frame*T + replacement_delay.

@@ -4,11 +4,25 @@ from pathlib import Path
 from copy import deepcopy
 
 import torch
-from torch_mlir import fx
+import numpy as np
+from torch_mlir import fx, ir
+from torch_mlir.extras.fx_importer import FxImporterHooks, create_mlir_tensor_type
 
 
-def load(path: str | Path):
-    program = torch.export.load(path)
+class IntegerLiterals(FxImporterHooks):
+    def resolve_literal(self, importer, literal, info):
+        if not isinstance(literal, torch.Tensor) or literal.is_floating_point() or literal.is_complex():
+            return None
+        # Upstream's resource attributes have no Python read-buffer API. Inline
+        # integer attributes expose their typed data to the actor frontend.
+        shaped = create_mlir_tensor_type(literal)
+        array = np.array(literal.tolist(), dtype=str(literal.dtype).removeprefix("torch."))
+        attribute = ir.DenseElementsAttr.get(array=array, type=shaped.element_type, shape=literal.shape)
+        tensor = ir.Type.parse(f"!torch.vtensor<{list(literal.shape)},{shaped.element_type}>")
+        return ir.Operation.create("torch.vtensor.literal", results=[tensor], attributes={"value": attribute}).result
+
+
+def import_program(program):
     if program.range_constraints:
         raise ValueError("Dynamic dimensions are not supported; export static shapes.")
     for spec in program.graph_signature.output_specs:
@@ -23,7 +37,12 @@ def load(path: str | Path):
     # boundaries and introduce expensive broadcasts before hardware selection.
     # The frozen importer rewrites lifted constants in its ExportedProgram.
     # Preserve the user's graph for independent accounting and reference runs.
-    module = fx.export_and_import(deepcopy(program), output_type="torch", decomposition_table={})
+    module = fx.export_and_import(deepcopy(program), output_type="torch", decomposition_table={}, hooks=IntegerLiterals())
     if not module.operation.verify():
         raise ValueError("torch-mlir verification failed")
-    return program, module
+    return module
+
+
+def load(path: str | Path):
+    program = torch.export.load(path)
+    return program, import_program(program)

@@ -1,9 +1,27 @@
 # Fabric-only retraining results
 
-The most accurate verified integer replacement reaches **0.660307 Dice** versus
-**0.676843** for the supplied export. A smaller candidate reaches **0.659503**.
-Neither has met the requested accuracy or complete 30-FPS deployment requirement.
+The most accurate verified integer replacement now reaches **0.663747 Dice** versus
+**0.676843** for the supplied export. It has **27,576 bytes** of constants and
+**240,583,680 MACs per inference**. None of the candidates has met the requested
+accuracy or complete 30-FPS deployment requirement.
 Weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
+
+The newest candidate widens the initial feature stage through an explicit
+training configuration. It preserves input/output resolution, preprocessing and
+the original split. Its IoU is 0.496722, precision 0.614473 and recall 0.721612;
+TP/FP/FN are 985/618/380. QAT/integer masks match on all 246 images, and the
+reloaded export matches on all 49 validation images. It contains no floating
+tensor nodes and passes torch-mlir import. Its SHA-256 is
+`5213f7a2fc4349f0f4bc79ab87ebed6e41efbc22053afa7af88e4e73a406aa0c`.
+
+- [Latest integer model](../build/training/wide-stem-integer/model.pt2)
+- [Latest verification report](../build/training/wide-stem-integer/report.json)
+- [Latest MLIR and workload accounting](../build/training/wide-stem-integer/inspection/analysis.json)
+- [Full-model RTL evidence and limits](spatial-backend.md)
+
+An additional full-image fine-tuning experiment reached 0.661219 in floating
+point and 0.658210 after QAT. It did not improve on the compact integer model.
+The earlier candidates are retained below for comparison.
 
 | Measurement | Supplied export | Compact integer | Wider integer |
 | --- | ---: | ---: | ---: |
@@ -81,6 +99,8 @@ checked against the dataset and source model.
 | Wider final decoder | 0.648501 |
 | Wider low-resolution context | 0.656834 |
 | Low-rank model with cached teacher features | 0.614919 |
+| Full-image fine-tuning | 0.661219 |
+| Wider input feature stage | 0.662390 |
 
 The low-rank experiment was stopped with checkpoints preserved after it fell
 behind the smaller encoder/decoder. Training-only threshold calibration did not
@@ -96,13 +116,14 @@ still be correlated. The original model's earlier training split is unknown.
 
 ## Remaining deployment work
 
-The current compiler does not yet lower this complete convolution/branched graph
-to RTL. It still needs generic convolution, pooling, resampling and merge actor
-coverage, their joint schedule/FIFO problem, physical resource mapping, simulation
-and place-and-route. No board has been programmed with this model. The unrelated
-small integration kernel's routed clock must not be used to claim this model's FPS.
+The current compiler emits the complete retrained graph from explicit hardware
+parameters, and full-model RTL simulation matches three real images with stalls.
+The verification buffers exceed fabric memory. The spatial actors still need
+their joint schedule/FIFO translation, resource-feasible option selection and
+whole-design place-and-route. No board has been programmed with this model.
+Neither the small integration kernel's nor the isolated stem's routed clock
+can establish the full model's FPS.
 
-Architecture descriptions, preprocessing, dataset paths and budgets are explicit
-experiment inputs. The compiler's only change during this training work extends
-generic workload accounting to include matrix products, so dilated integer
-convolutions expressed as window views plus matrix multiplication are not omitted.
+Architecture descriptions, preprocessing, dataset paths and budgets remain
+explicit experiment inputs. Compiler changes recognize operators, shapes and
+integer arithmetic contracts; there are no model-name or board-name rules.

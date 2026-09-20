@@ -17,7 +17,10 @@ The requested replacement must satisfy three separate checks:
 3. A routed implementation sustains at least 30 inferences/second, including
    backpressure. MAC counts and hypothetical clock rates are not measured FPS.
 
-The compact verified integer result has Dice **0.659503**, 26,988 bytes of
+The latest verified integer result has Dice **0.663747**, 27,576 bytes of constants
+and 240,583,680 MACs per inference. Its full graph passes numerical RTL simulation
+with oversized verification buffers, but it has not met the accuracy or hardware
+deployment checks. The compact verified integer result has Dice **0.659503**, 26,988 bytes of
 constants and 212,686,848 direct MACs per inference. A wider candidate reaches
 **0.660307** with 37,644 bytes and 240,556,032 MACs. Neither has satisfied the
 three acceptance checks. See [the current results](../docs/training-results.md)
@@ -129,7 +132,8 @@ weight-quantized teacher cache. The explicit reproduction configuration above
 corrects that metadata; its initial weights match the recorded run exactly.
 The quantizer now verifies the cache fingerprint and saves its resolved config.
 
-Full-model compilation still rejects unsupported tensor constants/convolution
-lowering. There is no full-model routed design, complete physical memory-fit
-proof, or measured 30-FPS result. Training results do not remove those remaining
-compiler and hardware requirements.
+The spatial backend now emits the complete retrained graph from explicit actor
+and FIFO choices. Full-model simulation matches its integer reference on three
+validation images, including random stalls. There is no full-model routed design,
+complete physical memory-fit proof, or measured 30-FPS result. The verification
+buffers exceed fabric memory. See [the spatial backend](../docs/spatial-backend.md).

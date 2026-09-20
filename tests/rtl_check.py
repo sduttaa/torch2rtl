@@ -56,7 +56,10 @@ module tb;
       was_stalled = out_valid && !out_ready;
       held_data = out_data;
       input_accepted = in_valid && in_ready;
-      if (input_accepted) sent=sent+1;
+      if (input_accepted) begin
+        $display("INPUT %0d %0d",sent,cycle);
+        sent=sent+1;
+      end
       if (out_valid && out_ready) begin
         if (received >= {len(expected_words)} || out_data !== expected[received])
           $fatal(1,"Mismatch word %0d: actual %h expected %h",received,out_data,expected[received]);

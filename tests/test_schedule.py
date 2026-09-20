@@ -92,3 +92,13 @@ def test_fifo_without_simultaneous_slot_replacement():
     problem = replace(problem, fifos=(replace(problem.fifos[0], replacement_delay=1),))
     solution = solve(problem)
     assert solution.period == 6
+
+
+@pytest.mark.parametrize("depth,latency,period", [(1, 1, 3), (1, 2, 6), (2, 2, 3)])
+def test_fifo_forward_latency_participates_in_the_schedule(depth, latency, period):
+    problem = pipeline((depth,))
+    problem = replace(problem, fifos=(replace(problem.fifos[0], forward_delays={str(depth): latency}),))
+    solution = solve(problem)
+    assert solution.period == period
+    assert all(solution.offsets[read] >= solution.offsets[write] + latency
+               for write, read in zip(problem.fifos[0].writes, problem.fifos[0].reads))
