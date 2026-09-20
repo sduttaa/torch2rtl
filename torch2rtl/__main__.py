@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from .analysis import analyze
@@ -38,11 +39,20 @@ def main():
                        "sha256": hashlib.sha256(args.model.read_bytes()).hexdigest()}
     report["target"] = target
     args.output.mkdir(parents=True, exist_ok=True)
+    from .cp_sat import solve
+    from .storage import storage_problem
+    storage = report["constant_storage_candidates"]
+    allowance = storage["optimistic_all_storage_bytes"] or storage["fabric_ram_bytes"]
+    problem = storage_problem(storage, allowance)
+    storage["storage_relaxation"] = asdict(solve(problem))
+    (args.output / "storage-problem.json").write_text(json.dumps(asdict(problem), indent=2) + "\n")
     (args.output / "model.mlir").write_text(str(module))
     (args.output / "analysis.json").write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report["summary"], indent=2))
     for finding in report["findings"]:
         print(f"{finding['code']}: {finding['message']}")
+    print(f"Lossless storage catalogue: {storage['storage_relaxation']['status']} "
+          f"within an optimistic {allowance}-byte allowance")
     print(f"Verified MLIR and report: {args.output.resolve()}")
 
 

@@ -16,6 +16,7 @@
     "lut": 1,
     "ff": 1
   },
+  "logic_lut_inputs": 4,
   "cell_costs": {
     "LUT[1234]": {
       "lut": 1

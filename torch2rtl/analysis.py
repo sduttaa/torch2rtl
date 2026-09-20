@@ -5,6 +5,8 @@ from math import prod
 
 import torch
 
+from .storage import constant_storage
+
 
 def tensor_info(value):
     return {
@@ -23,6 +25,36 @@ def _depends(node, ancestor, memo):
     return memo[node]
 
 
+def _replay_sources(node, memo):
+    """Consider regenerating index-only tensor views from retained source values.
+
+    This is a storage candidate for analysis, not an implemented fusion. It does
+    not move arithmetic across quantizers or recompute convolutions/reductions.
+    """
+    if node in memo:
+        return memo[node]
+    direct = {node: node.meta["val"].numel() * node.meta["val"].element_size()}
+    sources = ()
+    if node.op == "call_function":
+        op = str(node.target)
+        if op in {"aten.upsample_nearest2d.vec", "aten.upsample_nearest2d.default",
+                  "aten.view.default", "aten.reshape.default", "aten.detach.default",
+                  "aten.clone.default", "aten.slice.Tensor", "aten.permute.default"}:
+            sources = (node.args[0],)
+        elif op == "aten.pad.default" and (len(node.args) < 3 or node.args[2] == "constant"):
+            sources = (node.args[0],)
+        elif op == "aten.cat.default":
+            sources = node.args[0]
+    retained = {}
+    for source in sources:
+        if source.meta["val"].dtype != node.meta["val"].dtype:
+            sources = ()
+            break
+        retained.update(_replay_sources(source, memo))
+    memo[node] = retained if sources and sum(retained.values()) < sum(direct.values()) else direct
+    return memo[node]
+
+
 def analyze(program, target=None, requested_fps=None):
     """Account actual graph dtypes and reduction barriers without model-name rules.
 
@@ -32,6 +64,8 @@ def analyze(program, target=None, requested_fps=None):
     """
     signatures = {spec.arg.name: spec for spec in program.graph_signature.input_specs}
     constants, inputs, reductions, convolutions = [], [], [], []
+    stored = {}
+    replay_memo = {}
     ops = Counter()
     for node in program.graph.nodes:
         value = node.meta.get("val")
@@ -44,6 +78,7 @@ def analyze(program, target=None, requested_fps=None):
                           else program.constants)[spec.target]
                 if isinstance(actual, torch.Tensor):
                     constants.append({"name": spec.target, **tensor_info(actual)})
+                    stored[spec.target] = actual
         if node.op != "call_function":
             continue
         op = str(node.target)
@@ -70,6 +105,8 @@ def analyze(program, target=None, requested_fps=None):
                 "name": node.name, "operator": op, "input": tensor_info(data),
                 "output": tensor_info(value), "replay_consumers": joins,
                 "direct_replay_bytes": data.numel() * data.element_size() if joins else 0,
+                "view_regenerated_replay_bytes": sum(_replay_sources(source, replay_memo).values()) if joins else 0,
+                "view_replay_sources": [leaf.name for leaf in _replay_sources(source, replay_memo)] if joins else [],
             })
     constant_bytes = sum(item["bytes"] for item in constants)
     largest_replay = max((item["direct_replay_bytes"] for item in reductions), default=0)
@@ -108,11 +145,13 @@ def analyze(program, target=None, requested_fps=None):
     return {
         "inputs": inputs, "constants": constants, "operators": dict(sorted(ops.items())),
         "convolutions": convolutions, "reductions": reductions,
+        "constant_storage_candidates": constant_storage(stored, target),
         "summary": {
             "constant_bytes": constant_bytes,
             "integer_constant_bytes": sum(c["bytes"] for c in constants
                                           if c["dtype"].startswith(("int", "uint"))),
             "largest_direct_replay_bytes": largest_replay,
+            "largest_view_regenerated_replay_bytes": max((r["view_regenerated_replay_bytes"] for r in reductions), default=0),
             "direct_convolution_macs_per_inference": macs,
             "requested_fps": requested_fps,
             "direct_convolution_macs_per_second": macs * requested_fps if requested_fps else None,
@@ -124,6 +163,7 @@ def analyze(program, target=None, requested_fps=None):
             "MAC count assumes direct convolution; it is not an algorithm-independent bound.",
             "Constants use their exported storage dtype, without compression or deduplication.",
             "Replay sizes are per barrier, not summed; memory sharing needs a schedule.",
+            "View-regenerated replay is an optimistic storage candidate; no replay RTL is emitted.",
             "This analysis does not establish routing feasibility or achieved throughput.",
         ],
     }

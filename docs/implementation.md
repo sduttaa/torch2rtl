@@ -74,7 +74,7 @@ period from 14 cycles (one lane) to five cycles. RTL simulation independently
 confirms those periods. Synthesis reports 397 LUT-equivalents and 135 FFs for the
 selected core under the supplied primitive accounting. These are kernel results,
 not full-model inference performance or evidence of superiority over other
-compilers. All 33 current tests pass. Verilator lint passes with only filename
+compilers. All 37 current tests pass. Verilator lint passes with only filename
 and deliberately unused signal-bit checks disabled; width conversions are explicit.
 
 The generated kernel in its routing harness meets the supplied 27-MHz target;
@@ -120,3 +120,8 @@ end-to-end workloads. Candidate synthesis is presently repeated per invocation;
 there is no model-specific cache or lookup table. Resource packing/site and timing
 constraints ultimately require place-and-route; a CP-SAT optimum does not prove
 physical optimality.
+
+The separate inspector includes a generic lossless constant-encoding catalogue
+and a storage-only CP-SAT relaxation, plus source-retention candidates for replaying
+index-only tensor views. These are full-model feasibility analyses; hardware
+decoders and replay actors are not implemented or claimed to have been measured.

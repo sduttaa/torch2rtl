@@ -19,6 +19,7 @@ appears in compiler source code.
 | Dynamic activation maximum reductions | 20 |
 | First normalization's direct FP32 replay buffer | 517,120 bytes |
 | Largest normalization's direct FP32 replay buffer | 12,386,304 bytes |
+| Largest replay payload after regenerating index-only views | 4,128,768 bytes |
 | Direct convolution work per inference | 2,558,324,736 MACs |
 | Direct convolution work at 30 FPS | 76,749,742,080 MACs/second |
 | Selected target BRAM + distributed RAM | 111,168 bytes |
@@ -64,6 +65,33 @@ compressed to 267,958 bytes with zlib and 265,868 bytes with LZMA, still over tw
 the fabric RAM before decoder/workspace costs. These are software compression
 measurements, not proposed random-access hardware implementations or lower bounds
 on all possible encodings. Results are in `build/workload/compression-probe.json`.
+
+## Additional generic storage checks
+
+The inspector now compares raw, range-packed, fixed-palette, zero-bitmap and
+canonical-Huffman payloads for each integer constant. It includes the described
+codebooks, keeps floating-point constants unchanged, and optimistically omits
+decoders, banking, alignment and selector costs. The smallest combination in this
+catalogue is **271,633 bytes**. This differs from the cross-tensor software
+compression measurements above because it uses independently encoded tensors.
+
+CP-SAT returns **INFEASIBLE** for the storage-only selection problem even with a
+generous **154,584-byte** allowance. That allowance assigns every LUT truth table
+and every flip-flop to storage in addition to all fabric RAM. It leaves no
+arithmetic resources and can double-count physically shared resources, favoring
+feasibility. It is an optimistic accounting model for these stored representations,
+not an information-theoretic limit on all possible circuits. The problem contains
+only constant encoding choices and capacity; this failure does not arise from a
+chosen schedule period or solver timeout. `build/workload/storage-problem.json`
+records the solver-independent instance, and `analysis.json` records its result.
+
+The inspector also considers retaining the sources of nearest-neighbor upsampling,
+padding and other index-only views, regenerating those views when replayed. Shared
+sources are counted once. This reduces the largest candidate replay payload from
+12,386,304 to **4,128,768 bytes**; the first normalization still needs **517,120
+bytes** in this representation. These are analysis candidates, not implemented
+replay actors, and they do not recompute arithmetic or move floating-point rounding
+boundaries. They still exceed the target's fabric RAM substantially.
 
 ## What requires a decision
 

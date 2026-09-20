@@ -10,7 +10,7 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Implemented behind a plain-data interface |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 33 passing |
+| Tests | 37 passing |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
@@ -27,6 +27,13 @@ The full model contains 291,240 bytes of constants, while the selected target ha
 FP32 replay buffers as large as 12,386,304 bytes, and its convolutions execute in
 FP32 after dequantization. Merely changing reduction order does not resolve these
 constraints. See [the detailed workload findings](docs/workload-feasibility.md).
+
+Further generic checks did not bridge the gap. The tested per-tensor lossless
+encoding catalogue needs 271,633 bytes and is CP-SAT-infeasible even under a
+154,584-byte allowance that gives every LUT table and FF to storage. Regenerating
+index-only views reduces the largest candidate replay payload to 4,128,768 bytes,
+still much larger than fabric RAM. These results apply to the documented candidate
+representations, not every conceivable compression or recomputation architecture.
 
 The model/board/deployment tradeoff is queued for discussion. In the meantime,
 the existing model is unchanged, and no board/model special cases were added to
