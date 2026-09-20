@@ -8,6 +8,7 @@ module integer_convolution #(
   parameter integer DILATION_H = 1, DILATION_W = 1,
   parameter integer PAD_H = 0, PAD_W = 0, GROUPS = 1,
   parameter integer LANES = 1, OUTPUT_LANES = 1, INPUT_SIGNED = 0,
+  parameter integer INPUT_BITS = 8, OUTPUT_ELEMENT_BITS = 8, OUTPUT_SIGNED = 0,
   parameter integer REDUCTION_LANES = LANES,
   parameter integer ACCUMULATOR_BYTES = 4, MULTIPLIER_BYTES = 8,
   parameter integer ACCUMULATOR_BITS = ACCUMULATOR_BYTES * 8,
@@ -76,15 +77,23 @@ module integer_convolution #(
     assign subword = parts[dot_step];
   end endgenerate
   wire [LANES*8-1:0] window_data;
+  wire [LANES*INPUT_BITS-1:0] stored_input, stored_window;
+  genvar storage_lane;
+  generate for (storage_lane = 0; storage_lane < LANES; storage_lane = storage_lane + 1) begin: storage_width
+    assign stored_input[storage_lane*INPUT_BITS +: INPUT_BITS] = in_data[storage_lane*8 +: INPUT_BITS];
+    assign window_data[storage_lane*8 +: 8] = INPUT_SIGNED != 0 ?
+      8'($signed(stored_window[storage_lane*INPUT_BITS +: INPUT_BITS])) :
+      8'(stored_window[storage_lane*INPUT_BITS +: INPUT_BITS]);
+  end endgenerate
   raster_window #(
     .HEIGHT(HEIGHT), .WIDTH(WIDTH), .CHANNELS(INPUT_CHANNELS),
     .KERNEL_H(KERNEL_H), .KERNEL_W(KERNEL_W), .STRIDE_H(STRIDE_H), .STRIDE_W(STRIDE_W),
     .DILATION_H(DILATION_H), .DILATION_W(DILATION_W), .PAD_H(PAD_H), .PAD_W(PAD_W),
-    .LANES(LANES), .MEMORY_STYLE(LINE_MEMORY), .PACKED_LINES(PACKED_LINES)
+    .LANES(LANES), .BITS(INPUT_BITS), .MEMORY_STYLE(LINE_MEMORY), .PACKED_LINES(PACKED_LINES)
   ) window (
-    .clk(clk), .rst(rst), .in_data(in_data), .in_valid(in_valid), .in_ready(in_ready),
+    .clk(clk), .rst(rst), .in_data(stored_input), .in_valid(in_valid), .in_ready(in_ready),
     .window_available(window_available), .release_window(release_window),
-    .window_address(window_address), .window_data(window_data)
+    .window_address(window_address), .window_data(stored_window)
   );
 
   (* rom_style = WEIGHT_MEMORY *) reg [ROM_WIDTH-1:0] weight_memory [0:ROM_DEPTH-1];
@@ -166,7 +175,7 @@ module integer_convolution #(
                                    shifted[output_lane] > $signed(HIGH) ? HIGH[7:0] : shifted[output_lane][7:0];
   end endgenerate
 
-  reg [7:0] output_pixel [0:OUTPUT_CHANNELS-1];
+  reg [OUTPUT_ELEMENT_BITS-1:0] output_pixel [0:OUTPUT_CHANNELS-1];
   reg output_pending;
   reg [OUTPUT_BITS-1:0] output_word;
   wire output_finished = out_ready && output_word == OUTPUT_BITS'(OUTPUT_WORDS-1);
@@ -178,7 +187,8 @@ module integer_convolution #(
     out_data = 0;
     for (lane = 0; lane < LANES; lane = lane + 1)
       if (32'(output_word)*LANES+lane < OUTPUT_CHANNELS)
-        out_data[lane*8 +: 8] = output_pixel[32'(output_word)*LANES+lane];
+        out_data[lane*8 +: 8] = OUTPUT_SIGNED != 0 ?
+          8'($signed(output_pixel[32'(output_word)*LANES+lane])) : 8'(output_pixel[32'(output_word)*LANES+lane]);
   end
 
   integer channel;
@@ -256,7 +266,7 @@ module integer_convolution #(
         POST: if (!output_pending || output_finished) begin
           for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
             if (tile_channel+channel < GROUP_OUTPUTS)
-              output_pixel[group_channel+tile_channel+channel] <= quantized[channel];
+              output_pixel[group_channel+tile_channel+channel] <= OUTPUT_ELEMENT_BITS'(quantized[channel]);
           if (block == BLOCK_BITS'(BLOCKS-1)) begin
             output_pending <= 1;
             output_word <= 0;

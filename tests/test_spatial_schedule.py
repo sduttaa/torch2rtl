@@ -92,15 +92,16 @@ def test_resize_deadlines(tmp_path, shape, size, scale, mode, recompute):
     check_schedule(tmp_path, Graph(source, output, (source, output)), 2, {output.name: {"selected": ActorConfig()}})
 
 
-def branched():
+def branched(activation_bits=8):
     torch.manual_seed(41)
-    model = TinyBranched()
+    model = TinyBranched(activation_bits=activation_bits)
     image = torch.zeros((1, 3, 6, 10), dtype=torch.uint8)
     return actors(read(import_program(torch.export.export(model, (image,), strict=True))))
 
 
-def test_joint_branch_schedule_and_fifo_occupancy(tmp_path):
-    graph = branched()
+@pytest.mark.parametrize("activation_bits", [5, 8])
+def test_joint_branch_schedule_and_fifo_occupancy(tmp_path, activation_bits):
+    graph = branched(activation_bits)
     options = {value.name: {"selected": ActorConfig(1, 2) if value.operation == "quantized_convolution" else ActorConfig()}
                for value in graph.values if value is not graph.input}
     small = {name: {"one": FifoConfig(1)} for name, *_ in edges(graph)}

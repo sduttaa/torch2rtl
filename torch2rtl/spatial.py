@@ -5,17 +5,26 @@ from pathlib import Path
 import torch
 
 from .convolution import packed
+from .ranges import lane_cast, storage_bits
 
 
-def wrapped(module, parameters, bits, sources):
+def wrapped(module, parameters, bits, sources, element_bits=None, signed=False):
     assignments = ", ".join(f".{key}({value})" for key, value in parameters.items())
+    connections, wiring = ".*", ""
+    if element_bits is not None:
+        lanes = parameters["LANES"]
+        wiring = f"wire [{lanes*element_bits-1}:0] stored_input, stored_output;\n"
+        wiring += lane_cast("in_data", "stored_input", lanes, bits//lanes, element_bits) + "\n"
+        wiring += lane_cast("stored_output", "out_data", lanes, element_bits, bits//lanes, signed)
+        connections = ".in_data(stored_input), .out_data(stored_output), .*"
     wrapper = f"""
 module inference (
   input wire clk, input wire rst,
   input wire [{bits-1}:0] in_data, input wire in_valid, output wire in_ready,
   output wire [{bits-1}:0] out_data, output wire out_valid, input wire out_ready
 );
-  {module} #({assignments}) actor (.*);
+  {wiring}
+  {module} #({assignments}) actor ({connections});
 endmodule
 """
     root = Path(__file__).parent / "templates"
@@ -44,13 +53,15 @@ def emit_pool(actor, lanes, memory="auto"):
     parameters = {"HEIGHT": height, "WIDTH": width, "CHANNELS": channels,
                   "KERNEL_H": kernel[0], "KERNEL_W": kernel[1], "STRIDE_H": stride[0], "STRIDE_W": stride[1],
                   "DILATION_H": dilation[0], "DILATION_W": dilation[1], "PAD_H": padding[0], "PAD_W": padding[1],
-                  "LANES": lanes, "BITS": data.tensor.bits, "SIGNED": int(data.tensor.signed)}
+                  "LANES": lanes, "BITS": storage_bits(actor), "SIGNED": int(data.tensor.signed)}
     parameters["MEMORY_STYLE"] = f'"{memory}"'
     if tuple(kernel) == tuple(stride) and tuple(padding) == (0, 0) and tuple(dilation) == (1, 1):
         for key in ("STRIDE_H", "STRIDE_W", "DILATION_H", "DILATION_W", "PAD_H", "PAD_W"):
             parameters.pop(key)
-        return wrapped("integer_block_pool", parameters, lanes*data.tensor.bits, ("block_pool.sv",))
-    return wrapped("integer_max_pool", parameters, lanes*data.tensor.bits, ("pool.sv", "window.sv"))
+        return wrapped("integer_block_pool", parameters, lanes*data.tensor.bits, ("block_pool.sv",),
+                       parameters["BITS"], data.tensor.signed)
+    return wrapped("integer_max_pool", parameters, lanes*data.tensor.bits, ("pool.sv", "window.sv"),
+                   parameters["BITS"], data.tensor.signed)
 
 
 def emit_resize(actor, lanes, memory="auto"):
@@ -83,6 +94,7 @@ def emit_resize(actor, lanes, memory="auto"):
         maps.append(packed(indices, max(1, (length-1).bit_length())))
     parameters = {"HEIGHT": height, "WIDTH": width, "CHANNELS": channels,
                   "OUTPUT_HEIGHT": output_height, "OUTPUT_WIDTH": output_width,
-                  "LANES": lanes, "BITS": data.tensor.bits, "MEMORY_STYLE": f'"{memory}"',
+                  "LANES": lanes, "BITS": storage_bits(actor), "MEMORY_STYLE": f'"{memory}"',
                   "ROW_INDICES": maps[0], "COLUMN_INDICES": maps[1]}
-    return wrapped("integer_nearest", parameters, lanes*data.tensor.bits, ("resize.sv",))
+    return wrapped("integer_nearest", parameters, lanes*data.tensor.bits, ("resize.sv",),
+                   parameters["BITS"], data.tensor.signed)

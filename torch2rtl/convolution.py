@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .lower import integer_range
+from .ranges import bounds, storage_bits
 
 
 def signed_bits(low, high):
@@ -64,7 +64,10 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
                                 input_channel = word*reduction_lanes + lane
                                 weights.append(int(weight[channel, input_channel, y, x])
                                                if valid and input_channel < per_group else 0)
-    input_low, input_high = integer_range(data.tensor)
+    input_low, input_high = bounds(data)
+    # A padded convolution also consumes zero, even when the source is known
+    # to be strictly positive or negative.
+    input_low, input_high = min(input_low, 0), max(input_high, 0)
     positive = np.maximum(weight.astype(np.int64), 0).sum(axis=(1, 2, 3))
     negative = np.minimum(weight.astype(np.int64), 0).sum(axis=(1, 2, 3))
     minimum = positive*input_low + negative*input_high + bias
@@ -98,6 +101,8 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
                   "KERNEL_H": kh, "KERNEL_W": kw, "STRIDE_H": stride[0], "STRIDE_W": stride[1],
                   "DILATION_H": dilation[0], "DILATION_W": dilation[1], "PAD_H": padding[0], "PAD_W": padding[1],
                   "GROUPS": groups, "LANES": lanes, "OUTPUT_LANES": outputs, "INPUT_SIGNED": int(data.tensor.signed),
+                  "INPUT_BITS": storage_bits(data), "OUTPUT_ELEMENT_BITS": storage_bits(actor),
+                  "OUTPUT_SIGNED": int(actor.tensor.signed),
                   "REDUCTION_LANES": reduction_lanes,
                   "ACCUMULATOR_BYTES": accumulator_bytes, "MULTIPLIER_BYTES": multiplier_bytes,
                   "ACCUMULATOR_BITS": accumulator_bits, "INNER_BITS": max(inner_bits, 9),

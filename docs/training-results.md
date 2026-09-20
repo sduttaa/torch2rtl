@@ -6,6 +6,12 @@ The most accurate verified integer replacement now reaches **0.667115 Dice** ver
 accuracy or complete 30-FPS deployment requirement.
 Weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
 
+Explicit six-bit and four-bit hidden-activation experiments reached 0.660259 and
+0.656095 Dice, respectively, and were not adopted. Their integer exports and
+full-graph RTL checks pass. Proven storage narrowing brings one four-bit actor
+configuration to 44 BRAM blocks and 20,300 LUT equivalents before graph FIFOs;
+complete fit and timing remain unproven. See [the precision/storage results](narrow-storage.md).
+
 The newest candidate retains the wider input stage and uses an explicitly trained
 fixed-point right shift of 16 for requantization, reducing multiplier magnitudes.
 It preserves input/output resolution, preprocessing and the original split.

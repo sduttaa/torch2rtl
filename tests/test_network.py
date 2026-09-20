@@ -42,8 +42,12 @@ endmodule
 
 
 class TinyBranched(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, activation_bits=8, signed=False, raw_output=False):
         super().__init__()
+        self.low = -(1 << (activation_bits-1)) if signed else 0
+        self.high = (1 << (activation_bits-int(signed)))-1
+        self.activation_dtype = torch.int8 if signed else torch.uint8
+        self.raw_output = raw_output
         self.register_buffer("stem", torch.randint(-3, 4, (3, 3, 3, 3), dtype=torch.int32))
         self.register_buffer("skip", torch.ones((1, 3, 1, 1), dtype=torch.int32))
         self.register_buffer("head", torch.tensor([-1, -2, 1, 2], dtype=torch.int32).reshape(1, 4, 1, 1))
@@ -55,17 +59,17 @@ class TinyBranched(torch.nn.Module):
         self.register_buffer("second_scale", torch.tensor(16, dtype=torch.int64))
 
     def quantize(self, value):
-        return ((value.to(torch.int64)*self.scale+8) >> 4).clamp(0, 255).to(torch.uint8)
+        return ((value.to(torch.int64)*self.scale+8) >> 4).clamp(self.low, self.high).to(self.activation_dtype)
 
     def forward(self, image):
         stem = self.quantize(F.conv2d(image.to(torch.int32), self.stem, self.stem_bias, padding=1))
         skip = self.quantize(F.conv2d(stem.to(torch.int32), self.skip, self.skip_bias))
         coarse = F.interpolate(F.max_pool2d(stem, 2), scale_factor=2.0, mode="nearest")
         joined = torch.cat((coarse.to(torch.int64)*self.first_scale, skip.to(torch.int64)*self.second_scale), dim=1)
-        joined = ((joined+8) >> 4).clamp(0, 255).to(torch.uint8)
+        joined = ((joined+8) >> 4).clamp(self.low, self.high).to(self.activation_dtype)
         head = F.conv2d(joined.to(torch.int32), self.head, self.head_bias)
         result = ((head.to(torch.int64)*self.scale+2) >> 2).clamp(-128, 127).to(torch.int8)
-        return (result > 0).to(torch.uint8)
+        return result if self.raw_output else (result > 0).to(torch.uint8)
 
 
 @pytest.mark.parametrize("lanes", [1, 2, 4])
@@ -87,3 +91,36 @@ def test_branched_convolution_network(tmp_path, lanes, stalls):
         input_words.extend(word for pixel in image.permute(0, 2, 3, 1).reshape(-1, 3) for word in pack(pixel, 8, lanes))
         expected_words.extend(word for pixel in expected.permute(0, 2, 3, 1).reshape(-1, 1) for word in pack(pixel, 8, lanes))
     simulate(tmp_path, rtl, lanes*8, lanes*8, input_words, expected_words, stalls)
+
+
+@pytest.mark.parametrize("signed", [False, True])
+@pytest.mark.parametrize("line_layout", ["parallel", "packed"])
+def test_narrow_storage_preserves_branched_integer_values(tmp_path, monkeypatch, signed, line_layout):
+    from torch2rtl.ranges import bounds, storage_bits
+    torch.manual_seed(21)
+    model = TinyBranched(activation_bits=5, signed=signed, raw_output=True)
+    images = [torch.randint(0, 256, (1, 3, 6, 10), dtype=torch.uint8) for _ in range(5)]
+    graph = actors(read(import_program(torch.export.export(model, (images[0],), strict=True))))
+    # ATen lacks the signed-byte nearest CPU kernel. Float selection is exact
+    # for every byte value and is used only as the test reference after export.
+    interpolate = F.interpolate
+    def reference_resize(value, *args, **kwargs):
+        return interpolate(value.float(), *args, **kwargs).to(value.dtype)
+    monkeypatch.setattr(F, "interpolate", reference_resize)
+    convs = [value for value in graph.values if value.operation == "quantized_convolution"]
+    assert storage_bits(convs[0]) == 5
+    assert bounds(convs[0]) == ((-16, 15) if signed else (0, 31))
+    assert all(storage_bits(value) == 5 for value in graph.values if value.operation in
+               ("max_pool2d", "__interpolate.size_list_scale_list", "quantized_concat"))
+    lanes = 3
+    rtl = emit(graph, lanes, {value.name: min(2, value.tensor.shape[1]) for value in convs},
+               {name: 128 for name, *_ in edges(graph)},
+               {value.name: {"line_layout": line_layout} for value in convs})
+    assert "stream_fifo #(.WIDTH(15)" in rtl
+    input_words, expected_words = [], []
+    for image in images:
+        result = model(image)
+        assert torch.equal(evaluate(graph, image), result)
+        input_words.extend(word for pixel in image.permute(0, 2, 3, 1).reshape(-1, 3) for word in pack(pixel, 8, lanes))
+        expected_words.extend(word for pixel in result.permute(0, 2, 3, 1).reshape(-1, 1) for word in pack(pixel, 8, lanes))
+    simulate(tmp_path, rtl, lanes*8, lanes*8, input_words, expected_words, True)

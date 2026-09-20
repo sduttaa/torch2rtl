@@ -51,6 +51,7 @@ def main():
     if args.command == "emit-network":
         from .graph import actors, read
         from .network import emit
+        from .ranges import bounds, storage_bits
         config = json.loads(args.configuration.read_text())
         model_path = Path(config["model"])
         model_hash = hashlib.sha256(model_path.read_bytes()).hexdigest()
@@ -64,7 +65,8 @@ def main():
         (args.output / "inference.sv").write_text(rtl)
         (args.output / "model.mlir").write_text(str(module))
         report = {"model_sha256": model_hash, "configuration": config,
-                  "actors": [{"name": value.name, "operation": value.operation, "tensor": asdict(value.tensor)}
+                  "actors": [{"name": value.name, "operation": value.operation, "tensor": asdict(value.tensor),
+                              "value_range": bounds(value), "stream_storage_bits": storage_bits(value)}
                              for value in graph.values],
                   "solver_verified": False, "hardware_fit_verified": False, "timing_verified": False}
         (args.output / "emission.json").write_text(json.dumps(report, indent=2) + "\n")

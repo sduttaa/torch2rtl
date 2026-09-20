@@ -10,6 +10,7 @@ import re
 
 from . import concatenate, convolution, spatial
 from .graph import references
+from .ranges import lane_cast, storage_bits
 
 
 def edges(graph):
@@ -77,10 +78,14 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
             f"assign out_data = data_{output_index}; assign out_valid = valid_{output_index}; assign ready_{output_index} = out_ready;"]
     for edge_index, (name, source, _, _) in enumerate(channels):
         index = indices[source]
+        element_bits = storage_bits(source)
         top += [f"wire [{bits-1}:0] edge_data_{edge_index}; wire edge_valid_{edge_index}, edge_ready_{edge_index}, space_{edge_index};",
-                f"stream_fifo #(.WIDTH({bits}), .DEPTH({depths[name]})) fifo_{edge_index} (",
-                f".clk(clk), .rst(rst), .in_data(data_{index}), .in_valid(valid_{index} && ready_{index}), .in_ready(space_{edge_index}),",
-                f".out_data(edge_data_{edge_index}), .out_valid(edge_valid_{edge_index}), .out_ready(edge_ready_{edge_index}));"]
+                f"wire [{lanes*element_bits-1}:0] packed_input_{edge_index}, packed_output_{edge_index};",
+                lane_cast(f"data_{index}", f"packed_input_{edge_index}", lanes, 8, element_bits),
+                lane_cast(f"packed_output_{edge_index}", f"edge_data_{edge_index}", lanes, element_bits, 8, source.tensor.signed),
+                f"stream_fifo #(.WIDTH({lanes*element_bits}), .DEPTH({depths[name]})) fifo_{edge_index} (",
+                f".clk(clk), .rst(rst), .in_data(packed_input_{edge_index}), .in_valid(valid_{index} && ready_{index}), .in_ready(space_{edge_index}),",
+                f".out_data(packed_output_{edge_index}), .out_valid(edge_valid_{edge_index}), .out_ready(edge_ready_{edge_index}));"]
     for source, connections in outgoing.items():
         top.append(f"assign ready_{indices[source]} = " + " && ".join(f"space_{edge}" for edge in connections) + ";")
     for value, index in indices.items():

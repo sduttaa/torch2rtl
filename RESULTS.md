@@ -10,7 +10,7 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Spatial contracts and catalogue CLI implemented; full-model solve remains unresolved |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 244 passing, including spatial RTL, overflow, backpressure and integer training/export |
+| Tests | 279 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
@@ -28,6 +28,13 @@ of constants and **240,583,680 MACs** per inference. It remains below the requir
 0.676843. The latest four-lane actor-only synthesis totals 22,169 LUT equivalents,
 7,614 FFs, 81 byte-multiplier slots and 60 BRAM blocks, before graph FIFOs. This
 configuration exceeds the supplied LUT and BRAM budgets and is not deployable.
+
+Explicitly retrained six-bit and four-bit hidden activations reach 0.660259 and
+0.656095 Dice. Generic range-based storage narrowing brings the four-bit actors
+to **44 BRAM blocks and 20,300 LUT equivalents before FIFOs**, with full-network
+numerical simulation passing on three images. This still fails accuracy and
+does not establish complete fabric fit or 30 FPS. The best full-range candidate
+is unchanged. [Detailed precision/storage evidence](docs/narrow-storage.md).
 
 The user authorized retraining while keeping weights and activations in fabric
 memory. The compact verified replacement reaches **0.659503 validation Dice**,

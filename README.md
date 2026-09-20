@@ -62,8 +62,11 @@ and solves the joint parameter/schedule/FIFO problem using CP-SAT.
 The separate `emit-network` command now emits integer convolution, pooling,
 nearest resampling, aligned concatenation and byte comparisons using explicit
 actor/FIFO configurations. It supports branched raster networks and preserves
-integer overflow and rounding. Its spatial event-contract translation and full
-joint optimization remain to be completed; emission is not a fit certificate.
+integer overflow and rounding. The `schedule-network` command translates these
+actors into joint schedule/FIFO constraints from explicit cost catalogues; the
+full-model solve remains unresolved. Emission is not a fit certificate.
+Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
+while preserving byte tensor semantics. Training precision is always explicit.
 FP32 actors and board transport integration also remain work to do.
 Unsupported operations fail explicitly.
 Scheduled throughput is labeled as such; it is not a physical-board measurement.

@@ -7,22 +7,24 @@ import pytest
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "training"))
-from quantize import IntegerConv, IntegerPrediction, IntegerMerge, QuantizedMerge, QuantizedTrainingConv, fold, prepare, integer_model, verify
+from quantize import Calibration, IntegerConv, IntegerPrediction, IntegerMerge, QuantizedMerge, QuantizedTrainingConv, fold, prepare, integer_model, verify
 from train import augment_batch, restore
 from threshold import select_threshold
 
 
 @pytest.mark.parametrize("dilation", [1, 2, 4])
 @pytest.mark.parametrize("relu", [False, True])
-def test_integer_conv_matches_simulation(dilation, relu):
+@pytest.mark.parametrize("bits", [4, 6, 8])
+def test_integer_conv_matches_simulation(dilation, relu, bits):
     torch.manual_seed(42)
     conv = torch.nn.Conv2d(3, 5, 3, padding=dilation, dilation=dilation)
-    qat = QuantizedTrainingConv(conv, 1 / 255, 0.01, relu, 24)
+    qat = QuantizedTrainingConv(conv, 1 / 255, 0.01, relu, 24, bits)
     inputs = torch.randint(0, 256, (2, 3, 9, 11), dtype=torch.uint8)
     simulated = qat(inputs.float() / 255)
     actual = IntegerConv(qat)(inputs)
     expected = torch.round(simulated / qat.output_scale).to(actual.dtype)
     assert torch.equal(actual, expected)
+    assert int(actual.min()) >= qat.low and int(actual.max()) <= qat.high
     simulated.mean().backward()
     assert torch.isfinite(qat.weight.grad).all()
 
@@ -87,15 +89,52 @@ def test_residual_concat_quantization_and_export():
 
 @pytest.mark.parametrize("operation", ["add", "cat"])
 @pytest.mark.parametrize("relu", [False, True])
-def test_merge_scale_alignment(operation, relu):
+@pytest.mark.parametrize("bits", [4, 6, 8])
+def test_merge_scale_alignment(operation, relu, bits):
     torch.manual_seed(19)
     inputs = [torch.randint(-128, 128, (2, 3, 7, 9), dtype=torch.int8) for _ in range(2)]
-    qat = QuantizedMerge(operation, [0.03, 0.07], 0.02, relu, 24)
+    qat = QuantizedMerge(operation, [0.03, 0.07], 0.02, relu, 24, bits=bits)
     floating = [value.float() * scale for value, scale in zip(inputs, qat.input_scales)]
     expected = qat(floating) if operation == "cat" else qat(*floating)
     integer = IntegerMerge(qat)
     actual = integer(inputs) if operation == "cat" else integer(*inputs)
     assert torch.equal(torch.round(expected / qat.output_scale).to(actual.dtype), actual)
+    assert int(actual.min()) >= qat.low and int(actual.max()) <= qat.high
+
+
+def test_declared_activation_precision_survives_export(tmp_path):
+    model = torch.nn.Sequential(torch.nn.Conv2d(1, 3, 1), torch.nn.ReLU(), torch.nn.Conv2d(3, 1, 1)).eval()
+    images = torch.randint(0, 256, (2, 1, 3, 5), dtype=torch.uint8)
+    qat = prepare(model, images, [0, 1], 1, 24, unsigned_bits=6, signed_bits=4)
+    assert (qat[0].low, qat[0].high) == (0, 63)
+    assert (qat[1].low, qat[1].high) == (-8, 7)
+    integer = integer_model(qat)
+    verify(qat, integer, images, [0, 1], 1)
+    program = torch.export.export(integer, (images[:1],), strict=True)
+    torch.export.save(program, tmp_path / "model.pt2")
+    loaded = torch.export.load(tmp_path / "model.pt2")
+    clamps = [tuple(node.args[1:]) for node in loaded.graph.nodes if node.target == torch.ops.aten.clamp.default]
+    assert clamps == [(0, 63), (-8, 7)]
+    assert torch.equal(loaded.module()(images[:1]), integer(images[:1]))
+
+
+def test_training_quantile_calibration_bounds_outliers():
+    calibration = Calibration(0.99)
+    values = torch.cat((torch.ones(999), torch.tensor([100.])))
+    calibration.observe("hidden", values)
+    calibration.observe("zero", torch.zeros(3))
+    calibration.histogram_mode = True
+    calibration.observe("hidden", values)
+    calibration.observe("zero", torch.zeros(3))
+    assert 1 <= calibration.limits()["hidden"] < 1.05
+    assert calibration.limits()["zero"] == 0
+
+
+def test_quantile_prepare_preserves_integer_reference():
+    model = torch.nn.Sequential(torch.nn.Conv2d(1, 2, 1), torch.nn.ReLU(), torch.nn.Conv2d(2, 1, 1)).eval()
+    images = torch.randint(0, 256, (2, 1, 8, 9), dtype=torch.uint8)
+    qat = prepare(model, images, [0, 1], 1, 24, unsigned_bits=4, quantile=0.99)
+    verify(qat, integer_model(qat), images, [0, 1], 1)
 
 
 def test_grouped_biasless_conv_matches_simulation():

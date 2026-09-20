@@ -41,14 +41,47 @@ def fold(model):
     return nn.Sequential(*layers)
 
 
+def activation_range(unsigned, bits):
+    if type(bits) is not int or not (1 if unsigned else 2) <= bits <= 8:
+        raise ValueError("Activation precision must fit its declared byte container")
+    return (0, (1 << bits)-1) if unsigned else (-(1 << (bits-1)), (1 << (bits-1))-1)
+
+
+class Calibration:
+    """Training-only magnitude calibration; optional bounded-memory quantiles."""
+    def __init__(self, quantile=1.0):
+        if not 0 < quantile <= 1:
+            raise ValueError("Activation calibration quantile must be in (0, 1]")
+        self.quantile, self.histogram_mode = quantile, False
+        self.maxima, self.histograms = {}, {}
+        self.bins = 2048
+
+    def observe(self, key, value):
+        magnitude = value.detach().abs().float()
+        if not self.histogram_mode:
+            self.maxima[key] = max(self.maxima.get(key, 0), float(magnitude.max()))
+        elif self.maxima[key] > 0:
+            counts = torch.histc(magnitude, bins=self.bins, min=0, max=self.maxima[key])
+            self.histograms[key] = self.histograms.get(key, 0) + counts.to(torch.int64)
+
+    def limits(self):
+        result = dict(self.maxima)
+        for key, histogram in self.histograms.items():
+            cumulative = histogram.cumsum(0)
+            index = int(torch.searchsorted(cumulative, self.quantile * int(cumulative[-1])))
+            result[key] *= (min(index, self.bins-1)+1) / self.bins
+        return result
+
+
 class QuantizedTrainingConv(nn.Module):
-    def __init__(self, conv, input_scale, output_scale, relu, shift):
+    def __init__(self, conv, input_scale, output_scale, relu, shift, bits=8):
         super().__init__()
         self.weight = nn.Parameter(conv.weight.detach().clone())
         self.bias = nn.Parameter(conv.bias.detach().clone() if conv.bias is not None else torch.zeros(conv.out_channels))
         self.stride, self.padding, self.dilation, self.groups = conv.stride, conv.padding, conv.dilation, conv.groups
         self.relu = relu
         self.shift = shift
+        self.low, self.high = activation_range(relu, bits)
         self.register_buffer("input_scale", torch.tensor(float(input_scale)))
         self.register_buffer("output_scale", torch.tensor(float(output_scale)))
 
@@ -72,7 +105,7 @@ class QuantizedTrainingConv(nn.Module):
         # checked bounds. FP64 preserves the requantization integer numerator.
         scaled = accumulator.double() * multiplier[None, :, None, None] / (1 << self.shift)
         rounded = scaled + (torch.floor(scaled + 0.5) - scaled).detach()
-        return rounded.clamp(0 if self.relu else -128, 255 if self.relu else 127).float() * self.output_scale
+        return rounded.clamp(self.low, self.high).float() * self.output_scale
 
 
 class IntegerConv(nn.Module):
@@ -91,6 +124,7 @@ class IntegerConv(nn.Module):
         self.register_buffer("multiplier", multiplier)
         self.stride, self.padding, self.dilation, self.groups = source.stride, source.padding, source.dilation, source.groups
         self.shift, self.relu = source.shift, source.relu
+        self.low, self.high = source.low, source.high
 
     def forward(self, x):
         if self.dilation == (1, 1):
@@ -111,7 +145,7 @@ class IntegerConv(nn.Module):
             accumulator = products.permute(0, 3, 1, 2) + self.bias[None, :, None, None]
         numerator = accumulator.to(torch.int64) * self.multiplier[None, :, None, None]
         rounded = (numerator + (1 << (self.shift - 1))) >> self.shift
-        return rounded.clamp(0 if self.relu else -128, 255 if self.relu else 127).to(torch.uint8 if self.relu else torch.int8)
+        return rounded.clamp(self.low, self.high).to(torch.uint8 if self.relu else torch.int8)
 
 
 class IntegerPrediction(nn.Module):
@@ -125,9 +159,10 @@ class IntegerPrediction(nn.Module):
 
 class QuantizedMerge(nn.Module):
     """Static scale alignment for residual addition or channel concatenation."""
-    def __init__(self, operation, input_scales, output_scale, relu, shift, dim=1):
+    def __init__(self, operation, input_scales, output_scale, relu, shift, dim=1, bits=8):
         super().__init__()
         self.operation, self.relu, self.shift, self.dim = operation, relu, shift, dim
+        self.low, self.high = activation_range(relu, bits)
         self.register_buffer("input_scales", torch.tensor(input_scales))
         self.register_buffer("output_scale", torch.tensor(float(output_scale)))
         self.register_buffer("multipliers", torch.round(self.input_scales / self.output_scale * (1 << shift)).to(torch.int64))
@@ -142,13 +177,14 @@ class QuantizedMerge(nn.Module):
         total = torch.cat(aligned, dim=self.dim) if self.operation == "cat" else sum(aligned)
         scaled = total / (1 << self.shift)
         rounded = scaled + (torch.floor(scaled + 0.5) - scaled).detach()
-        return rounded.clamp(0 if self.relu else -128, 255 if self.relu else 127).float() * self.output_scale
+        return rounded.clamp(self.low, self.high).float() * self.output_scale
 
 
 class IntegerMerge(nn.Module):
     def __init__(self, source):
         super().__init__()
         self.operation, self.relu, self.shift, self.dim = source.operation, source.relu, source.shift, source.dim
+        self.low, self.high = source.low, source.high
         self.register_buffer("multipliers", source.multipliers.clone())
 
     def forward(self, *arguments):
@@ -156,11 +192,11 @@ class IntegerMerge(nn.Module):
         aligned = [value.to(torch.int64) * self.multipliers[index] for index, value in enumerate(values)]
         total = torch.cat(aligned, dim=self.dim) if self.operation == "cat" else sum(aligned)
         rounded = (total + (1 << (self.shift - 1))) >> self.shift
-        return rounded.clamp(0 if self.relu else -128, 255 if self.relu else 127).to(torch.uint8 if self.relu else torch.int8)
+        return rounded.clamp(self.low, self.high).to(torch.uint8 if self.relu else torch.int8)
 
 
 @torch.no_grad()
-def prepare_graph(model, images, train_indices, batch_size, shift):
+def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0):
     model = copy.deepcopy(model).eval()
     active = set(model.graph.nodes)
     for node in list(model.graph.nodes):
@@ -178,16 +214,19 @@ def prepare_graph(model, images, train_indices, batch_size, shift):
                 active.remove(users[0])
                 model.graph.erase_node(users[0])
     model.recompile()
-    maxima = {}
+    calibration = Calibration(quantile)
     class Observer(torch.fx.Interpreter):
         def run_node(self, node):
             value = super().run_node(node)
             if isinstance(value, torch.Tensor):
-                maxima[node.name] = max(maxima.get(node.name, 0), float(value.abs().max()))
+                calibration.observe(node.name, value)
             return value
     observer = Observer(model)
-    for start in range(0, len(train_indices), batch_size):
-        observer.run(images[train_indices[start:start + batch_size]].float() / 255)
+    for histogram_mode in ([False, True] if quantile < 1 else [False]):
+        calibration.histogram_mode = histogram_mode
+        for start in range(0, len(train_indices), batch_size):
+            observer.run(images[train_indices[start:start + batch_size]].float() / 255)
+    maxima = calibration.limits()
     scales, unsigned = {}, {}
     for node in list(model.graph.nodes):
         users = list(node.users)
@@ -197,8 +236,9 @@ def prepare_graph(model, images, train_indices, batch_size, shift):
             scales[node] = 1 / 255
             unsigned[node] = True
         elif node.op == "call_module" and isinstance(model.get_submodule(node.target), nn.Conv2d):
-            scale = max(maxima[(relu_user or node).name], 1e-8) / (255 if relu_user else 127)
-            conv = QuantizedTrainingConv(model.get_submodule(node.target), scales[node.args[0]], scale, bool(relu_user), shift)
+            bits = unsigned_bits if relu_user else signed_bits
+            scale = max(maxima[(relu_user or node).name], 1e-8) / activation_range(bool(relu_user), bits)[1]
+            conv = QuantizedTrainingConv(model.get_submodule(node.target), scales[node.args[0]], scale, bool(relu_user), shift, bits)
             model.set_submodule(node.target, conv)
             scales[node] = scale
             unsigned[node] = bool(relu_user)
@@ -206,10 +246,11 @@ def prepare_graph(model, images, train_indices, batch_size, shift):
             is_cat = node.target is torch.cat
             parents = node.args[0] if is_cat else node.args
             nonnegative = bool(relu_user) or (is_cat and all(unsigned[parent] for parent in parents))
-            scale = max(maxima[(relu_user or node).name], 1e-8) / (255 if nonnegative else 127)
+            bits = unsigned_bits if nonnegative else signed_bits
+            scale = max(maxima[(relu_user or node).name], 1e-8) / activation_range(nonnegative, bits)[1]
             name = "quantize_" + node.name
             model.add_submodule(name, QuantizedMerge("cat" if is_cat else "add", [scales[parent] for parent in parents],
-                                                     scale, nonnegative, shift, node.kwargs.get("dim", 1)))
+                                                     scale, nonnegative, shift, node.kwargs.get("dim", 1), bits))
             node.op, node.target, node.kwargs = "call_module", name, {}
             scales[node] = scale
             unsigned[node] = nonnegative
@@ -228,19 +269,21 @@ def prepare_graph(model, images, train_indices, batch_size, shift):
 
 
 @torch.no_grad()
-def prepare(model, images, train_indices, batch_size, shift):
+def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0):
     if isinstance(model, torch.fx.GraphModule):
-        return prepare_graph(model, images, train_indices, batch_size, shift)
+        return prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits, signed_bits, quantile)
     model = fold(model)
-    maxima, hooks = {}, []
+    calibration, hooks = Calibration(quantile), []
     for index, layer in enumerate(model):
         if isinstance(layer, nn.Conv2d):
             relu = index + 1 < len(model) and isinstance(model[index + 1], nn.ReLU)
             def observe(module, inputs, output, key=index, positive=relu):
-                magnitude = output.clamp_min(0).max() if positive else output.abs().max()
-                maxima[key] = max(maxima.get(key, 0), float(magnitude))
+                calibration.observe(key, output.clamp_min(0) if positive else output)
             hooks.append(layer.register_forward_hook(observe))
-    predict(model, images, train_indices, batch_size)
+    for histogram_mode in ([False, True] if quantile < 1 else [False]):
+        calibration.histogram_mode = histogram_mode
+        predict(model, images, train_indices, batch_size)
+    maxima = calibration.limits()
     for hook in hooks:
         hook.remove()
     layers = []
@@ -249,8 +292,9 @@ def prepare(model, images, train_indices, batch_size, shift):
     for index, layer in enumerate(source):
         if isinstance(layer, nn.Conv2d):
             relu = index + 1 < len(source) and isinstance(source[index + 1], nn.ReLU)
-            output_scale = max(maxima[index], 1e-8) / (255 if relu else 127)
-            layers.append(QuantizedTrainingConv(layer, input_scale, output_scale, relu, shift))
+            bits = unsigned_bits if relu else signed_bits
+            output_scale = max(maxima[index], 1e-8) / activation_range(relu, bits)[1]
+            layers.append(QuantizedTrainingConv(layer, input_scale, output_scale, relu, shift, bits))
             input_scale = output_scale
         elif not isinstance(layer, nn.ReLU):
             layers.append(copy.deepcopy(layer))
@@ -290,7 +334,9 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
     images, masks, train_indices, validation_indices, manifest = read_data(config)
     floating = make_model(config)
     floating.load_state_dict(checkpoint["state"])
-    model = prepare(floating, images, train_indices, config["batch_size"], shift)
+    unsigned_bits, signed_bits = config.get("unsigned_activation_bits", 8), config.get("signed_activation_bits", 8)
+    quantile = config.get("activation_calibration_quantile", 1.0)
+    model = prepare(floating, images, train_indices, config["batch_size"], shift, unsigned_bits, signed_bits, quantile)
     del floating
     cached_teacher = torch.load(config["teacher_cache"], weights_only=True)
     if cached_teacher["fingerprint"] != teacher_fingerprint(config, manifest):
@@ -348,8 +394,11 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
     metadata = {"validation": validation, "constant_bytes": constants,
                 "input": {"shape": list(images[:1].shape), "dtype": "uint8", "preprocessing": config["image_resize"]},
                 "output": {"shape": list(predicted[:1].shape), "dtype": "uint8", "values": [0, 1]},
-                "numerics": "INT8 weights, signed/unsigned 8-bit activations as declared by the graph, INT32 accumulation, INT64 fixed-point requantization",
+                "numerics": "INT8 weights, explicitly bounded activations in byte containers, INT32 accumulation, INT64 fixed-point requantization",
                 "rounding": "nearest, ties toward positive infinity", "shift": shift,
+                "activation_precision": {"unsigned_bits": unsigned_bits, "signed_bits": signed_bits,
+                                         "storage_containers": "uint8/int8; clamp bounds are explicit in the graph"},
+                "activation_calibration_quantile": quantile,
                 "qat_integer_match_samples": len(train_indices) + len(validation_indices),
                 "serialized_match_samples": len(validation_indices), "floating_tensor_nodes": 0,
                 "baseline_report": config["split_report"], "checkpoint": str(checkpoint_path),

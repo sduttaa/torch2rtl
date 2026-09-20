@@ -14,6 +14,7 @@ from torch2rtl.frontend import load
 from torch2rtl.graph import actors, read
 from torch2rtl.network import actor_rtl
 from torch2rtl.flow import synthesize
+from torch2rtl.ranges import bounds, storage_bits
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--configuration", type=Path, required=True)
@@ -41,6 +42,8 @@ def measure(value):
               "memories": config.get("memories", {}).get(value.name, {}),
               "reduction_lanes": config.get("reduction_lanes", {}).get(value.name)}
     rtl = actor_rtl(value, config["lanes"], record["output_lanes"], record["memories"], record["reduction_lanes"])
+    record.update(rtl_sha256=hashlib.sha256(rtl.encode()).hexdigest(),
+                  output_range=bounds(value), output_storage_bits=storage_bits(value))
     try:
         record["resources"] = synthesize(rtl, directory, target)
     except Exception as error:

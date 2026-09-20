@@ -13,6 +13,12 @@ the full per-word problem returned `UNKNOWN` in the bounded scale probe.
 The current measured full-model catalogue is resource-infeasible before timing
 expansion. Emitting RTL does not establish hardware fit or a routed clock.
 
+The compiler also narrows spatial storage using proved graph value ranges.
+Explicit mixed-precision experiments now pass full-graph RTL checks; one four-bit
+actor configuration uses 44 BRAM blocks before graph FIFOs, but its accuracy is
+below the required baseline. [Storage narrowing and its measurements](narrow-storage.md)
+record the exact scope and limits.
+
 ## Verified full-graph result
 
 The newest wider-stem INT8 model uses an explicitly trained requantization
@@ -143,7 +149,7 @@ Key artifacts:
 - [Earlier stem routing report](../build/convolution/stem-route/route-report.json)
 - [Proposed spatial event contracts](spatial-scheduling.md)
 
-The current test suite has **244 passing tests**, including independent reduction
+The current test suite has **279 passing tests**, including independent reduction
 widths, signed overflow, packed line storage, odd-size block pooling, frame
 boundaries, and input/output backpressure.
 

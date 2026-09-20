@@ -5,6 +5,7 @@ from pathlib import Path
 import torch
 
 from .convolution import packed
+from .ranges import lane_cast, storage_bits
 
 
 def emit(actor, lanes):
@@ -32,6 +33,14 @@ def emit(actor, lanes):
                   "CHANNEL_TABLES": packed(indices, index_bits),
                   "TABLES": packed([item for table in tables for item in table], 8)}
     assignments = ", ".join(f".{key}({value})" for key, value in parameters.items())
+    wiring = [f"wire [{len(inputs)*lanes*8-1}:0] bounded_input;"]
+    for port, value in enumerate(inputs):
+        bits = storage_bits(value)
+        wiring += [f"wire [{lanes*8-1}:0] input_{port} = in_data[{port*lanes*8} +: {lanes*8}];",
+                   f"wire [{lanes*bits-1}:0] packed_{port}; wire [{lanes*8-1}:0] bounded_{port};",
+                   lane_cast(f"input_{port}", f"packed_{port}", lanes, 8, bits),
+                   lane_cast(f"packed_{port}", f"bounded_{port}", lanes, bits, 8, value.tensor.signed),
+                   f"assign bounded_input[{port*lanes*8} +: {lanes*8}] = bounded_{port};"]
     wrapper = f"""
 module inference (
   input wire clk, input wire rst,
@@ -39,7 +48,8 @@ module inference (
   input wire [{len(inputs)-1}:0] in_valid, output wire [{len(inputs)-1}:0] in_ready,
   output wire [{lanes*8-1}:0] out_data, output wire out_valid, input wire out_ready
 );
-  integer_concatenate #({assignments}) actor (.*);
+  {chr(10).join(wiring)}
+  integer_concatenate #({assignments}) actor (.in_data(bounded_input), .*);
 endmodule
 """
     return wrapper + (Path(__file__).parent / "templates/concatenate.sv").read_text()

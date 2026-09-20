@@ -98,6 +98,16 @@ are represented by integer multipliers and a declared binary shift. Residual
 addition and concatenation explicitly align scales. There is no per-frame
 maximum, floating-point convolution, or runtime floating-point scale.
 
+Optional `unsigned_activation_bits` and `signed_activation_bits` declare smaller
+integer ranges within byte containers. They default to eight and are recorded
+in the report and exported clamp operators; this is explicit mixed precision,
+not an implicit compiler quantization. `activation_calibration_quantile` defaults
+to 1 (training-set maxima). A smaller value selects an upper histogram-bin bound
+from a second training-only pass with 2,048 magnitude bins per observed tensor.
+The compiler derives storage widths from graph semantics, never calibration
+samples. Six-bit and four-bit experiments are separate candidates and do not
+replace the best full-range INT8 model automatically.
+
 For accumulator `a`, multiplier `m` and shift `s`, requantization is:
 
 ```text

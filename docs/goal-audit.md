@@ -22,6 +22,13 @@ returned UNKNOWN within its limits. [Spatial evidence](spatial-backend.md) recor
 The target's DSP accounting now uses 96 byte-multiplier slots instead of 48
 18-bit slots; the selected FPGA and physical capacities have not changed.
 
+Further explicit six-bit and four-bit activation experiments did not improve
+accuracy. Generic, exact range propagation nevertheless reduced a four-bit
+actor configuration to 44 BRAM blocks and 20,300 LUT equivalents, before FIFOs.
+Both mixed-precision graphs pass sampled full-model RTL verification. This is
+implementation progress, not completion or a new no-progress blocker. The
+[storage report](narrow-storage.md) preserves costs, model hashes, tests and limits.
+
 ## Original-export audit
 
 The objective remains compiling the supplied INT8 export for the selected FPGA
