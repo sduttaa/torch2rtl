@@ -2,8 +2,10 @@
 
 ## Current scope after the user's deployment decision
 
-The user authorized training a smaller INT8 replacement if it matches or exceeds
-0.676843 validation Dice, with both weights and activations in FPGA fabric memory.
+The user now accepts validation Dice >= 0.65, superseding the earlier requirement
+to match the 0.676843 baseline. Both weights and activations must remain in FPGA
+fabric memory. The current 0.656095 candidate meets the revised accuracy threshold;
+30 sustained FPS is still mandatory. Accuracy experiments are no longer the priority.
 The goal remains **active and incomplete**. No new user authorization is needed
 for the ongoing work; no external/user-input blocker has been established.
 
@@ -30,7 +32,8 @@ synthesis; its first routing attempt fails placement. It remains a diagnostic,
 not an adopted physical throughput result. Useful implementation progress
 continues; the accurate 30-FPS goal remains active and incomplete.
 
-The preceding resize-only result is retained below for comparison.
+The historical results below retain the accuracy comparisons used when they were
+run. Their former baseline-matching acceptance criterion is superseded.
 
 The latest generic resize-buffer option improves throughput by **45.40%** while
 retaining fabric-only weights and activations. The complete CP-SAT model proves

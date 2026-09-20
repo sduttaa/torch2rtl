@@ -1,5 +1,9 @@
 # Hardware-constrained model training
 
+The current accepted validation threshold is Dice >= 0.65. The 0.656095
+fabric-fitting candidate meets it; 30 sustained FPS remains required. Earlier
+baseline-matching comparisons below are historical.
+
 An optional `photometric` training configuration supplies `brightness` and
 `contrast` intervals. Brightness is an additive offset on normalized pixels;
 contrast is a nonnegative gain around each image's mean. Per-image samples are

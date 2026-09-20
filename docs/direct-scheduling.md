@@ -38,8 +38,8 @@ LUT4 counts must not be confused with the no-ALU cost basis. The reported setup
 limit is 153.327 MHz, while the configured generated clock is 108 MHz. The
 verified period gives **11.2147 scheduled FPS at 108 MHz**. This is a full-graph
 counter-source/checksum-sink toolflow harness, without real image transport or a
-physical-board inference measurement. Model Dice remains **0.656095**; accuracy
-and 30 FPS remain unmet. The CP resource certificate uses the separately routed
+physical-board inference measurement. Model Dice remains **0.656095**, meeting the user's revised >= 0.65 threshold;
+30 FPS remains unmet. The CP resource certificate uses the separately routed
 no-ALU harness; the carry-mapped PLL harness passes its own native capacity checks.
 
 - [Clock, route, schedule and artifact provenance](../build/network/retimed-pool/summary.json)

@@ -12,8 +12,8 @@ The original export exceeds the tested fabric-storage budget. The user has
 authorized retraining a smaller, genuinely integer model while retaining both
 weights and activations in fabric memory. Training and verification are in
 [the training directory](training/README.md). The complete retrained graph now
-passes RTL simulation and routes with fabric-only storage, but accuracy and
-30 FPS remain unmet. The
+passes RTL simulation and routes with fabric-only storage. Its 0.6561 Dice meets
+the revised >= 0.65 threshold; 30 FPS remains unmet. The
 [workload findings](docs/workload-feasibility.md) concern the original export.
 
 - [Optimization proposal](docs/optimization-model.md)
@@ -70,8 +70,8 @@ full-model schedule passes RTL deadline checks with finite fabric-only FIFOs.
 A lower-accuracy retrained candidate completes placement, routing and bitstream
 packing with a generated 108 MHz clock using an explicitly corrected nextpnr
 database. Its verified fixed-choice period is 9,630,209 cycles (11.21 scheduled
-FPS); the requested accuracy and
-30-FPS result remain unmet. See [the measured evidence](RESULTS.md).
+FPS). Its 0.6561 Dice meets the revised accuracy threshold; the
+30-FPS result remains unmet. See [the measured evidence](RESULTS.md).
 Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
 while preserving byte tensor semantics. Training precision is always explicit.

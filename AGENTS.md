@@ -20,3 +20,5 @@
 - Keep weights and working storage in FPGA fabric memory; exclude SDRAM.
 - Keep the optimization problem independent of its initial CP-SAT backend.
 - Do not tune rules for particular models. Measure generic template behavior.
+
+- Current user acceptance threshold is validation Dice >= 0.65. Prior baseline-matching accuracy requirements are superseded. Prioritize the still-required 30 sustained FPS with fabric-only weights and activations.

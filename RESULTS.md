@@ -1,20 +1,24 @@
 # Current result
 
-**The requested accurate, fabric-memory-only 30-FPS design is not achieved.**
+**Accuracy meets the revised threshold; fabric-memory-only 30 FPS is not achieved.**
 The compiler now produces full-model RTL and CP-SAT schedules with independently
 checked constraints and RTL transfer deadlines. A four-bit-activation candidate
 now completes **full-model placement, routing and bitstream packing**, with setup
 and hold checks passing with a generated 108 MHz clock using an explicitly corrected nextpnr database.
-Its weights and activations fit fabric memory. Accuracy and 30-FPS throughput
-remain unmet; the toolflow harness has not been run as inference on a physical board.
+Its weights and activations fit fabric memory. Its 0.656095 validation Dice
+meets the user's revised >= 0.65 threshold. Thirty-FPS throughput remains unmet; the toolflow harness has not been run as inference on a physical board.
 
 ## Accuracy and deployment scope
+
+The user now accepts **validation Dice >= 0.65**, superseding the earlier
+baseline-matching requirement. Training experiments below retain their original
+comparisons; the current priority is 30 sustained FPS.
 
 | Model | Validation Dice | Constants | Status |
 | --- | ---: | ---: | --- |
 | Supplied integer export | 0.676843 | 291,240 bytes | Baseline; contains FP32 computation and exceeds the tested fabric-storage budget |
-| Best retrained full-range INT8 | 0.667590 | 27,576 bytes | Integer export verified; accuracy target unmet |
-| Retrained INT8 weights / four-bit hidden activations | 0.656095 | 27,576 bytes | Routes with fabric-only storage; accuracy and 30 FPS unmet |
+| Best retrained full-range INT8 | 0.667590 | 27,576 bytes | Integer export verified; meets revised accuracy threshold |
+| Retrained INT8 weights / four-bit hidden activations | 0.656095 | 27,576 bytes | Routes with fabric-only storage; accuracy accepted, 30 FPS unmet |
 
 The retained full-range model matches QAT on all 246 supplied images and its
 serialized export on all 49 validation images. It has no floating-point tensor

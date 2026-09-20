@@ -1,5 +1,9 @@
 # Fabric-only retraining results
 
+**Updated acceptance:** the user now accepts validation Dice >= 0.65. The
+0.656095 fabric-fitting candidate qualifies. Historical experiments below retain
+their comparisons with the earlier 0.676843 target; further work prioritizes 30 FPS.
+
 The most accurate verified integer replacement now reaches **0.667590 Dice** versus
 **0.676843** for the supplied export. It has **27,576 bytes** of constants and
 **240,583,680 MACs per inference**. None of the candidates has met the requested
