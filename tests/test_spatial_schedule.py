@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 import torch
+from dataclasses import replace
 
 from rtl_check import pack, simulate
 from test_network import TinyBranched
@@ -123,6 +124,23 @@ def test_joint_actor_parameter_choice(tmp_path):
     assert slow.selected["actor:convolution"] == "serial"
     assert fast.selected["actor:convolution"] == "parallel"
     assert fast.period < slow.period
+
+
+def test_summed_cycle_bounds_preserve_the_unrestricted_optimum():
+    graph = branched(5)
+    options = {value.name: {"selected": ActorConfig(2 if value.tensor.shape[1] > 1 else 1, 2)
+               if value.operation == "quantized_convolution" else ActorConfig()}
+               for value in graph.values if value is not graph.input}
+    fifos = {name: {"selected": FifoConfig(128)} for name, *_ in edges(graph)}
+    model = problem(graph, 2, options, fifos, {}, 20000, 50000)
+    bounds = [edge for edge in model.dependencies if edge.before == edge.after]
+    assert bounds and all(edge.frames == 1 and edge.delay > 0 for edge in bounds)
+    original = replace(model, dependencies=tuple(edge for edge in model.dependencies if edge.before != edge.after))
+    strengthened = solve(model, Limits(seconds=20))
+    baseline = solve(original, Limits(seconds=20))
+    assert strengthened.status == baseline.status == "OPTIMAL"
+    assert strengthened.period == baseline.period
+    assert strengthened.period >= max(edge.delay for edge in bounds)
 
 
 @pytest.mark.parametrize("layout", ["parallel", "packed"])

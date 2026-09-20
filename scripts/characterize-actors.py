@@ -7,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -21,6 +22,7 @@ parser.add_argument("--configuration", type=Path, required=True)
 parser.add_argument("--target", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--workers", type=int, default=1)
+parser.add_argument("--options", type=Path, help="Explicit actor-to-option mapping to measure instead of one configuration")
 args = parser.parse_args()
 if args.workers < 1:
     parser.error("--workers must be positive")
@@ -35,12 +37,14 @@ graph = actors(read(module))
 args.output.mkdir(parents=True, exist_ok=True)
 
 
-def measure(value):
+def measure(job):
+    value, label, spec = job
     directory = args.output / value.name
+    if label is not None:
+        directory /= label
     record = {"name": value.name, "operation": value.operation, "output_shape": value.tensor.shape,
-              "lanes": config["lanes"], "output_lanes": config["output_lanes"].get(value.name),
-              "memories": config.get("memories", {}).get(value.name, {}),
-              "reduction_lanes": config.get("reduction_lanes", {}).get(value.name)}
+              "lanes": config["lanes"], "option": label, "output_lanes": spec.get("output_lanes"),
+              "memories": spec.get("memories", {}), "reduction_lanes": spec.get("reduction_lanes")}
     rtl = actor_rtl(value, config["lanes"], record["output_lanes"], record["memories"], record["reduction_lanes"])
     record.update(rtl_sha256=hashlib.sha256(rtl.encode()).hexdigest(),
                   output_range=bounds(value), output_storage_bits=storage_bits(value))
@@ -53,14 +57,29 @@ def measure(value):
     return record
 
 
+values = {value.name: value for value in graph.values if value is not graph.input}
+if args.options:
+    options = json.loads(args.options.read_text())
+    if not options or not options.keys() <= values.keys():
+        raise ValueError("Options must refer to existing actors")
+    if any(not variants or any(not re.fullmatch(r"[A-Za-z0-9_-]+", label) for label in variants)
+           for variants in options.values()):
+        raise ValueError("Use nonempty options with simple alphanumeric option names")
+    jobs = [(values[name], label, spec) for name, variants in options.items() for label, spec in variants.items()]
+else:
+    jobs = [(value, None, {"output_lanes": config["output_lanes"].get(name),
+              "reduction_lanes": config.get("reduction_lanes", {}).get(name),
+              "memories": config.get("memories", {}).get(name, {})}) for name, value in values.items()]
 with ThreadPoolExecutor(max_workers=args.workers) as executor:
-    records = list(executor.map(measure, (value for value in graph.values if value is not graph.input)))
+    records = list(executor.map(measure, jobs))
 totals = Counter()
 for record in records:
     totals.update(record.get("resources", {}))
-report = {"model_sha256": model_hash, "actors": records, "totals_without_graph_fifos": dict(totals),
+report = {"model_sha256": model_hash, "options" if args.options else "actors": records,
           "all_succeeded": all("error" not in record for record in records),
           "whole_design_routed": False}
+if not args.options:
+    report["totals_without_graph_fifos"] = dict(totals)
 (args.output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
 if not report["all_succeeded"]:
     raise SystemExit("Some actor measurements failed; inspect report.json and synthesis logs")

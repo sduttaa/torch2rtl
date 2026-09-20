@@ -19,6 +19,12 @@ actor configuration uses 44 BRAM blocks before graph FIFOs, but its accuracy is
 below the required baseline. [Storage narrowing and its measurements](narrow-storage.md)
 record the exact scope and limits.
 
+A [191-option synthesis survey](option-survey.md) now demonstrates the cost of
+different reduction/output parallelism choices. For the same four-bit graph,
+selected actor parameters improve the sampled RTL interval to approximately
+3.98 million cycles, still with oversized verification FIFOs and no routed
+full-model clock.
+
 ## Verified full-graph result
 
 The newest wider-stem INT8 model uses an explicitly trained requantization
@@ -149,7 +155,7 @@ Key artifacts:
 - [Earlier stem routing report](../build/convolution/stem-route/route-report.json)
 - [Proposed spatial event contracts](spatial-scheduling.md)
 
-The current test suite has **279 passing tests**, including independent reduction
+The current test suite has **285 passing tests**, including independent reduction
 widths, signed overflow, packed line storage, odd-size block pooling, frame
 boundaries, and input/output backpressure.
 

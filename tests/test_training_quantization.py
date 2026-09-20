@@ -7,7 +7,7 @@ import pytest
 import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "training"))
-from quantize import Calibration, IntegerConv, IntegerPrediction, IntegerMerge, QuantizedMerge, QuantizedTrainingConv, fold, prepare, integer_model, verify
+from quantize import Calibration, IntegerConv, IntegerPrediction, IntegerMerge, QuantizedMerge, QuantizedTrainingConv, fold, prepare, integer_model, integer_threshold, resume_qat, verify
 from train import augment_batch, restore
 from threshold import select_threshold
 
@@ -135,6 +135,45 @@ def test_quantile_prepare_preserves_integer_reference():
     images = torch.randint(0, 256, (2, 1, 8, 9), dtype=torch.uint8)
     qat = prepare(model, images, [0, 1], 1, 24, unsigned_bits=4, quantile=0.99)
     verify(qat, integer_model(qat), images, [0, 1], 1)
+
+
+def test_qat_continuation_preserves_scales_and_rejects_semantic_changes():
+    images = torch.randint(0, 256, (2, 1, 3, 5), dtype=torch.uint8)
+    config = {"layers": [{"channels": 2}], "seed": 9}
+    source = prepare(torch.nn.Sequential(torch.nn.Conv2d(1, 2, 1)), images, [0, 1], 1, 16)
+    target = prepare(torch.nn.Sequential(torch.nn.Conv2d(1, 2, 1)), images, [0, 1], 1, 16)
+    checkpoint = {"config": config, "shift": 16, "state": source.state_dict()}
+    resume_qat(target, checkpoint, {**config, "seed": 12, "unsigned_activation_bits": 8}, 16)
+    assert all(torch.equal(value, target.state_dict()[name]) for name, value in source.state_dict().items())
+    assert torch.equal(integer_model(source)(images), integer_model(target)(images))
+    for changed, shift in (({**config, "signed_activation_bits": 4}, 16),
+                           ({**config, "layers": [{"channels": 3}]}, 16), (config, 24)):
+        with pytest.raises(ValueError, match="same graph, data and quantization contract"):
+            resume_qat(target, checkpoint, changed, shift)
+
+
+@pytest.mark.parametrize("relu", [False, True])
+def test_prediction_threshold_preserves_every_representable_score(relu):
+    layer = QuantizedTrainingConv(torch.nn.Conv2d(1, 1, 1), 1/255, 0.017, relu, 16, bits=6)
+    model = torch.nn.Sequential(layer)
+    codes = torch.arange(layer.low, layer.high+1)
+    scores = codes.float()*layer.output_scale
+    thresholds = [float(torch.nextafter(scores[0], scores.new_tensor(float('-inf')))),
+                  *scores.tolist(), float(scores[-1]+1)]
+    for threshold in thresholds:
+        assert torch.equal(scores > threshold, codes > integer_threshold(model, threshold))
+
+
+@pytest.mark.parametrize("dtype", [torch.int8, torch.uint8])
+def test_extreme_prediction_thresholds_do_not_wrap_byte_scalars(dtype):
+    limits = torch.iinfo(dtype)
+    values = torch.arange(limits.min, limits.max+1).to(dtype)
+    for threshold in (limits.min-1, limits.max+1):
+        model = IntegerPrediction(torch.nn.Identity(), threshold)
+        expected = (values.to(torch.int64) > threshold).to(torch.uint8)
+        assert torch.equal(model(values), expected)
+        exported = torch.export.export(model, (values,), strict=True)
+        assert torch.equal(exported.module()(values), expected)
 
 
 def test_grouped_biasless_conv_matches_simulation():

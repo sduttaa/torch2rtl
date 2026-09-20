@@ -51,6 +51,13 @@ class Events:
         for before, after in zip(events, events[1:]):
             self.link(before, after, delay)
         self.link(events[-1], events[0], delay, 1)
+        self.period_bound(events[0], len(events)*delay)
+
+    def period_bound(self, event, cycles):
+        # Summing a complete one-frame dependency cycle cancels event offsets.
+        # State the implied bound directly so presolve need not traverse every
+        # word before learning it. This does not restrict the schedule family.
+        self.link(event, event, cycles, 1)
 
 
 def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilation, releases, layout):
@@ -83,6 +90,7 @@ def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilati
                     completed.append(len(issues)-1)
     if real_word != len(inputs) or len(completed) != len(releases):
         raise ValueError("Window geometry disagrees with actor streams")
+    total_delay = 0
     for index, event in enumerate(issues):
         following = (index+1) % len(issues)
         if packed:
@@ -90,6 +98,8 @@ def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilati
         else:
             delay = 2 if width*channel_words == 1 and not columns[index] and not columns[following] else 1
         events.link(event, issues[following], delay, int(following == 0))
+        total_delay += delay
+    events.period_bound(issues[0], total_delay)
     for index, (release, release_delay) in zip(completed, releases):
         following = (index+1) % len(issues)
         events.link(release, issues[following], release_delay, int(following == 0))
@@ -107,6 +117,7 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
     tile_cycles = dot + requant + 5
     starts = events.series(prefix+".start", pixels)
     posts = events.series(prefix+".post", pixels)
+    events.period_bound(starts[0], pixels*(blocks*tile_cycles+1))
     # Only the first tile can wait for the previous output pixel. Subsequent
     # tile commits have fixed offsets from it, and window release is fixed
     # relative to the last tile's start. Eliminate those events exactly.
@@ -133,6 +144,7 @@ def pool(events, prefix, value, inputs, outputs, lanes):
     _, channels, height, width = data.tensor.shape
     channel_words = ceil(channels / lanes)
     commits = events.series(prefix+".commit", len(outputs))
+    events.period_bound(commits[0], len(outputs))
     for index, (commit, output) in enumerate(zip(commits, outputs)):
         events.link(commit, output, 1)
         events.link(outputs[index-1], commit, frames=int(index == 0))
@@ -151,6 +163,7 @@ def pool(events, prefix, value, inputs, outputs, lanes):
     else:
         pixels = len(outputs) // channel_words
         starts = events.series(prefix+".start", pixels)
+        events.period_bound(starts[0], pixels*(channel_words*prod(kernel)+1))
         releases = commits[channel_words-1::channel_words]
         ready = window(events, prefix, inputs, data.tensor.shape, lanes, kernel, stride, padding, dilation,
                        [(event, 0) for event in releases], "parallel")
@@ -175,6 +188,7 @@ def resize(events, prefix, value, inputs, outputs, lanes):
     if len(rows) != output_height:
         raise ValueError("Resampling map disagrees with its output shape")
     reads = events.series(prefix+".read", len(outputs))
+    events.period_bound(reads[0], len(outputs))
     events.order(inputs)
     for index, (read, output) in enumerate(zip(reads, outputs)):
         events.link(read, output, 1)
@@ -189,6 +203,7 @@ def resize(events, prefix, value, inputs, outputs, lanes):
 def concatenate(events, value, inputs, outputs, lanes):
     counts = [ceil(source.tensor.shape[1] / lanes) for source in references(value.args)]
     output_words = ceil(value.tensor.shape[1] / lanes)
+    events.period_bound(outputs[0], prod(value.tensor.shape[2:])*(sum(counts)+output_words))
     for pixel in range(prod(value.tensor.shape[2:])):
         transfers = [event for stream, count in zip(inputs, counts) for event in stream[pixel*count:(pixel+1)*count]]
         for before, after in zip(transfers, transfers[1:]):
@@ -235,6 +250,7 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
             elif value.operation == "quantized_concat":
                 concatenate(events, value, inputs, outputs, lanes)
             elif value.operation == "byte_lookup":
+                events.period_bound(outputs[0], len(outputs))
                 for index, (before, after) in enumerate(zip(inputs[0], outputs)):
                     events.link(before, after, 1)
                     events.link(outputs[index-1], before, frames=int(index == 0))

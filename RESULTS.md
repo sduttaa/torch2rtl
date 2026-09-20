@@ -10,7 +10,7 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Spatial contracts and catalogue CLI implemented; full-model solve remains unresolved |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 279 passing, including spatial RTL, overflow, backpressure and integer training/export |
+| Tests | 285 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
@@ -35,6 +35,14 @@ to **44 BRAM blocks and 20,300 LUT equivalents before FIFOs**, with full-network
 numerical simulation passing on three images. This still fails accuracy and
 does not establish complete fabric fit or 30 FPS. The best full-range candidate
 is unchanged. [Detailed precision/storage evidence](docs/narrow-storage.md).
+
+A survey of 191 convolution configurations improved the same four-bit graph's
+observed RTL frame interval from 4.66 million to 3.98 million cycles with
+oversized verification FIFOs, approximately 17% higher observed throughput.
+Area screens expose smaller configurations as well. These relaxations do not
+solve the full scheduling, fabric-fit or clock problem. Continued training and
+training-only decision calibration did not beat the best accuracy checkpoint.
+[Option survey and evidence](docs/option-survey.md).
 
 The user authorized retraining while keeping weights and activations in fabric
 memory. The compact verified replacement reaches **0.659503 validation Dice**,

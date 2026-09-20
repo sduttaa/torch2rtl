@@ -39,6 +39,24 @@ python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
   --output build/training/reproduced --epochs 40 --learning-rate 0.00003 --shift 16
 ```
 
+`quantize.py --resume PATH_TO_QAT` continues saved QAT weights and calibrated
+scales with a fresh AdamW optimizer and learning-rate schedule. The original
+floating checkpoint is still supplied through `--checkpoint` to construct the
+model. Graph, data and quantization contracts must match; explicit training
+choices such as loss, crop, seed and batch size may change. Reports record the
+continued checkpoint's hash. This does not restore an interrupted optimizer or
+claim an identical training trajectory.
+
+Optional `calibrate_prediction_threshold` chooses a strict decision threshold
+from training predictions at each checkpoint evaluation. Validation labels are
+not used to select that threshold. The export converts it to an exact integer
+comparison by enumerating the final quantizer's representable byte values,
+including floating multiplication rounding. Checkpoint selection still uses
+the existing validation split. Calibration currently requires a final quantized
+convolution or merge, and its float/integer thresholds are recorded explicitly.
+All-positive and all-negative thresholds use representable comparison constants
+so a scalar outside the byte range cannot wrap during deployment.
+
 The checkpoint contains its architecture and preprocessing configuration. Other
 training experiments use explicit JSON descriptions, for example:
 

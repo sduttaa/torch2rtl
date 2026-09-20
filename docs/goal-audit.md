@@ -29,6 +29,14 @@ Both mixed-precision graphs pass sampled full-model RTL verification. This is
 implementation progress, not completion or a new no-progress blocker. The
 [storage report](narrow-storage.md) preserves costs, model hashes, tests and limits.
 
+The subsequent [option survey](option-survey.md) measured 191 convolution
+configurations and improved the same mixed-precision graph's sampled RTL frame
+interval by selecting different reduction/output widths. More QAT training did
+not improve the best validation score. Exact cycle-sum bounds strengthen the
+existing CP-SAT formulation, but full-model diagnostic searches still return
+`UNKNOWN`. This turn produced measured progress; the complete goal remains
+active and unproven.
+
 ## Original-export audit
 
 The objective remains compiling the supplied INT8 export for the selected FPGA

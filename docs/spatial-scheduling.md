@@ -3,7 +3,7 @@
 These equations are implemented in `torch2rtl/spatial_schedule.py` using the
 agreed periodic event model. `schedule-network` accepts finite actor and FIFO
 catalogues, performs a necessary resource check, then solves their joint timing
-and occupancy problem with CP-SAT. Twenty spatial scheduling tests check
+and occupancy problem with CP-SAT. Twenty-two spatial scheduling tests check
 repeated-frame RTL transfers against solver deadlines, including parameter
 selection, odd geometries, backpressure at joins and a deadlocking small FIFO
 allocation. This evidence does not establish a feasible full-model schedule.
@@ -12,6 +12,15 @@ An event time is the clock edge at which a transfer or internal state update
 occurs. Frame `n` repeats at `n*T + t[event]`. Actor and FIFO choices remain finite
 external catalogues with measured resource costs. Every constraint below is a
 difference constraint, conditionally enabled by the selected actor option.
+
+The emitter also states implied period bounds by summing complete one-frame
+dependency cycles. Ordered `n`-word transfers imply `T >= n`; the convolution
+start/post cycle implies `T >= pixels * (B*E+1)`. Similar sums cover the actual
+window issue gaps, general-pool scan cycles, resize reads, joins and lookup
+registers. These constraints cancel intermediate offsets algebraically and
+leave every per-word schedule available. They strengthen propagation without
+adopting the proposed pixel-group restriction. Tests compare the optimum with
+and without these redundant constraints and continue to check RTL deadlines.
 
 ## Window storage
 
@@ -149,6 +158,20 @@ monitor subsequently terminated the process when RSS crossed its 6-GiB
 ceiling. It found no schedule and proved no infeasibility. See
 [`scale-probe/result.json`](../build/scheduling/scale-probe/result.json) and
 [`monitor.json`](../build/scheduling/scale-probe/monitor.json).
+
+With the implied cycle bounds, a later 300-second-limit run still returned
+`UNKNOWN` under the default CP-SAT settings. It completed normally with an
+observed RSS peak of about 4.56 GB. Disabling presolve, probing and LP
+linearization in a diagnostic script reached search and reported the explicit
+4,588,416-cycle lower bound, but still found no feasible schedule. Its log records
+612,237,527 integer propagations and zero branches; observed RSS peaked at about
+6.06 GB. Both runs retained oversized FIFOs and omitted resource budgets.
+These measurements isolate a solver-scale problem; they do not prove physical
+infeasibility. The alternate settings have not replaced backend defaults.
+
+- [Default-settings cycle-bound probe](../build/scheduling/cycle-bound-probe/result.json)
+- [Direct-search probe](../build/scheduling/direct-search-probe/result.json)
+- [Direct-search solver log](../build/scheduling/direct-search-probe/solve.log)
 
 Pixel-grouped scheduling would restrict this schedule family and could lose
 solutions. The user has been asked whether that tradeoff is acceptable; it has

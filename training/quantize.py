@@ -21,6 +21,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from train import read_data, make_model, metrics, predict, loss_function, training_batch, teacher_fingerprint
+from threshold import select_threshold
 
 
 def round_ste(value):
@@ -149,12 +150,22 @@ class IntegerConv(nn.Module):
 
 
 class IntegerPrediction(nn.Module):
-    def __init__(self, layers):
+    def __init__(self, layers, threshold=0):
         super().__init__()
         self.layers = layers if isinstance(layers, nn.Module) else nn.Sequential(*layers)
+        self.threshold = threshold
 
     def forward(self, image):
-        return (self.layers(image) > 0).to(torch.uint8)
+        values = self.layers(image)
+        limits = torch.iinfo(values.dtype)
+        # ATen converts scalar comparisons to the tensor dtype. Express the
+        # all-positive/negative cases with representable constants to avoid
+        # wrapping a threshold just outside a byte's range.
+        if self.threshold < limits.min:
+            return (values >= limits.min).to(torch.uint8)
+        if self.threshold > limits.max:
+            return (values < limits.min).to(torch.uint8)
+        return (values > self.threshold).to(torch.uint8)
 
 
 class QuantizedMerge(nn.Module):
@@ -301,23 +312,38 @@ def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, si
     return nn.Sequential(*layers)
 
 
-def integer_model(model):
+def integer_model(model, threshold=0):
     result = copy.deepcopy(model)
     for name, layer in list(result.named_modules()):
         if isinstance(layer, QuantizedTrainingConv):
             result.set_submodule(name, IntegerConv(layer))
         elif isinstance(layer, QuantizedMerge):
             result.set_submodule(name, IntegerMerge(layer))
-    return IntegerPrediction(result).eval()
+    return IntegerPrediction(result, threshold).eval()
+
+
+def integer_threshold(model, threshold):
+    if isinstance(model, torch.fx.GraphModule):
+        output = next(node for node in model.graph.nodes if node.op == "output").args[0]
+        final = model.get_submodule(output.target) if output.op == "call_module" else None
+    else:
+        final = list(model.children())[-1]
+    if not isinstance(final, (QuantizedTrainingConv, QuantizedMerge)):
+        raise ValueError("Threshold calibration requires a final quantized convolution or merge")
+    # Enumerating the byte domain also handles FP32 multiplication rounding and
+    # the threshold below the smallest score; division/floor need not be exact.
+    codes = torch.arange(final.low, final.high+1)
+    rejected = codes[codes.float()*final.output_scale <= threshold]
+    return int(rejected[-1]) if len(rejected) else final.low-1
 
 
 @torch.no_grad()
-def verify(model, integer, images, indices, batch_size):
+def verify(model, integer, images, indices, batch_size, threshold=0):
     predictions = []
     model.eval()
     for start in range(0, len(indices), batch_size):
         batch = images[indices[start:start + batch_size]]
-        floating = model(batch.float() / 255) > 0
+        floating = model(batch.float() / 255) > threshold
         exact = integer(batch)
         if not torch.equal(floating, exact.bool()):
             raise AssertionError(f"QAT/integer output mismatch in batch starting {start}")
@@ -325,7 +351,24 @@ def verify(model, integer, images, indices, batch_size):
     return torch.cat(predictions)
 
 
-def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None):
+def resume_qat(model, checkpoint, config, shift):
+    # Continue weights and calibrated scales, with a fresh optimizer. Training
+    # choices may change; graph, data and quantization contracts must not.
+    training_keys = {"seed", "threads", "batch_size", "epochs", "learning_rate", "weight_decay",
+                     "loss", "crop", "augment", "augmentation_axes", "augmentation_after_crop", "device",
+                     "calibrate_prediction_threshold"}
+    def contract(source):
+        result = {key: value for key, value in source.items() if key not in training_keys}
+        for key, value in (("unsigned_activation_bits", 8), ("signed_activation_bits", 8),
+                           ("activation_calibration_quantile", 1.0)):
+            result.setdefault(key, value)
+        return result
+    if checkpoint["shift"] != shift or contract(checkpoint["config"]) != contract(config):
+        raise ValueError("QAT continuation requires the same graph, data and quantization contract")
+    model.load_state_dict(checkpoint["state"])
+
+
+def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None, resume_path=None):
     checkpoint = torch.load(checkpoint_path, weights_only=True)
     config = json.loads(config_path.read_text()) if config_path else checkpoint["config"]
     torch.set_num_threads(config["threads"])
@@ -338,6 +381,8 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
     quantile = config.get("activation_calibration_quantile", 1.0)
     model = prepare(floating, images, train_indices, config["batch_size"], shift, unsigned_bits, signed_bits, quantile)
     del floating
+    if resume_path:
+        resume_qat(model, torch.load(resume_path, weights_only=True), config, shift)
     cached_teacher = torch.load(config["teacher_cache"], weights_only=True)
     if cached_teacher["fingerprint"] != teacher_fingerprint(config, manifest):
         raise ValueError("Teacher cache does not match dataset and teacher")
@@ -346,7 +391,7 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
     (output / "config.json").write_text(json.dumps(config, indent=2) + "\n")
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=config["weight_decay"])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max(epochs, 1), eta_min=learning_rate / 20)
-    best_dice, best_state, history = -1, None, []
+    best_dice, best_state, best_threshold, history = -1, None, 0, []
     for epoch in range(epochs + 1):
         started = time.monotonic()
         loss_total = 0.0
@@ -365,20 +410,24 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
                 optimizer.step()
                 loss_total += float(loss.detach()) * len(indices)
             scheduler.step()
-        validation = metrics(predict(model, images, validation_indices, config["batch_size"]) > 0, masks[validation_indices])
+        threshold = (select_threshold(predict(model, images, train_indices, config["batch_size"]), masks[train_indices])
+                     if config.get("calibrate_prediction_threshold", False) else 0)
+        validation = metrics(predict(model, images, validation_indices, config["batch_size"]) > threshold, masks[validation_indices])
         record = {"epoch": epoch, "loss": loss_total / len(train_indices), "validation": validation,
-                  "seconds": time.monotonic() - started}
+                  "threshold": threshold, "seconds": time.monotonic() - started}
         print(json.dumps(record), flush=True)
         history.append(record)
         if validation["dice"] > best_dice:
-            best_dice, best_state = validation["dice"], copy.deepcopy(model.state_dict())
-            torch.save({"state": best_state, "config": config, "shift": shift, "validation": validation}, output / "qat.pt")
+            best_dice, best_state, best_threshold = validation["dice"], copy.deepcopy(model.state_dict()), threshold
+            torch.save({"state": best_state, "config": config, "shift": shift, "validation": validation,
+                        "threshold": threshold}, output / "qat.pt")
         (output / "history.json").write_text(json.dumps(history, indent=2) + "\n")
     model.load_state_dict(best_state)
-    integer = integer_model(model)
-    predicted = verify(model, integer, images, validation_indices, config["batch_size"])
+    deployed_threshold = integer_threshold(model, best_threshold) if config.get("calibrate_prediction_threshold", False) else 0
+    integer = integer_model(model, deployed_threshold)
+    predicted = verify(model, integer, images, validation_indices, config["batch_size"], best_threshold)
     validation = metrics(predicted, masks[validation_indices])
-    verify(model, integer, images, train_indices, config["batch_size"])
+    verify(model, integer, images, train_indices, config["batch_size"], best_threshold)
     program = torch.export.export(integer, (images[:1],), strict=True)
     program._example_inputs = None
     torch.export.save(program, output / "model.pt2")
@@ -399,6 +448,8 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
                 "activation_precision": {"unsigned_bits": unsigned_bits, "signed_bits": signed_bits,
                                          "storage_containers": "uint8/int8; clamp bounds are explicit in the graph"},
                 "activation_calibration_quantile": quantile,
+                "prediction_threshold": {"floating": best_threshold, "integer": deployed_threshold,
+                    "selection": "training only" if config.get("calibrate_prediction_threshold", False) else "fixed zero"},
                 "qat_integer_match_samples": len(train_indices) + len(validation_indices),
                 "serialized_match_samples": len(validation_indices), "floating_tensor_nodes": 0,
                 "baseline_report": config["split_report"], "checkpoint": str(checkpoint_path),
@@ -406,6 +457,10 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
                 "model_sha256": hashlib.sha256((output / "model.pt2").read_bytes()).hexdigest(),
                 "teacher_cache_fingerprint": cached_teacher["fingerprint"],
                 "test_caveat": "Existing validation split used for checkpoint selection; no independent test set supplied."}
+    if resume_path:
+        metadata["continued_qat"] = {"path": str(resume_path),
+            "sha256": hashlib.sha256(resume_path.read_bytes()).hexdigest(),
+            "optimizer": "fresh AdamW; weights and calibrated scales restored"}
     (output / "report.json").write_text(json.dumps(metadata, indent=2) + "\n")
     print(json.dumps(metadata), flush=True)
 
@@ -415,8 +470,9 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--config", type=Path, help="Optional explicit QAT configuration; architecture must match checkpoint")
+    parser.add_argument("--resume", type=Path, help="Continue QAT weights/scales with a fresh optimizer; contracts must match")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--learning-rate", type=float, default=0.0001)
     parser.add_argument("--shift", type=int, default=24)
     args = parser.parse_args()
-    run(args.checkpoint, args.output, args.epochs, args.learning_rate, args.shift, args.config)
+    run(args.checkpoint, args.output, args.epochs, args.learning_rate, args.shift, args.config, args.resume)

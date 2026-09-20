@@ -12,6 +12,13 @@ full-graph RTL checks pass. Proven storage narrowing brings one four-bit actor
 configuration to 44 BRAM blocks and 20,300 LUT equivalents before graph FIFOs;
 complete fit and timing remain unproven. See [the precision/storage results](narrow-storage.md).
 
+Further QAT continuation (120 epochs) and class-balanced teacher supervision
+(80 epochs) retained the starting checkpoint as their best result at the fixed
+zero threshold. Combining teacher supervision with a decision threshold chosen
+on training images reached only 0.661053 Dice. The best checkpoint remains
+unchanged. The [option/training investigation](option-survey.md) includes the
+train/validation gap, exact integer verification and reproducible artifacts.
+
 The newest candidate retains the wider input stage and uses an explicitly trained
 fixed-point right shift of 16 for requantization, reducing multiplier magnitudes.
 It preserves input/output resolution, preprocessing and the original split.
