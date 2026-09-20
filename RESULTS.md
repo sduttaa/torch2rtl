@@ -53,6 +53,15 @@ resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
 
+Mapping accumulators of at least eight bits to carry chains improves the
+independent vendor result to **99.228 MHz**, still below the **150.99255 MHz**
+needed by the unchanged 5,033,085-cycle schedule. All **452 current tests pass**.
+Registered-DSP timing data has been extracted and checked for the exact supplied
+configuration, and a further BRAM B-output naming error has been patched.
+The reroute with these additional checks reports **97.3994 MHz**, still failing.
+The timing coverage audit and complete routed-clock requirement remain open.
+[Scope, controls and evidence](docs/timing-coverage.md#registered-dsp-timing-experiment-and-bram-output-correction).
+
 A separate window prefetch counter further raises the reported routed limit to
 **97.09 MHz** while preserving the 5,033,085-cycle schedule and all three
 bit-exact deadline frames. It still fails the required clock, and DSP timing

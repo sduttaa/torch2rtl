@@ -34,6 +34,26 @@ The independent vendor route of the preceding FIFO configuration reports
 critical path that nextpnr omitted. Completing primitive timing coverage and
 shortening arithmetic/control paths remain useful, authorized next steps.
 
+Using an explicit minimum carry width of eight improves the independent vendor
+route to 99.228 MHz, with 2,817 setup violations at 156 MHz. The unchanged
+5,033,085-cycle schedule still needs 150.99255 MHz. The DSP register-packing
+proof covers all 86 multipliers and 1,298 register bits. Vendor SDF provides
+66 identical arcs per registered DSP, checked through an exact-configuration
+guard and a feedback control. The initial DSP-only nextpnr reroute reports
+103.3485 MHz, but a subsequent audit finds missing BRAM B-output arcs caused
+by `DO` versus `DOB` naming. A separate patch fixes this for all four dual-port
+variants and passes checks on all eight speed grades. Complete timing closure
+is still unproven; independent vendor routing is not certification of nextpnr
+routing. All 452 current production tests pass. Two additional RTL experiments
+were rejected after increasing area without improving vendor timing, so they
+do not change the production actor contracts. The goal remains active, with
+useful timing and implementation work available and no external blocker.
+With the BRAM output correction and scoped registered-DSP data, the latest
+nextpnr reroute reports 97.3994 MHz and fails the required clock. Its critical
+path is output-block selection to a window-offset register. The independent
+vendor placement of the same input netlist reports 99.228 MHz. The remaining
+gap requires shorter combinational paths or a faster feasible actor schedule.
+
 ## Current scope after the user's deployment decision
 
 The user now accepts validation Dice >= 0.65, superseding the earlier requirement

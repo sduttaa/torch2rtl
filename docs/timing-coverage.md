@@ -113,3 +113,52 @@ independent vendor routing, not timing certification of the nextpnr result;
 mapped/post-route functional equivalence and physical-board execution have not
 been established by this run. Full nextpnr DSP timing coverage remains open.
 [Report, scope and hashes](../build/verification/vendor-timing/network-synthesis/summary.json).
+
+## Registered DSP timing experiment and BRAM output correction
+
+The explicit minimum carry width of eight maps the 15-bit accumulator that
+previously used LUT arithmetic. The unchanged production RTL, with that mapping
+and the existing DSP output-register packing, reaches **99.228 MHz** in the
+independent vendor route, versus 84.198 MHz for the earlier configuration.
+It still has 2,817 setup violations at 156 MHz and no hold violations.
+The 5,033,085-cycle schedule needs 150.99255 MHz for 30 FPS.
+
+All 86 registered multipliers have identical vendor SDF tables: 18 clock-output
+arcs and 24 setup/hold pairs. An experimental database imports these data for
+the supplied part/speed and exact primitive configuration only. A netlist guard
+checks parameters, constant control inputs, bus widths and unused cascade
+outputs. Negative controls reject a bypassed output register and a different
+part. Explicit input data maps SDF names such as `A[0]` to packed names such as
+`A0`; all 66 arcs, edge polarities and delay bounds are checked against the
+generated table and packed netlist.
+
+A DSP feedback circuit has no reported internal path with the previous database;
+with the added arcs, nextpnr reports the register-to-multiplier path. This proves
+the checks are active, not the physical speed of the small circuit. Formal
+comparison also verifies all 1,298 absorbed register bits across 86 multipliers
+for the carry-width-eight network.
+[Experiment, controls and hashes](../build/verification/vendor-timing/registered-dsp-summary.json),
+[packing proof](../build/verification/multiplier-registers/carry-min-8-prefetch/report.json).
+
+The DSP-only reroute reports 103.3485 MHz. A subsequent audit found a further
+coverage bug: dual-port BRAM B outputs are named `DOB0`, `DOB1`, etc. by the
+packer, but their timing table used `DO0`, `DO1`, etc. The candidate has 26 such
+memories with used B outputs. Therefore the 103.3485 MHz result is also partial.
+The [BRAM output patch](../patches/nextpnr-gowin-bram-output-timing.patch) preserves
+the existing B-port delay values and attaches them to the actual output names.
+All four dual-port variants pass checks across all eight speed grades.
+[Regression](../build/verification/timing-coverage/bram-output-regression.json),
+[reusable checker](../scripts/check-gowin-timing.py).
+
+The reroute with both scoped DSP arcs and corrected BRAM B outputs reports
+**97.3994 MHz**, failing the required 156-MHz clock. Its longest reported path
+runs from an actor's output-block counter to its window-offset register.
+The independent vendor route of the same input netlist reports 99.228 MHz.
+These are separate placements, and neither meets the 150.99255-MHz requirement.
+[Latest report, scope and hashes](../build/network/registered-ready-prefetch/carry-min-8/registered-multipliers/dsp-bram-timing/summary.json).
+
+The scoped DSP data does not apply to other register configurations or speeds,
+and does not replace Apicula interconnect timing. Complete timing closure and
+physical-board inference remain unverified. Two additional address/control RTL
+experiments were numerically correct but increased area and failed to improve
+vendor timing; neither is retained in production.
