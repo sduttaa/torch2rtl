@@ -66,6 +66,32 @@ def test_rejects_group_boundaries_inside_vectors():
         configuration(actor, 2, 1)
 
 
+@pytest.mark.parametrize("reduction_lanes", [2, 4])
+@pytest.mark.parametrize("coefficients", [[256, 65536, 0, 1 << 24],
+                                          [256, -65536, 0, -(1 << 24)], [0, 0, 0, 0]])
+def test_sparse_requantization_bytes_across_output_tiles(tmp_path, coefficients, reduction_lanes):
+    source = Value("input", "input", (), Tensor((1, 4, 1, 19), 8, True))
+    weights = np.resize(np.array([1, -2, 3, -1], dtype=np.int32), (4, 4, 1, 1))
+    bias = np.array([3, -5, 7, -11], dtype=np.int32)
+    multiplier = np.array(coefficients, dtype=np.int64)
+    actor = Value("convolution", "quantized_convolution",
+                  (source, weights, bias, (1, 1), (0, 0), (1, 1), 1, multiplier, 32768, 16, -128, 127),
+                  Tensor((1, 4, 1, 19), 8, True))
+    params = configuration(actor, 4, 2, reduction_lanes)
+    mask = int(params["REQUANT_MASK"].split("'h")[1], 16)
+    assert mask == (0 if not any(coefficients) else 0xe if reduction_lanes == 2 else 0xc2)
+    inputs, expected = [], []
+    generator = np.random.default_rng(417)
+    for _ in range(4):
+        image = torch.from_numpy(generator.integers(-128, 128, (1, 4, 1, 19), dtype=np.int8))
+        accum = integer_convolution(image.to(torch.int32), torch.from_numpy(weights), torch.from_numpy(bias),
+                                   (1, 1), (0, 0), (1, 1), 1)
+        result = ((accum.to(torch.int64)*torch.from_numpy(multiplier)[None, :, None, None]+32768) >> 16).clamp(-128, 127)
+        inputs.extend(word for pixel in image.permute(0, 2, 3, 1).reshape(-1, 4) for word in pack(pixel, 8, 4))
+        expected.extend(word for pixel in result.permute(0, 2, 3, 1).reshape(-1, 4) for word in pack(pixel, 8, 4))
+    simulate(tmp_path, emit(actor, 4, 2, reduction_lanes=reduction_lanes), 32, 32, inputs, expected, True)
+
+
 @pytest.mark.parametrize("line_layout", ["parallel", "packed"])
 def test_half_vector_reduction_with_incomplete_last_vector(tmp_path, line_layout):
     test_folded_convolution(tmp_path, (3, 5, 6), 5, (3, 3), (1, 1), (1, 1),

@@ -38,6 +38,7 @@ module integer_convolution #(
   parameter [BLOCKS*OUTPUT_LANES*32-1:0] BIASES = 0,
   parameter [BLOCKS*OUTPUT_LANES*COEFFICIENT_BITS-1:0] MULTIPLIERS = 0,
   parameter [OUTPUT_LANES*REDUCTION_LANES-1:0] PRODUCT_MASK = {OUTPUT_LANES*REDUCTION_LANES{1'b1}},
+  parameter [OUTPUT_LANES*REDUCTION_LANES-1:0] REQUANT_MASK = {OUTPUT_LANES*REDUCTION_LANES{1'b1}},
   localparam integer BLOCK_BITS = BLOCKS <= 1 ? 1 : $clog2(BLOCKS),
   localparam integer STEP_BITS = DOT_STEPS <= 1 ? 1 : $clog2(DOT_STEPS),
   localparam integer ROM_ADDRESS_BITS = ROM_DEPTH <= 1 ? 1 : $clog2(ROM_DEPTH),
@@ -165,9 +166,9 @@ module integer_convolution #(
       localparam integer INDEX = output_lane*REDUCTION_LANES + reduction_lane;
       wire [7:0] coefficient_byte =
         coefficient[(32'(multiplier_group)*REDUCTION_LANES+reduction_lane)*8 +: 8];
-      wire signed [8:0] data_operand = operand_rq ? byte_operand[output_lane] :
+      wire signed [8:0] data_operand = REQUANT_MASK[INDEX] && operand_rq ? byte_operand[output_lane] :
         $signed({INPUT_SIGNED != 0 && input_word[reduction_lane*8+7], input_word[reduction_lane*8 +: 8]});
-      wire signed [8:0] weight_operand = operand_rq ? coefficient_operand[INDEX] :
+      wire signed [8:0] weight_operand = REQUANT_MASK[INDEX] && operand_rq ? coefficient_operand[INDEX] :
         $signed({weight_word[INDEX*8+7], weight_word[INDEX*8 +: 8]});
       always @(posedge clk)
         if (state == RQ) coefficient_operand[INDEX] <=
@@ -189,8 +190,9 @@ module integer_convolution #(
       group_value = 0;
       for (lane = 0; lane < REDUCTION_LANES; lane = lane + 1) begin
         dot = dot + ACCUMULATOR_BITS'($signed(product[output_lane*REDUCTION_LANES+lane]));
-        group_value = group_value +
-          (INNER_BITS'($signed(product[output_lane*REDUCTION_LANES+lane])) << (8*lane));
+        if (REQUANT_MASK[output_lane*REDUCTION_LANES+lane])
+          group_value = group_value +
+            (INNER_BITS'($signed(product[output_lane*REDUCTION_LANES+lane])) << (8*lane));
       end
     end
     assign dot_sum[output_lane] = dot;

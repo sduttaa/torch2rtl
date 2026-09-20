@@ -48,6 +48,37 @@ capacity. Restricted short-adder carry mapping is being evaluated separately;
 these are not yet routed 30-FPS results.
 
 
+## Coefficient-aware multiplier sharing
+
+The convolution emitter separately proves which multiplier lanes are needed by
+any requantization coefficient across output tiles and byte groups. Lanes with
+only zero coefficient bytes keep their convolution operand path directly; they
+need neither the requantizer input mux nor a term in its byte-weighted sum.
+Convolution products, signed coefficients, modular arithmetic, actor timing and
+all numerical boundaries are preserved. The mask is derived entirely from
+explicit constants, independent of model or board names.
+
+For the 4,935,229-cycle diagnostic configuration, whole-core synthesis drops
+from **18,152 to 16,953 LUT equivalents** and **6,909 to 6,784 registers**, with
+46 BRAMs and 87 multiplier slots unchanged. Three images remain bit-exact at the
+same period. The complete production regression suite passes **448 tests**,
+including six new stalled multi-frame cases with zero, sparse positive and
+negative coefficient bytes across output tiles and multiple byte groups.
+Production emission is byte-identical to the tested candidate.
+
+This logic saving is verified, but the candidate is not yet a 30-FPS physical
+result. A diagnostic minimum carry-chain width of 16 reduces its packed count
+to 18,256 LUT sites, including reservation cells; placement still fails. The
+custom mapper is an external experiment, not an installed toolchain change or
+compiler default. Two bounded annealing-placement controls on earlier designs
+terminate with a nextpnr segmentation fault. They provide no fit/timing evidence.
+Further allocation and timing work continues from the verified 21.56-FPS result.
+
+- [Numerical simulation](../build/network/coefficient-sharing/simulation/report.json)
+- [Whole-core resource measurement](../build/network/coefficient-sharing/resources.json)
+- [Full regression log](../build/tests-coefficient-sharing.log)
+- [Mapping/placement diagnostic](../build/network/coefficient-sharing/carry-min-16/physical/status.json)
+
 ## Retimed pooling and generated inference clock
 
 The generic convolution actor now registers a completed dot product before the

@@ -57,6 +57,12 @@ and physical-board inference remain unverified. A 150 MHz attempt fails timing;
 it is not counted as a throughput result.
 [Current scheduling, timing and artifact evidence](docs/direct-scheduling.md#compact-pooling-fifos-at-135-mhz).
 
+A subsequent generic constant-based optimization removes unused requantizer
+paths, saving **1,199 LUT equivalents and 125 registers** in a faster allocation
+without changing its numerical outputs or cycle count. All **448 tests** pass.
+That faster allocation still fails physical placement, so 21.56 FPS remains the
+verified result. [Implementation evidence](docs/direct-scheduling.md#coefficient-aware-multiplier-sharing).
+
 The preceding 108 MHz result is retained below for comparison.
 
 Retiming the fused pooling comparison and eliminating unreachable non-pooling

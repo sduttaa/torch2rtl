@@ -86,10 +86,13 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
     padded_multiplier_bits = ceil(multiplier_bytes / reduction_lanes) * reduction_lanes * 8
     encoded_multipliers = [value & ((1 << (multiplier_bytes*8))-1) for value in multipliers]
     active_products = np.any(np.array(weights).reshape(-1, outputs, reduction_lanes) != 0, axis=0)
+    # A dot-product lane needs a requantizer mux only if some coefficient uses it.
+    requant_products = np.zeros_like(active_products)
     for index, coefficient in enumerate(encoded_multipliers):
         for byte in range(multiplier_bytes):
             if (coefficient >> (byte*8)) & 255:
-                active_products[index % outputs, byte % reduction_lanes] = True
+                requant_products[index % outputs, byte % reduction_lanes] = True
+    active_products |= requant_products
     # Bound the final mathematical result before narrowing. If INT32 may wrap,
     # use its full range; if INT64 may wrap, retain all 64 bits. Intermediate
     # Horner additions may use modular arithmetic at the selected result width.
@@ -116,7 +119,8 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
                   "SHIFT": shift, "OFFSET": packed([offset], 64), "LOW": packed([low], 64), "HIGH": packed([high], 64),
                   "WEIGHTS": packed(weights, 8), "BIASES": packed(biases, 32),
                   "MULTIPLIERS": packed(encoded_multipliers, padded_multiplier_bits),
-                  "PRODUCT_MASK": packed(active_products.flatten().tolist(), 1)}
+                  "PRODUCT_MASK": packed(active_products.flatten().tolist(), 1),
+                  "REQUANT_MASK": packed(requant_products.flatten().tolist(), 1)}
     return parameters
 
 
