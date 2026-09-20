@@ -1,0 +1,126 @@
+{
+  "dataset": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/.training_data/scratches",
+  "split_report": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/scratches_quantization_report.json",
+  "mask_suffix": "_seg",
+  "mask_channel": "B",
+  "missing_mask_is_background": true,
+  "image_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      505,
+      256
+    ]
+  ],
+  "mask_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      252,
+      128
+    ]
+  ],
+  "image_channels": [
+    0,
+    1,
+    2
+  ],
+  "seed": 20260920,
+  "threads": 2,
+  "batch_size": 8,
+  "epochs": 300,
+  "learning_rate": 0.002,
+  "weight_decay": 1e-05,
+  "max_macs": 330000000,
+  "max_weight_bytes": 32768,
+  "loss": {
+    "positive_weight": 40,
+    "bce": 0.45,
+    "dice": 0.35,
+    "distillation": 0.2,
+    "distillation_loss": "mse"
+  },
+  "teacher_cache": "/Users/Obi-wan/Documents/torch2rtl/build/training/teacher-rgb.pt",
+  "teacher": {
+    "script": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/tools/train_quantized_scratches.py",
+    "factory": "ScratchesNet",
+    "loader": "load_onnx_weights",
+    "weights": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/model.onnx"
+  },
+  "layers": [
+    {
+      "op": "conv",
+      "channels": 16,
+      "kernel": 3,
+      "stride": 2,
+      "padding": [
+        1,
+        0
+      ],
+      "batch_norm": true,
+      "relu": true
+    },
+    {
+      "op": "conv",
+      "channels": 16,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "batch_norm": true,
+      "relu": true
+    },
+    {
+      "op": "conv",
+      "channels": 16,
+      "kernel": 3,
+      "padding": 2,
+      "dilation": 2,
+      "batch_norm": true,
+      "relu": true
+    },
+    {
+      "op": "conv",
+      "channels": 16,
+      "kernel": 3,
+      "padding": 3,
+      "dilation": 3,
+      "batch_norm": true,
+      "relu": true
+    },
+    {
+      "op": "conv",
+      "channels": 16,
+      "kernel": 3,
+      "padding": 2,
+      "dilation": 2,
+      "batch_norm": true,
+      "relu": true
+    },
+    {
+      "op": "conv",
+      "channels": 1,
+      "kernel": 3,
+      "padding": 1
+    }
+  ],
+  "device": "mps",
+  "crop": {
+    "size": [
+      128,
+      256
+    ],
+    "output_stride": [
+      2,
+      2
+    ],
+    "alignment": [
+      2,
+      2
+    ],
+    "positive_probability": 0.5
+  }
+}

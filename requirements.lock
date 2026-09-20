@@ -14,9 +14,11 @@ nanobind==2.15.0
 networkx==3.6.1
 ninja==1.13.2
 numpy==2.1.2
+onnx==1.23.0
 ortools==9.15.6755
 packaging==26.3
 pandas==3.0.6
+pillow==12.3.0
 pluggy==1.6.0
 protobuf==6.33.6
 pybind11==3.1.0

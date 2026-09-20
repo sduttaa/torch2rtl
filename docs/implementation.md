@@ -3,7 +3,9 @@
 The current implementation is a bounded, working foundation for the agreed
 architecture. It does not yet implement the full model or the requested FP32 and
 convolution coverage. The [workload analysis](workload-feasibility.md) explains
-why reaching 30 FPS for the supplied model also needs a deployment decision.
+why the original export exceeds the tested storage budget. The user has since
+authorized retraining a smaller integer replacement, with all working storage
+still in fabric memory; see the [training notes](../training/README.md).
 
 ## Pipeline
 
@@ -74,7 +76,8 @@ period from 14 cycles (one lane) to five cycles. RTL simulation independently
 confirms those periods. Synthesis reports 397 LUT-equivalents and 135 FFs for the
 selected core under the supplied primitive accounting. These are kernel results,
 not full-model inference performance or evidence of superiority over other
-compilers. All 37 current tests pass. Verilator lint passes with only filename
+compilers. The 37 compiler tests pass; additional training tests check integer
+export arithmetic. Verilator lint passes with only filename
 and deliberately unused signal-bit checks disabled; width conversions are explicit.
 
 The generated kernel in its routing harness meets the supplied 27-MHz target;

@@ -1,0 +1,221 @@
+{
+  "dataset": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/.training_data/scratches",
+  "split_report": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/scratches_quantization_report.json",
+  "mask_suffix": "_seg",
+  "mask_channel": "B",
+  "missing_mask_is_background": true,
+  "image_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      505,
+      256
+    ]
+  ],
+  "mask_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      252,
+      128
+    ]
+  ],
+  "image_channels": [
+    0,
+    1,
+    2
+  ],
+  "seed": 20260920,
+  "threads": 2,
+  "batch_size": 8,
+  "epochs": 350,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-05,
+  "max_macs": 300000000,
+  "max_weight_bytes": 32768,
+  "loss": {
+    "positive_weight": 40,
+    "bce": 0.45,
+    "dice": 0.35,
+    "distillation": 0.2,
+    "distillation_loss": "mse"
+  },
+  "teacher_cache": "/Users/Obi-wan/Documents/torch2rtl/build/training/teacher-rgb.pt",
+  "teacher": {
+    "script": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/tools/train_quantized_scratches.py",
+    "factory": "ScratchesNet",
+    "loader": "load_onnx_weights",
+    "weights": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/model.onnx"
+  },
+  "device": "mps",
+  "graph": [
+    {
+      "name": "stem",
+      "op": "conv",
+      "inputs": [
+        "image"
+      ],
+      "channels": 8,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "features",
+      "op": "max_pool",
+      "inputs": [
+        "stem"
+      ],
+      "kernel": 2,
+      "stride": 2
+    },
+    {
+      "name": "detail",
+      "op": "conv",
+      "inputs": [
+        "features"
+      ],
+      "channels": 4,
+      "kernel": 1,
+      "padding": 0,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "downsample",
+      "op": "max_pool",
+      "inputs": [
+        "features"
+      ],
+      "kernel": 2,
+      "stride": 2
+    },
+    {
+      "name": "encoder",
+      "op": "conv",
+      "inputs": [
+        "downsample"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "local",
+      "op": "conv",
+      "inputs": [
+        "encoder"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "near",
+      "op": "conv",
+      "inputs": [
+        "local"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 2,
+      "dilation": 2,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "wide",
+      "op": "conv",
+      "inputs": [
+        "near"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 4,
+      "dilation": 4,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "combine",
+      "op": "conv",
+      "inputs": [
+        "wide"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 2,
+      "dilation": 2,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "upsample",
+      "op": "upsample",
+      "inputs": [
+        "combine"
+      ],
+      "scale": 2.0
+    },
+    {
+      "name": "join",
+      "op": "cat",
+      "inputs": [
+        "upsample",
+        "detail"
+      ]
+    },
+    {
+      "name": "decoder",
+      "op": "conv",
+      "inputs": [
+        "join"
+      ],
+      "channels": 8,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "refine",
+      "op": "conv",
+      "inputs": [
+        "decoder"
+      ],
+      "channels": 8,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "output",
+      "op": "conv",
+      "inputs": [
+        "refine"
+      ],
+      "channels": 1,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": false
+    }
+  ],
+  "graph_output": "output"
+}

@@ -1,0 +1,68 @@
+{
+  "dataset": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/.training_data/scratches",
+  "split_report": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/scratches_quantization_report.json",
+  "mask_suffix": "_seg",
+  "mask_channel": "B",
+  "missing_mask_is_background": true,
+  "image_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      505,
+      256
+    ]
+  ],
+  "mask_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      252,
+      128
+    ]
+  ],
+  "image_channels": [
+    0
+  ],
+  "seed": 20260920,
+  "threads": 2,
+  "batch_size": 8,
+  "epochs": 200,
+  "learning_rate": 0.0005,
+  "weight_decay": 1e-05,
+  "max_macs": 400000000,
+  "max_weight_bytes": 65000,
+  "loss": {
+    "positive_weight": 40,
+    "bce": 0.45,
+    "dice": 0.35,
+    "distillation": 0.2,
+    "distillation_loss": "mse"
+  },
+  "teacher_cache": "/Users/Obi-wan/Documents/torch2rtl/build/training/teacher.pt",
+  "teacher": {
+    "script": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/tools/train_quantized_scratches.py",
+    "factory": "ScratchesNet",
+    "loader": "load_onnx_weights",
+    "weights": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/model.onnx"
+  },
+  "prune_channels": {},
+  "device": "mps",
+  "input_rank": 4,
+  "input_rank_by_channels": {
+    "16": 8
+  },
+  "input_statistics": "/Users/Obi-wan/Documents/torch2rtl/build/training/projected/input-statistics.pt",
+  "feature_distillation": {
+    "teacher": {
+      "script": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/tools/train_quantized_scratches.py",
+      "factory": "ScratchesNet",
+      "loader": "load_onnx_weights",
+      "weights": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/model.onnx"
+    },
+    "weight": 0.5
+  }
+}

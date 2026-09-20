@@ -63,7 +63,7 @@ def analyze(program, target=None, requested_fps=None):
     not a lower bound over arbitrary recomputation or lossless coding algorithms.
     """
     signatures = {spec.arg.name: spec for spec in program.graph_signature.input_specs}
-    constants, inputs, reductions, convolutions = [], [], [], []
+    constants, inputs, reductions, convolutions, matrix_products = [], [], [], [], []
     stored = {}
     replay_memo = {}
     ops = Counter()
@@ -90,6 +90,13 @@ def analyze(program, target=None, requested_fps=None):
                 "weight": tensor_info(weight), "output": tensor_info(value),
                 "direct_macs": value.numel() * prod(weight.shape[1:]),
             })
+        if op in ("aten.matmul.default", "aten.mm.default", "aten.bmm.default", "aten.linear.default"):
+            data, weight = [arg.meta["val"] for arg in node.args[:2]]
+            matrix_products.append({
+                "name": node.name, "input": tensor_info(data),
+                "weight": tensor_info(weight), "output": tensor_info(value),
+                "direct_macs": value.numel() * data.shape[-1],
+            })
         if op.startswith(("aten.amax.", "aten.amin.", "aten.sum.", "aten.mean.")):
             source = node.args[0]
             data = source.meta.get("val")
@@ -111,6 +118,7 @@ def analyze(program, target=None, requested_fps=None):
     constant_bytes = sum(item["bytes"] for item in constants)
     largest_replay = max((item["direct_replay_bytes"] for item in reductions), default=0)
     macs = sum(item["direct_macs"] for item in convolutions)
+    matrix_macs = sum(item["direct_macs"] for item in matrix_products)
     findings = []
     floating_convs = [c for c in convolutions if c["input"]["dtype"].startswith("float")]
     if floating_convs:
@@ -144,7 +152,7 @@ def analyze(program, target=None, requested_fps=None):
                 })
     return {
         "inputs": inputs, "constants": constants, "operators": dict(sorted(ops.items())),
-        "convolutions": convolutions, "reductions": reductions,
+        "convolutions": convolutions, "matrix_products": matrix_products, "reductions": reductions,
         "constant_storage_candidates": constant_storage(stored, target),
         "summary": {
             "constant_bytes": constant_bytes,
@@ -155,6 +163,9 @@ def analyze(program, target=None, requested_fps=None):
             "direct_convolution_macs_per_inference": macs,
             "requested_fps": requested_fps,
             "direct_convolution_macs_per_second": macs * requested_fps if requested_fps else None,
+            "direct_matrix_macs_per_inference": matrix_macs,
+            "direct_macs_per_inference": macs + matrix_macs,
+            "direct_macs_per_second": (macs + matrix_macs) * requested_fps if requested_fps else None,
             "fabric_memory_bytes": memory_bytes,
             "measured_fps": None,
         },

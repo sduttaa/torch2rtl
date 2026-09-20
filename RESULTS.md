@@ -10,10 +10,22 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Implemented behind a plain-data interface |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 37 passing |
+| Tests | 59 passing, including exact integer training/export checks |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
+
+The user authorized retraining while keeping weights and activations in fabric
+memory. The compact verified replacement reaches **0.659503 validation Dice**,
+below the supplied model's **0.676843**. Its constants total **26,988 bytes** and
+its direct workload is **212,686,848 MACs per inference**: 10.8× smaller constants
+and 12.0× fewer MACs than the original export. These are size/workload reductions,
+not a measured speedup. The serialized model uses integer tensors throughout,
+matches its QAT simulation on all 246 images, and imports through torch-mlir.
+See [training results](docs/training-results.md) and the
+[integer model report](build/training/cropped-integer/report.json).
+A wider integer candidate reaches **0.660307 Dice** with 37,644 bytes of constants
+and 240,556,032 MACs per inference. Both remain below the accuracy requirement.
 
 The integration kernel improves from a 14-cycle frame period with one lane to
 five cycles with four lanes, selected by CP-SAT. Simulation confirms the periods.
@@ -35,9 +47,9 @@ index-only views reduces the largest candidate replay payload to 4,128,768 bytes
 still much larger than fabric RAM. These results apply to the documented candidate
 representations, not every conceivable compression or recomputation architecture.
 
-The goal is blocked on the model/board/deployment tradeoff queued for discussion;
-see the [full-goal audit](docs/goal-audit.md). In the meantime,
-the existing model is unchanged, and no board/model special cases were added to
+The earlier deployment-decision blocker was removed by the user's retraining
+approval. The goal remains active and incomplete; see the
+[full-goal audit](docs/goal-audit.md). The existing model is unchanged, and no board/model special cases were added to
 compiler code. Target resources, clocks, parts, pins, candidate lane counts and
 FIFO depths are explicit inputs.
 

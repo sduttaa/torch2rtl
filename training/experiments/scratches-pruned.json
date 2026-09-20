@@ -1,0 +1,56 @@
+{
+  "dataset": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/.training_data/scratches",
+  "split_report": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/scratches_quantization_report.json",
+  "mask_suffix": "_seg",
+  "mask_channel": "B",
+  "missing_mask_is_background": true,
+  "image_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      505,
+      256
+    ]
+  ],
+  "mask_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      252,
+      128
+    ]
+  ],
+  "image_channels": [
+    0
+  ],
+  "seed": 20260920,
+  "threads": 4,
+  "batch_size": 8,
+  "epochs": 100,
+  "learning_rate": 0.001,
+  "weight_decay": 1e-05,
+  "max_macs": 200000000,
+  "max_weight_bytes": 32768,
+  "loss": {
+    "positive_weight": 30,
+    "bce": 0.4,
+    "dice": 0.4,
+    "distillation": 0.2
+  },
+  "teacher_cache": "/Users/Obi-wan/Documents/torch2rtl/build/training/teacher.pt",
+  "teacher": {
+    "script": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/tools/train_quantized_scratches.py",
+    "factory": "ScratchesNet",
+    "loader": "load_onnx_weights",
+    "weights": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/model.onnx"
+  },
+  "prune_channels": {
+    "16": 4,
+    "32": 8,
+    "64": 16
+  }
+}

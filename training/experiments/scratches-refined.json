@@ -1,0 +1,286 @@
+{
+  "dataset": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/.training_data/scratches",
+  "split_report": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/scratches_quantization_report.json",
+  "mask_suffix": "_seg",
+  "mask_channel": "B",
+  "missing_mask_is_background": true,
+  "image_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      505,
+      256
+    ]
+  ],
+  "mask_resize": [
+    [
+      1264,
+      640
+    ],
+    [
+      252,
+      128
+    ]
+  ],
+  "image_channels": [
+    0,
+    1,
+    2
+  ],
+  "seed": 20260920,
+  "threads": 2,
+  "batch_size": 8,
+  "epochs": 160,
+  "learning_rate": 0.0002,
+  "weight_decay": 1e-05,
+  "max_macs": 300000000,
+  "max_weight_bytes": 32768,
+  "loss": {
+    "positive_weight": 25,
+    "bce": 0.4,
+    "dice": 0.4,
+    "distillation": 0.2,
+    "distillation_loss": "logit",
+    "temperature": 2.0
+  },
+  "teacher_cache": "/Users/Obi-wan/Documents/torch2rtl/build/training/teacher-integer-source.pt",
+  "teacher": {
+    "export": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/scratches_int8.pt2",
+    "output_node": "conv2d_19",
+    "input_channels": 3
+  },
+  "device": "mps",
+  "graph": [
+    {
+      "name": "stem",
+      "op": "conv",
+      "inputs": [
+        "image"
+      ],
+      "channels": 8,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "half",
+      "op": "max_pool",
+      "inputs": [
+        "stem"
+      ],
+      "kernel": 2,
+      "stride": 2
+    },
+    {
+      "name": "shallow",
+      "op": "conv",
+      "inputs": [
+        "half"
+      ],
+      "channels": 12,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "detail",
+      "op": "conv",
+      "inputs": [
+        "shallow"
+      ],
+      "channels": 2,
+      "kernel": 1,
+      "padding": 0,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "quarter",
+      "op": "max_pool",
+      "inputs": [
+        "shallow"
+      ],
+      "kernel": 2,
+      "stride": 2
+    },
+    {
+      "name": "middle",
+      "op": "conv",
+      "inputs": [
+        "quarter"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "skip",
+      "op": "conv",
+      "inputs": [
+        "middle"
+      ],
+      "channels": 4,
+      "kernel": 1,
+      "padding": 0,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "eighth",
+      "op": "max_pool",
+      "inputs": [
+        "middle"
+      ],
+      "kernel": 2,
+      "stride": 2
+    },
+    {
+      "name": "deep",
+      "op": "conv",
+      "inputs": [
+        "eighth"
+      ],
+      "channels": 24,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "context",
+      "op": "conv",
+      "inputs": [
+        "deep"
+      ],
+      "channels": 24,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "wide",
+      "op": "conv",
+      "inputs": [
+        "context"
+      ],
+      "channels": 24,
+      "kernel": 3,
+      "padding": 2,
+      "dilation": 2,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "upsample_middle",
+      "op": "upsample",
+      "inputs": [
+        "wide"
+      ],
+      "scale": 2.0
+    },
+    {
+      "name": "join_middle",
+      "op": "cat",
+      "inputs": [
+        "upsample_middle",
+        "skip"
+      ]
+    },
+    {
+      "name": "decode_middle",
+      "op": "conv",
+      "inputs": [
+        "join_middle"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "refine_middle",
+      "op": "conv",
+      "inputs": [
+        "decode_middle"
+      ],
+      "channels": 16,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "upsample_shallow",
+      "op": "upsample",
+      "inputs": [
+        "refine_middle"
+      ],
+      "scale": 2.0
+    },
+    {
+      "name": "join_shallow",
+      "op": "cat",
+      "inputs": [
+        "upsample_shallow",
+        "detail"
+      ]
+    },
+    {
+      "name": "decode_shallow",
+      "op": "conv",
+      "inputs": [
+        "join_shallow"
+      ],
+      "channels": 8,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": true,
+      "batch_norm": true
+    },
+    {
+      "name": "refine_shallow",
+      "op": "conv",
+      "inputs": [
+        "decode_shallow"
+      ],
+      "channels": 8,
+      "kernel": 3,
+      "padding": 1,
+      "relu": true,
+      "identity_init": true
+    },
+    {
+      "name": "output",
+      "op": "conv",
+      "inputs": [
+        "refine_shallow"
+      ],
+      "channels": 1,
+      "kernel": 3,
+      "padding": 1,
+      "dilation": 1,
+      "relu": false,
+      "batch_norm": false
+    }
+  ],
+  "graph_output": "output",
+  "allow_new_modules": true
+}

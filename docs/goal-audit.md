@@ -1,5 +1,17 @@
 # Full-goal audit
 
+## Current scope after the user's deployment decision
+
+The user has authorized training a smaller INT8 replacement on the supplied
+dataset, provided it matches or exceeds the existing model's accuracy. Both
+weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
+This removes the earlier decision blocker. The goal is active and incomplete.
+Training runs, exact integer verification and their limits are documented in
+[the training notes](../training/README.md). The historical audit below applies
+to the original export, not a theorem about retrained models.
+
+## Original-export audit
+
 The objective remains compiling the supplied INT8 export for the selected FPGA
 at 30 sustained inferences per second using generic implementations and fabric
 memory only. This audit does not substitute the small integration kernel for
@@ -37,8 +49,9 @@ and compile audit. The preceding investigation made progress by testing addition
 generic candidates. The current audit confirms the conflict remains; no process
 or external job is still running to resolve it.
 
-The goal is blocked pending the deployment decision already requested from the
+At the time of this audit, the goal was blocked pending the deployment decision requested from the
 user. The actionable choices are to authorize an evaluated model/quantization
 change, change the hardware/memory constraint, or explicitly choose further
 architecture research under unchanged constraints without a promised 30-FPS
-result. No such change has been assumed. The goal is not complete.
+result. The user subsequently authorized model retraining as recorded above.
+The goal is not complete.

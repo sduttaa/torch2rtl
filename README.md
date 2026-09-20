@@ -8,8 +8,11 @@ Lattice support follows through the same actor and optimization interfaces.
 
 **Status: native toolchain installed; a tested integer actor compiler prototype
 works. The requested Scratches model has not been compiled to a 30-FPS design.**
-Its floating-point/dynamic-quantization semantics and memory requirements need
-a deployment decision; see the [workload findings](docs/workload-feasibility.md).
+The original export exceeds the tested fabric-storage budget. The user has
+authorized retraining a smaller, genuinely integer model while retaining both
+weights and activations in fabric memory. Training and verification are in
+[the training directory](training/README.md); full-model RTL and 30 FPS remain
+unproven. The [workload findings](docs/workload-feasibility.md) concern the original export.
 
 - [Optimization proposal](docs/optimization-model.md)
 - [Current results](RESULTS.md)
