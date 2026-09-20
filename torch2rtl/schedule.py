@@ -121,3 +121,53 @@ def validate(problem):
                                    any(type(delay) is not int or delay < 1 for delay in fifo.forward_delays.values())):
             raise ValueError("Each FIFO option needs a positive forward latency")
         guard(fifo.when)
+
+
+def validate_solution(problem, solution):
+    """Check a complete schedule against the original solver-independent model."""
+    if type(solution.period) is not int or not 1 <= solution.period <= problem.period_limit:
+        raise ValueError("Solver returned an invalid period")
+    if (len(solution.offsets) != len(problem.events) or any(name not in solution.offsets for name in problem.events)
+            or solution.offsets[problem.anchor] != 0):
+        raise ValueError("Solver returned missing events or a displaced anchor")
+    if any(type(offset) is not int or not 0 <= offset <= problem.offset_limit for offset in solution.offsets.values()):
+        raise ValueError("Solver returned an offset outside the search bounds")
+    if set(solution.selected) != set(problem.choices):
+        raise ValueError("Solver returned missing choices")
+    usage = dict(problem.fixed_resources)
+    for name, options in problem.choices.items():
+        selected = [option for option in options if option.name == solution.selected[name]]
+        if len(selected) != 1:
+            raise ValueError("Solver returned an unknown choice")
+        for resource, count in selected[0].resources.items():
+            usage[resource] = usage.get(resource, 0)+count
+    if any(usage.get(resource, 0) > budget for resource, budget in problem.budgets.items()):
+        raise ValueError("Solver returned a resource overrun")
+    if solution.resources != {resource: usage.get(resource, 0) for resource in problem.budgets}:
+        raise ValueError("Solver resource totals disagree with selected choices")
+
+    def active(when):
+        return all(solution.selected[group] == option for group, option in when)
+
+    def check(before, after, delay=0, frames=0):
+        if solution.offsets[after]+frames*solution.period < solution.offsets[before]+delay:
+            raise ValueError(f"Solver returned a violated dependency: {before} -> {after}")
+
+    for edge in problem.dependencies:
+        if active(edge.when):
+            check(edge.before, edge.after, edge.delay, edge.frames)
+    for fifo in problem.fifos:
+        if not active(fifo.when):
+            continue
+        option = solution.selected[fifo.choice]
+        if fifo.order_transfers:
+            for stream in (fifo.writes, fifo.reads):
+                for before, after in zip(stream, stream[1:]):
+                    check(before, after, 1)
+                check(stream[-1], stream[0], 1, 1)
+        delay = fifo.forward_delays.get(option, 1)
+        depth, count = fifo.depths[option], len(fifo.writes)
+        for index, (write, read) in enumerate(zip(fifo.writes, fifo.reads)):
+            check(write, read, delay)
+            frame, word = divmod(index-depth, count)
+            check(fifo.reads[word], write, fifo.replacement_delay, -frame)

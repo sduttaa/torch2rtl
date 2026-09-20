@@ -8,12 +8,18 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | --- | --- |
 | Local toolchain under Documents | Installed and verified, including native torch-mlir |
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
-| Joint schedule/FIFO/resource solver | Spatial contracts and catalogue CLI implemented; full-model solve remains unresolved |
+| Joint schedule/FIFO/resource solver | Full-model diagnostic schedule and RTL deadlines verified; resource-feasible allocation unresolved |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 318 passing, including spatial RTL, overflow, backpressure and integer training/export |
+| Tests | 329 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
+
+CP-SAT now schedules all **4.09 million events** of the retained full-range INT8
+model at a fixed five-million-cycle period. Every original constraint and all
+external RTL transfer deadlines passed over three real images. The diagnostic
+uses oversized FIFOs, omits resource budgets and uses explicit solver settings;
+it does not prove fabric fit or 30 FPS. [Scheduling evidence](docs/solver-domains.md).
 
 The complete **retrained** model now emits generic spatial RTL and matches its
 integer reference on three real validation images, with and without random

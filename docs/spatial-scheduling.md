@@ -6,7 +6,9 @@ catalogues, performs a necessary resource check, then solves their joint timing
 and occupancy problem with CP-SAT. Spatial scheduling tests check
 repeated-frame RTL transfers against solver deadlines, including parameter
 selection, odd geometries, backpressure at joins and a deadlocking small FIFO
-allocation. This evidence does not establish a feasible full-model schedule.
+allocation. A subsequent [full-model diagnostic schedule](solver-domains.md)
+also passes RTL transfer deadlines with oversized FIFOs and no resource budgets;
+the fabric-constrained scheduling problem remains incomplete.
 
 An event time is the clock edge at which a transfer or internal state update
 occurs. Frame `n` repeats at `n*T + t[event]`. Actor and FIFO choices remain finite
@@ -152,7 +154,7 @@ one cycle. The next pixel's first input follows the preceding pixel's final
 output by one cycle. The lookup actor is a one-register elastic pipeline:
 `output[k] >= input[k]+1` and `input[k+1] >= output[k]`.
 
-## FIFO constraints and remaining scale issue
+## FIFO constraints and scale experiments
 
 For logical capacity `d` and selected forward latency `l`:
 
@@ -213,6 +215,11 @@ the solve call, 295 seconds monitored overall, and 6.95 GB observed peak RSS.
 The stronger bounds are valid but did not resolve this full-model scale issue.
 See the [window-bound report](../build/scheduling/window-bound-probe/result.json)
 and [monitor](../build/scheduling/window-bound-probe/monitor.json).
+
+Implied event domains and CP-SAT lower-bound completion have since produced a
+full-model schedule at the same fixed five-million-cycle point. All original
+constraints and three-frame RTL deadlines pass. The [full report](solver-domains.md)
+records its diagnostic solver settings, oversized FIFOs and remaining limits.
 
 Pixel-grouped scheduling would restrict this schedule family and could lose
 solutions. The user has been asked whether that tradeoff is acceptable; it has

@@ -5,7 +5,8 @@ from dataclasses import replace
 
 from ortools.sat.python import cp_model
 
-from .schedule import Limits, Problem, Solution, validate
+from .schedule import Limits, Problem, Solution, validate, validate_solution
+from .precedence import domains
 
 
 def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
@@ -14,12 +15,24 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
         raise ValueError("Positive solver time and worker count required")
     model = cp_model.CpModel()
     period = model.new_int_var(1, problem.period_limit, "period")
-    offsets = {name: model.new_int_var(0, problem.offset_limit, name) for name in problem.events}
+    lower, distance = domains(problem)
+    offsets = {}
+    for index, name in enumerate(problem.events):
+        first, last = lower[index], problem.offset_limit-distance[index]
+        if first > last:
+            model.add(False)
+            first, last = 0, problem.offset_limit
+        offsets[name] = model.new_int_var(first, last, name)
+    del lower, distance
     model.add(offsets[problem.anchor] == 0)
     chosen = {(group, option.name): model.new_bool_var(f"{group}/{option.name}")
               for group, options in problem.choices.items() for option in options}
     for group, options in problem.choices.items():
         model.add_exactly_one(chosen[group, option.name] for option in options)
+    # Once period and options are fixed, every remaining constraint is a
+    # difference inequality. Its propagated lower bounds form a valid event
+    # assignment; branching on those offsets cannot improve the objective.
+    model.add_decision_strategy([period, *chosen.values()], cp_model.CHOOSE_FIRST, cp_model.SELECT_MIN_VALUE)
     varying = {group for group, options in problem.choices.items() if len(options) > 1}
 
     def add(before, after, delay=0, frames=0, when=()):
@@ -66,6 +79,8 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
     solver.parameters.max_time_in_seconds = limits.seconds
     solver.parameters.num_search_workers = limits.workers
     solver.parameters.random_seed = limits.seed
+    solver.parameters.search_branching = cp_model.FIXED_SEARCH
+    solver.parameters.instantiate_all_variables = False
     start = monotonic()
     status = solver.solve(model)
     feasible = status in (cp_model.OPTIMAL, cp_model.FEASIBLE)
@@ -93,4 +108,7 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
                           for option in options if solver.boolean_value(chosen[group, option.name])},
                 resources={r: solver.value(expr) for r, expr in resource_expressions.items()},
                 resource_optimal=tie_status == cp_model.OPTIMAL)
-    return replace(result, seconds=monotonic() - start)
+    result = replace(result, seconds=monotonic() - start)
+    if result.period is not None:
+        validate_solution(problem, result)
+    return result

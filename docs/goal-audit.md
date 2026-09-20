@@ -6,6 +6,10 @@ The user has authorized training a smaller INT8 replacement on the supplied
 dataset, provided it matches or exceeds the existing model's accuracy. Both
 weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
 This removes the earlier decision blocker. The goal is active and incomplete.
+The latest [solver investigation](solver-domains.md) found a complete periodic
+schedule and verified full-model RTL input/output deadlines over three images.
+It uses oversized FIFOs and no resource budgets. This resolves a full-size
+diagnostic scheduling point, not the accuracy, fabric-fit or 30-FPS requirements.
 The latest exact convolution/pool fusion and implied window-path timing bounds
 are documented in [the fusion report](convolution-pool.md). They add verified
 implementation progress; they do not establish the missing accuracy, full-model

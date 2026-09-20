@@ -64,7 +64,8 @@ nearest resampling, aligned concatenation and byte comparisons using explicit
 actor/FIFO configurations. It supports branched raster networks and preserves
 integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
-full-model solve remains unresolved. Emission is not a fit certificate.
+full-model diagnostic schedule now passes RTL deadline checks with oversized
+FIFOs. Resource-feasible scheduling remains unresolved. Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
 while preserving byte tensor semantics. Training precision is always explicit.
 The optional `"fusions": ["convolution_pool"]` configuration entry enables an
