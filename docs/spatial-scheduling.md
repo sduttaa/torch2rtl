@@ -173,6 +173,15 @@ infeasibility. The alternate settings have not replaced backend defaults.
 - [Direct-search probe](../build/scheduling/direct-search-probe/result.json)
 - [Direct-search solver log](../build/scheduling/direct-search-probe/solve.log)
 
+A further feasibility probe fixed `T=5,000,000` and limited offsets to
+10,000,000 cycles, retaining the same per-word contracts and oversized FIFOs.
+It also returned `UNKNOWN`: 721,829,009 integer propagations, zero branches and
+no schedule. The monitor completed normally with an observed RSS peak of about
+7.48 GB. This fixed-period result establishes neither feasibility nor
+infeasibility, and its fixed objective value is not an optimized period.
+The [probe report](../build/scheduling/fixed-period-probe/result.json) and
+[solver log](../build/scheduling/fixed-period-probe/solve.log) preserve that evidence.
+
 Pixel-grouped scheduling would restrict this schedule family and could lose
 solutions. The user has been asked whether that tradeoff is acceptable; it has
 not been adopted. No external simulation-based FIFO optimizer has replaced
