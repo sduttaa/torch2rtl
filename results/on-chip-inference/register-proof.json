@@ -1,0 +1,11 @@
+{
+  "returncode": 0,
+  "multipliers": 88,
+  "register_bits": 1228,
+  "reference": "Gowin UG287 optional output-register functional contract; not timing or transistor-level validation",
+  "sources": {
+    "before": "build/throughput-push/compact-balanced/mapping/netlist.json",
+    "after": "build/throughput-push/compact-balanced/registered-multipliers/netlist.json",
+    "mapping": "build/throughput-push/compact-balanced/registered-multipliers/register-packing.json"
+  }
+}

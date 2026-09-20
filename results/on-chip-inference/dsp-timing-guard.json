@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "cells": 88,
+  "part": "GW2AR-LV18QN88C8/I7",
+  "speed": "C8/I7",
+  "scope": "Exact supplied primitive configuration only; other cell timing is not audited by this guard.",
+  "inputs": {
+    "build/throughput-push/compact-balanced/registered-multipliers/netlist.json": "a9fefb97f41dafaaeb04f5ae5ffa5a5ebf899d5c94029a7eddc80402c4b1b798",
+    "build/throughput-push/compact-balanced/target.json": "183ffa9bbc027c23394509d34d8883704a6e79b55c3c44074abea103f8c1cddb",
+    "build/verification/vendor-timing/multiplier-timing.json": "6e5a5bf02051ecea8e486b9460daf80d834a2be5a90a7fd128e5075a719b0626"
+  }
+}

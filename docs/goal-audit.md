@@ -1,5 +1,9 @@
 # Full-goal audit
 
+The compiler target now passes at **30.1131 scheduled FPS**, **0.6500655308 validation Dice**, and fabric-only storage. The final 114.75-MHz nextpnr route passes and the bitstream packs. See the [deliverable](../results/on-chip-inference/README.md) and [evidence record](throughput-push.md). Physical-board FPS has not been measured.
+
+The audit entries below are historical; their incomplete-goal statements describe those earlier revisions, not the final packaged result.
+
 ## Timing coverage correction
 
 The installed nextpnr flow lacks multiplier timing, small-LUT variants and
@@ -45,7 +49,7 @@ by `DO` versus `DOB` naming. A separate patch fixes this for all four dual-port
 variants and passes checks on all eight speed grades. Complete timing closure
 is still unproven; independent vendor routing is not certification of nextpnr
 routing. All 452 current production tests pass. Two additional RTL experiments
-were rejected after increasing area without improving vendor timing, so they
+were rejected after failing to improve vendor timing, so they
 do not change the production actor contracts. The goal remains active, with
 useful timing and implementation work available and no external blocker.
 With the BRAM output correction and scoped registered-DSP data, the latest

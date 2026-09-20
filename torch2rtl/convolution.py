@@ -53,6 +53,7 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
     if actor.tensor.shape != expected:
         raise ValueError("Convolution result shape disagrees with its geometry")
     tiles = ceil((co // groups) / outputs)
+    weight_bits = signed_bits(weight.min(), weight.max())
     channel_words = ceil(per_group / reduction_lanes)
     weights, biases, multipliers = [], [], []
     for group in range(groups):
@@ -111,13 +112,14 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
                   "DILATION_H": dilation[0], "DILATION_W": dilation[1], "PAD_H": padding[0], "PAD_W": padding[1],
                   "GROUPS": groups, "LANES": lanes, "OUTPUT_LANES": outputs, "INPUT_SIGNED": int(data.tensor.signed),
                   "INPUT_BITS": storage_bits(data), "OUTPUT_ELEMENT_BITS": storage_bits(actor),
+                  "WEIGHT_BITS": weight_bits,
                   "OUTPUT_SIGNED": int(actor.tensor.signed),
                   "REDUCTION_LANES": reduction_lanes,
                   "ACCUMULATOR_BYTES": accumulator_bytes, "MULTIPLIER_BYTES": multiplier_bytes,
                   "ACCUMULATOR_BITS": accumulator_bits, "INNER_BITS": max(inner_bits, 9),
                   "MULTIPLIER_SIGNED": multiplier_signed, "REQUANT_BITS": max(requant_bits, 9),
                   "SHIFT": shift, "OFFSET": packed([offset], 64), "LOW": packed([low], 64), "HIGH": packed([high], 64),
-                  "WEIGHTS": packed(weights, 8), "BIASES": packed(biases, 32),
+                  "WEIGHTS": packed(weights, weight_bits), "BIASES": packed(biases, 32),
                   "MULTIPLIERS": packed(encoded_multipliers, padded_multiplier_bits),
                   "PRODUCT_MASK": packed(active_products.flatten().tolist(), 1),
                   "REQUANT_MASK": packed(requant_products.flatten().tolist(), 1)}

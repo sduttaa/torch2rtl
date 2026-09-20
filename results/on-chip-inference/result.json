@@ -1,0 +1,82 @@
+{
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "validation_dice": 0.6500655307994757,
+  "period_cycles": 3810633,
+  "configured_clock_hz": 114750000,
+  "scheduled_fps": 30.113107192427083,
+  "required_clock_hz": 114318990.0,
+  "reported_fmax": {
+    "clock_source.clock_out": {
+      "achieved": 115.22064971923828,
+      "constraint": 114.75786590576172
+    }
+  },
+  "physical_board_measured": false,
+  "gates": {
+    "accuracy": true,
+    "integer_export": true,
+    "schedule": true,
+    "reference_match": true,
+    "throughput": true,
+    "capacity": true,
+    "register_proof": true,
+    "lut_proof": true,
+    "dsp_timing_scope": true,
+    "pin_coverage": true,
+    "route_and_pack": true,
+    "model_identity": true,
+    "clock_constraint": true,
+    "clock_timing": true
+  },
+  "compiled_result_passes": true,
+  "evidence": {
+    "model_report": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-memory-qat/report.json",
+      "sha256": "0705f4d4f28614b46af731c7804ca05d8a8bdf78b4d9982bc31e2c8f55f62fc8"
+    },
+    "configuration": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/configuration.json",
+      "sha256": "678f0306ef962cfce900a56c5cfd3482d0a8df333610a4218d622aed0cf6b913"
+    },
+    "target": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/clock-closed/target.json",
+      "sha256": "243c3d1482511140b5684818bfaacadcfb6bac5629bde198ac91f2e4bc44d288"
+    },
+    "schedule": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/schedule/report.json",
+      "sha256": "76c397c52920b0cc915ed9fc19585c8c31ec6bed54d2230f39e21ff3e7c0753d"
+    },
+    "simulation": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/schedule/simulation/report.json",
+      "sha256": "395e3b01e699fe8f976f5faba781aa847d3492e0f793e1e4c940ab7a3ecb06c2"
+    },
+    "capacity": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/packing/capacity.json",
+      "sha256": "2d6ab96f36a8637b64ee915d053e2ba8fa0a842df1564bd28541ba06a3a7c23e"
+    },
+    "register_proof": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/register-proof/report.json",
+      "sha256": "785a9097002ccc4ddc45f848fb37982571657528afecd79333f3084de505f282"
+    },
+    "lut_proof": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/area-proof/report.json",
+      "sha256": "e5bf6eaac1d6a0c7613ad0b255eea19c60738812f47cb5ddf5c02e196b58a9f5"
+    },
+    "dsp_timing_guard": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/dsp-timing-guard.json",
+      "sha256": "16909be5b559a379e3a9bcf72999d7d70d81a61b079a620d09115ff6b83e895b"
+    },
+    "pin_coverage": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/pin-coverage.json",
+      "sha256": "e257ec58cd84cbd8d07bc4b2c34d340530a8c5dfe2b858de9e76fa9b9d0ba929"
+    },
+    "physical_status": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/clock-closed/physical/status.json",
+      "sha256": "818ffb086f4c0981b1680fd5ba83bed8faf6edd0907fd4c083c818c35a9be42f"
+    },
+    "route": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/clock-closed/physical/route-report.json",
+      "sha256": "8b2235e38d5e8142905f70783a9d6d2836c1a7700e6c453535f6bd047eeeb36c"
+    }
+  }
+}

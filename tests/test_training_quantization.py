@@ -15,16 +15,18 @@ from threshold import select_threshold
 @pytest.mark.parametrize("dilation", [1, 2, 4])
 @pytest.mark.parametrize("relu", [False, True])
 @pytest.mark.parametrize("bits", [4, 6, 8])
-def test_integer_conv_matches_simulation(dilation, relu, bits):
+@pytest.mark.parametrize("weight_bits", [6, 8])
+def test_integer_conv_matches_simulation(dilation, relu, bits, weight_bits):
     torch.manual_seed(42)
     conv = torch.nn.Conv2d(3, 5, 3, padding=dilation, dilation=dilation)
-    qat = QuantizedTrainingConv(conv, 1 / 255, 0.01, relu, 24, bits)
+    qat = QuantizedTrainingConv(conv, 1 / 255, 0.01, relu, 24, bits, weight_bits)
     inputs = torch.randint(0, 256, (2, 3, 9, 11), dtype=torch.uint8)
     simulated = qat(inputs.float() / 255)
     actual = IntegerConv(qat)(inputs)
     expected = torch.round(simulated / qat.output_scale).to(actual.dtype)
     assert torch.equal(actual, expected)
     assert int(actual.min()) >= qat.low and int(actual.max()) <= qat.high
+    assert int(IntegerConv(qat).weight.abs().max()) <= (1 << (weight_bits-1))-1
     simulated.mean().backward()
     assert torch.isfinite(qat.weight.grad).all()
 
@@ -152,6 +154,25 @@ def test_qat_continuation_preserves_scales_and_rejects_semantic_changes():
                            ({**config, "layers": [{"channels": 3}]}, 16), (config, 24)):
         with pytest.raises(ValueError, match="same graph, data and quantization contract"):
             resume_qat(target, checkpoint, changed, shift)
+
+
+def test_explicit_weight_precision_initialization_preserves_learned_state():
+    images = torch.randint(0, 256, (2, 1, 3, 5), dtype=torch.uint8)
+    floating = torch.nn.Sequential(torch.nn.Conv2d(1, 2, 1), torch.nn.ReLU(), torch.nn.Conv2d(2, 1, 1)).eval()
+    config = {"layers": [{"channels": 2}, {"channels": 1}]}
+    source = prepare(floating, images, [0, 1], 1, 16)
+    precision = {"0": 6}
+    target = prepare(floating, images, [0, 1], 1, 16, weight_bits=precision)
+    checkpoint = {"config": config, "shift": 16, "state": source.state_dict()}
+    changed = {**config, "weight_bits": precision}
+    with pytest.raises(ValueError, match="same graph, data and quantization contract"):
+        resume_qat(target, checkpoint, changed, 16)
+    resume_qat(target, checkpoint, changed, 16, initialize_precision=True)
+    assert all(torch.equal(value, target.state_dict()[name]) for name, value in source.state_dict().items())
+    assert (target[0].weight_high, target[1].weight_high) == (31, 127)
+    verify(target, integer_model(target), images, [0, 1], 1)
+    with pytest.raises(ValueError, match="same graph, data and quantization contract"):
+        resume_qat(target, checkpoint, {**changed, "unsigned_activation_bits": 4}, 16, initialize_precision=True)
 
 
 @pytest.mark.parametrize("relu", [False, True])

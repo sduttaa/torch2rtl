@@ -32,15 +32,42 @@ def test_pool_comparison_uses_idle_accumulator_cycle(tmp_path, parameters):
     assertions = """
   always @(posedge clk) if (!rst && POOL_ITEMS > 1 && pool_update) begin
     assert (!product_valid);
-    assert (state == DOT || state == RQ);
+    assert (state == DOT || state == POOL_WAIT);
     if (pool_last) begin
-      assert (state == RQ);
+      assert (state == POOL_WAIT);
       assert (accumulator_byte == BYTE_BITS'(ACCUMULATOR_BYTES-1));
       assert (multiplier_group == GROUP_BITS'(MULTIPLIER_GROUPS-1));
     end else assert (state == DOT && dot_step == 0);
   end
+  always @(posedge clk) if (!rst && POOL_ITEMS > 1 && pool_commit) begin
+    assert (!product_valid);
+    if (pool_last) assert (state == RQ);
+  end
+  // Prefetched coordinates must describe the active dot, and move ahead only
+  // while its products drain. Prove this with arbitrary input/output stalls.
+  wire [BLOCK_BITS-1:0] following_block = block == BLOCK_BITS'(BLOCKS-1) ? 0 : block + 1'b1;
+  always @(posedge clk) if (!rst) begin
+    assert (release_window == (state == DOT && dot_last && release_after_dot));
+    case (state)
+      DOT: begin
+        assert (read_block == block && read_pool == pool_item);
+        assert (dot_last == (dot_step == STEP_BITS'(DOT_STEPS-1)));
+        assert (release_after_dot == (block == BLOCK_BITS'(BLOCKS-1) && pool_item == POOL_BITS'(POOL_ITEMS-1)));
+      end
+      DOT_DRAIN: begin
+        assert (read_pool == (pool_item == POOL_BITS'(POOL_ITEMS-1) ? POOL_BITS'(0) : pool_item + 1'b1));
+        assert (read_block == (pool_item == POOL_BITS'(POOL_ITEMS-1) ? following_block : block));
+      end
+      POOL_WAIT, RQ, RQ_DRAIN, POST: begin
+        assert (read_pool == 0 && read_block == following_block);
+      end
+      IDLE: begin
+        assert (read_pool == 0 && read_block == 0);
+      end
+    endcase
+  end
 """
-    marker = source.rfind("endmodule")
+    marker = source.index("endmodule")
     (tmp_path / "convolution.sv").write_text(source[:marker] + assertions + source[marker:]
                                             + (root / "window.sv").read_text())
     assignments = " ".join(f"-set {key} {value}" for key, value in parameters.items())

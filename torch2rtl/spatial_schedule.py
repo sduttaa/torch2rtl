@@ -124,8 +124,9 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
         (parameters["INPUT_CHANNELS"] // parameters["GROUPS"]) / parameters["REDUCTION_LANES"])
     requant = parameters["ACCUMULATOR_BYTES"]*ceil(parameters["MULTIPLIER_BYTES"] / parameters["REDUCTION_LANES"])
     pool = (parameters["POOL_H"], parameters["POOL_W"])
-    tile_cycles = prod(pool)*(dot+2) + requant + 3
-    release_delay = prod(pool)*(dot+2) - 2
+    reduction_stage = int(parameters["REDUCTION_LANES"] > 1)
+    tile_cycles = prod(pool)*(dot+2+reduction_stage) + requant + 3 + int(prod(pool) > 1)
+    release_delay = prod(pool)*(dot+2) + (prod(pool)-1)*reduction_stage - 2
     starts = events.series(prefix+".start", pixels)
     posts = events.series(prefix+".post", pixels)
     # Only the first tile can wait for the previous output pixel. Subsequent

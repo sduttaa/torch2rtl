@@ -22,10 +22,11 @@ from rtl_check import pack, simulate
     ((2, 3, 2), 3, (1, 1), (1, 1), (0, 0), (1, 1), 1, 4, 3, False, True),
 ])
 def test_folded_convolution(tmp_path, shape, channels, kernel, stride, padding, dilation,
-                            groups, lanes, outputs, signed, overflow, stalls, line_layout, reduction_lanes):
+                            groups, lanes, outputs, signed, overflow, stalls, line_layout, reduction_lanes, weight_bits=8):
     generator = np.random.default_rng(23)
     height, width, inputs = shape
-    weight = generator.integers(-128, 128, (channels, inputs // groups, *kernel), dtype=np.int32)
+    magnitude = 1 << (weight_bits-1)
+    weight = generator.integers(-magnitude, magnitude, (channels, inputs // groups, *kernel), dtype=np.int32)
     bias = generator.integers(-2000, 2000, channels, dtype=np.int32)
     multiplier = np.resize(np.array([3, -7, 0, 13, 19], dtype=np.int64), channels)
     offset, shift = 1 << 10, 11
@@ -54,6 +55,13 @@ def test_folded_convolution(tmp_path, shape, channels, kernel, stride, padding, 
     simulate(tmp_path, emit(actor, lanes, outputs, line_layout=line_layout, reduction_lanes=reduction_lanes),
              lanes*8, lanes*8, input_words, expected_words, stalls,
              max_cycles=100 + 200*(len(input_words) + len(expected_words)))
+
+
+@pytest.mark.parametrize("weight_bits", [1, 4, 6])
+@pytest.mark.parametrize("signed", [False, True])
+def test_narrow_weight_storage_preserves_values(tmp_path, weight_bits, signed):
+    test_folded_convolution(tmp_path, (3, 5, 3), 5, (3, 3), (1, 1), (1, 1), (1, 1),
+                            1, 4, 3, signed, False, True, "packed", 2, weight_bits)
 
 
 def test_rejects_group_boundaries_inside_vectors():

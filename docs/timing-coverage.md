@@ -1,6 +1,8 @@
 # Timing coverage audit
 
-**The existing nextpnr timing passes do not establish complete timing closure.**
+**The early nextpnr timing passes below were incomplete and are superseded.**
+
+The final [packaged compiler result](../results/on-chip-inference/README.md) uses the corrected packed-BRAM/LUT database and the guarded registered-DSP timing table. Its used-datapath-pin audit reports no missing timing pins, and nextpnr passes the configured 114.75-MHz clock. These are tool/model checks, not board measurements; the historical coverage findings and silicon-validation limitations below remain documented.
 The 6,262,820-cycle schedule and bit-exact RTL results remain valid. Dividing
 135 MHz by that period gives 21.56 scheduled FPS, conditional on that clock
 being safe. Placement and bitstream packing succeeded, but the clock has not
@@ -160,5 +162,8 @@ These are separate placements, and neither meets the 150.99255-MHz requirement.
 The scoped DSP data does not apply to other register configurations or speeds,
 and does not replace Apicula interconnect timing. Complete timing closure and
 physical-board inference remain unverified. Two additional address/control RTL
-experiments were numerically correct but increased area and failed to improve
-vendor timing; neither is retained in production.
+experiments were numerically correct but failed to improve vendor timing;
+neither is retained in production. The earlier area comparison mixed a no-ALU
+baseline with default-ALU candidate synthesis. With the same carry-width-eight
+mapping, padded lookup adds 16 LUT/ALU cells and registered padding removes 53.
+[Corrected area comparison](../build/verification/vendor-timing/carry-area-comparison.json).

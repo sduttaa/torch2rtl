@@ -88,10 +88,17 @@ endmodule
     {"HEIGHT": 4, "WIDTH": 7, "CHANNELS": 5, "KERNEL_H": 3, "KERNEL_W": 3,
      "LANES": 4, "PAD_H": 1, "PAD_W": 1},
 ])
-def test_packed_memory_accesses_never_collide(tmp_path, parameters):
+@pytest.mark.parametrize("packed_lines", [0, 1])
+def test_memory_accesses_never_collide(tmp_path, parameters, packed_lines):
     # Check the actual parent controller with arbitrary input-valid, release
     # and reset signals. Only the first cycle is constrained to reset.
     source = (Path(__file__).parents[1] / "torch2rtl/templates/window.sv").read_text()
+    address_assertion = """
+  always @(posedge clk) if (!rst && pending && !pending_column_padding && !column_padding)
+    assert ((address == pending_address) == (LINE_WORDS == 1));
+"""
+    marker = source.index("endmodule")
+    source = source[:marker] + address_assertion + source[marker:]
     assertions = """
   always @(posedge clk) if (!rst) begin
     assert (!issue || !busy);
@@ -103,7 +110,7 @@ def test_packed_memory_accesses_never_collide(tmp_path, parameters):
     assignments = " ".join(f"-set {key} {value}" for key, value in parameters.items())
     script = f"""
 read_verilog -formal -sv window.sv
-chparam {assignments} -set PACKED_LINES 1 raster_window
+chparam {assignments} -set PACKED_LINES {packed_lines} raster_window
 hierarchy -top raster_window
 proc
 flatten

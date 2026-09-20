@@ -1,0 +1,24 @@
+{
+  "netlist_sha256": "3ada434a9fa0bf38619156e84d1d17e64dcaa6ad8b206e5ef98031e53c41d51f",
+  "packed_luts": 17068,
+  "unpaired_ff_drivers": {
+    "GOWIN_VCC": 3,
+    "DFFR": 65,
+    "DFF": 194,
+    "DFFSE": 17,
+    "DP": 144,
+    "MULT9X9": 320,
+    "GOWIN_GND": 22,
+    "DFFE": 277,
+    "DFFRE": 171,
+    "SDP": 8,
+    "RAM16SDP4": 56,
+    "DFFP": 1
+  },
+  "duplicate_ff_consumers": 438,
+  "lut_site_lower_bound": 18784,
+  "lut_sites_available": 20736,
+  "other_exceeded_resources": {},
+  "necessary_capacity_check_passes": true,
+  "placement_verified": false
+}

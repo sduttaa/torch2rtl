@@ -113,7 +113,7 @@ class Calibration:
 
 
 class QuantizedTrainingConv(nn.Module):
-    def __init__(self, conv, input_scale, output_scale, relu, shift, bits=8):
+    def __init__(self, conv, input_scale, output_scale, relu, shift, bits=8, weight_bits=8):
         super().__init__()
         self.weight = nn.Parameter(conv.weight.detach().clone())
         self.bias = nn.Parameter(conv.bias.detach().clone() if conv.bias is not None else torch.zeros(conv.out_channels))
@@ -121,6 +121,7 @@ class QuantizedTrainingConv(nn.Module):
         self.relu = relu
         self.shift = shift
         self.low, self.high = activation_range(relu, bits)
+        _, self.weight_high = activation_range(False, weight_bits)
         for name, scale, channels in (("input_scale", input_scale, conv.in_channels),
                                       ("output_scale", output_scale, conv.out_channels)):
             scale = torch.as_tensor(scale, dtype=torch.float32).clone()
@@ -138,19 +139,19 @@ class QuantizedTrainingConv(nn.Module):
 
     def parameters_integer(self):
         weight, input_scale = self.scaled_weight()
-        scale = weight.detach().abs().flatten(1).amax(1).clamp_min(1e-8) / 127
+        scale = weight.detach().abs().flatten(1).amax(1).clamp_min(1e-8) / self.weight_high
         multiplier = torch.round(input_scale * scale / self.output_scale * (1 << self.shift)).to(torch.int64)
         bias_value = torch.round(self.bias.detach() / (input_scale * scale))
         if not torch.isfinite(bias_value).all() or (bias_value.double().abs() > (1 << 31) - 1).any():
             raise ValueError("Quantized bias does not fit INT32")
         bias = bias_value.to(torch.int32)
-        weight = torch.round(weight.detach() / scale[:, None, None, None]).clamp(-127, 127).to(torch.int8)
+        weight = torch.round(weight.detach() / scale[:, None, None, None]).clamp(-self.weight_high, self.weight_high).to(torch.int8)
         return weight, bias, multiplier, scale
 
     def forward(self, x):
         _, _, multiplier, scale = self.parameters_integer()
         weight, input_scale = self.scaled_weight()
-        weight = round_ste(weight / scale[:, None, None, None]).clamp(-127, 127)
+        weight = round_ste(weight / scale[:, None, None, None]).clamp(-self.weight_high, self.weight_high)
         bias = round_ste(self.bias / (input_scale * scale))
         quantized = round_ste(x / channel_scale(self.input_scale))
         accumulator = F.conv2d(quantized, weight, bias, self.stride, self.padding, self.dilation, self.groups)
@@ -281,7 +282,7 @@ class IntegerMerge(nn.Module):
 
 
 @torch.no_grad()
-def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0, scale_axis="tensor"):
+def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0, scale_axis="tensor", weight_bits=8):
     model = copy.deepcopy(model).eval()
     active = set(model.graph.nodes)
     for node in list(model.graph.nodes):
@@ -325,7 +326,8 @@ def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits
         elif node.op == "call_module" and isinstance(model.get_submodule(node.target), nn.Conv2d):
             bits = unsigned_bits if relu_user else signed_bits
             scale = calibrated_scale(maxima[(relu_user or node).name], bool(relu_user), bits)
-            conv = QuantizedTrainingConv(model.get_submodule(node.target), scales[node.args[0]], scale, bool(relu_user), shift, bits)
+            precision = weight_bits.get(node.target, 8) if isinstance(weight_bits, dict) else weight_bits
+            conv = QuantizedTrainingConv(model.get_submodule(node.target), scales[node.args[0]], scale, bool(relu_user), shift, bits, precision)
             model.set_submodule(node.target, conv)
             scales[node] = scale
             unsigned[node] = bool(relu_user)
@@ -356,9 +358,9 @@ def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits
 
 
 @torch.no_grad()
-def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0, scale_axis="tensor"):
+def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, signed_bits=8, quantile=1.0, scale_axis="tensor", weight_bits=8):
     if isinstance(model, torch.fx.GraphModule):
-        return prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits, signed_bits, quantile, scale_axis)
+        return prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits, signed_bits, quantile, scale_axis, weight_bits)
     model = fold(model)
     calibration, hooks = Calibration(quantile, scale_axis), []
     for index, layer in enumerate(model):
@@ -381,7 +383,8 @@ def prepare(model, images, train_indices, batch_size, shift, unsigned_bits=8, si
             relu = index + 1 < len(source) and isinstance(source[index + 1], nn.ReLU)
             bits = unsigned_bits if relu else signed_bits
             output_scale = calibrated_scale(maxima[index], relu, bits)
-            layers.append(QuantizedTrainingConv(layer, input_scale, output_scale, relu, shift, bits))
+            precision = weight_bits.get(str(index), 8) if isinstance(weight_bits, dict) else weight_bits
+            layers.append(QuantizedTrainingConv(layer, input_scale, output_scale, relu, shift, bits, precision))
             input_scale = output_scale
         elif not isinstance(layer, nn.ReLU):
             layers.append(copy.deepcopy(layer))
@@ -429,7 +432,7 @@ def verify(model, integer, images, indices, batch_size, threshold=0):
     return torch.cat(predictions)
 
 
-def resume_qat(model, checkpoint, config, shift):
+def resume_qat(model, checkpoint, config, shift, initialize_precision=False):
     # Continue weights and calibrated scales, with a fresh optimizer. Training
     # choices may change; graph, data and quantization contracts must not.
     training_keys = {"seed", "threads", "batch_size", "epochs", "learning_rate", "weight_decay",
@@ -438,15 +441,17 @@ def resume_qat(model, checkpoint, config, shift):
     def contract(source):
         result = {key: value for key, value in source.items() if key not in training_keys}
         for key, value in (("unsigned_activation_bits", 8), ("signed_activation_bits", 8),
-                           ("activation_calibration_quantile", 1.0), ("activation_scale_axis", "tensor")):
+                           ("activation_calibration_quantile", 1.0), ("activation_scale_axis", "tensor"), ("weight_bits", 8)):
             result.setdefault(key, value)
+        if initialize_precision:
+            result.pop("weight_bits")
         return result
     if checkpoint["shift"] != shift or contract(checkpoint["config"]) != contract(config):
         raise ValueError("QAT continuation requires the same graph, data and quantization contract")
     model.load_state_dict(checkpoint["state"])
 
 
-def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None, resume_path=None):
+def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None, resume_path=None, initialization_path=None):
     checkpoint = torch.load(checkpoint_path, weights_only=True)
     config = json.loads(config_path.read_text()) if config_path else checkpoint["config"]
     torch.set_num_threads(config["threads"])
@@ -458,10 +463,13 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None,
     unsigned_bits, signed_bits = config.get("unsigned_activation_bits", 8), config.get("signed_activation_bits", 8)
     quantile = config.get("activation_calibration_quantile", 1.0)
     scale_axis = config.get("activation_scale_axis", "tensor")
-    model = prepare(floating, images, train_indices, config["batch_size"], shift, unsigned_bits, signed_bits, quantile, scale_axis)
+    weight_bits = config.get("weight_bits", 8)
+    model = prepare(floating, images, train_indices, config["batch_size"], shift, unsigned_bits, signed_bits, quantile, scale_axis, weight_bits)
     del floating
     if resume_path:
         resume_qat(model, torch.load(resume_path, weights_only=True), config, shift)
+    if initialization_path:
+        resume_qat(model, torch.load(initialization_path, weights_only=True), config, shift, initialize_precision=True)
     cached_teacher = torch.load(config["teacher_cache"], weights_only=True)
     if cached_teacher["fingerprint"] != teacher_fingerprint(config, manifest):
         raise ValueError("Teacher cache does not match dataset and teacher")
@@ -527,6 +535,7 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None,
                 "activation_precision": {"unsigned_bits": unsigned_bits, "signed_bits": signed_bits,
                                          "storage_containers": "uint8/int8; clamp bounds are explicit in the graph"},
                 "activation_calibration_quantile": quantile,
+                "weight_precision": {"signed_bits": weight_bits, "storage_container": "int8"},
                 "activation_scale_axis": scale_axis,
                 "prediction_threshold": {"floating": best_threshold, "integer": deployed_threshold,
                     "selection": "training only" if config.get("calibrate_prediction_threshold", False) else "fixed zero"},
@@ -541,6 +550,10 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None,
         metadata["continued_qat"] = {"path": str(resume_path),
             "sha256": hashlib.sha256(resume_path.read_bytes()).hexdigest(),
             "optimizer": "fresh AdamW; weights and calibrated scales restored"}
+    if initialization_path:
+        metadata["initialized_qat"] = {"path": str(initialization_path),
+            "sha256": hashlib.sha256(initialization_path.read_bytes()).hexdigest(),
+            "method": "Preserve learned weights and activation scales; apply the explicitly supplied weight precision before training and verification."}
     (output / "report.json").write_text(json.dumps(metadata, indent=2) + "\n")
     print(json.dumps(metadata), flush=True)
 
@@ -550,9 +563,11 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--config", type=Path, help="Optional explicit QAT configuration; architecture must match checkpoint")
-    parser.add_argument("--resume", type=Path, help="Continue QAT weights/scales with a fresh optimizer; contracts must match")
+    initialization = parser.add_mutually_exclusive_group()
+    initialization.add_argument("--resume", type=Path, help="Continue QAT weights/scales with a fresh optimizer; contracts must match")
+    initialization.add_argument("--initialize-qat", type=Path, help="Preserve QAT weights/scales while changing only the explicit weight precision")
     parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--learning-rate", type=float, default=0.0001)
     parser.add_argument("--shift", type=int, default=24)
     args = parser.parse_args()
-    run(args.checkpoint, args.output, args.epochs, args.learning_rate, args.shift, args.config, args.resume)
+    run(args.checkpoint, args.output, args.epochs, args.learning_rate, args.shift, args.config, args.resume, args.initialize_qat)

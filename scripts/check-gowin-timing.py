@@ -45,7 +45,7 @@ for speed in chip.timing.speed_grades:
                 database.timing[strings[speed.name.index]]["bram"]["clkb_dob_bypass"]]
     for name in ("DP", "DPX9", "DPB", "DPX9B"):
         cell = cells[name]
-        width = 36 if name.startswith("DPX9") else 32
+        width = 36
         for bit in range(width):
             pin = cell.pin_data[f"DOB{bit}"]
             assert len(pin.reg_arcs) == 1
@@ -54,7 +54,26 @@ for speed in chip.timing.speed_grades:
             assert arc.clk_q.fast_min == min(expected)
             assert arc.clk_q.slow_max == max(expected)
             assert f"DO{bit}" not in cell.pin_data
+    for name, clock, delay_key in (("SP", "CLK", "clk_do_bypass"),
+                                    ("SPX9", "CLK", "clk_do_bypass"),
+                                    ("SDP", "CLKB", "clkb_do_bypass"),
+                                    ("SDPX9", "CLKB", "clkb_do_bypass"),
+                                    ("SDPB", "CLKB", "clkb_do_bypass"),
+                                    ("SDPX9B", "CLKB", "clkb_do_bypass")):
+        expected = [int(value * 1000) for value in
+                    database.timing[strings[speed.name.index]]["bram"][delay_key]]
+        for bit in range(36):
+            arc = cells[name].pin_data[f"DO{bit}"].reg_arcs[0]
+            assert strings[arc.clock.index] == clock
+            assert arc.clk_q.fast_min == min(expected)
+            assert arc.clk_q.slow_max == max(expected)
+    for name in ("SP", "SPX9"):
+        for pin in [*(f"ADB{bit}" for bit in range(14)),
+                    *(f"BLKSELB{bit}" for bit in range(3)), "CEB", "OCEB", "WREB", "RESETB"]:
+            arcs = cells[name].pin_data[pin].reg_arcs
+            assert len(arcs) == 1 and strings[arcs[0].clock.index] == "CLKB"
     checks.append({"speed": strings[speed.name.index], "lut_variants_verified": 4,
-                   "ram_data_input_arcs_verified": 4, "bram_b_output_variants_verified": 4})
+                   "ram_data_input_arcs_verified": 4, "bram_b_output_variants_verified": 4,
+                   "normalized_bram_width_verified": 36, "wide_sp_b_port_variants_verified": 2})
 args.output.write_text(json.dumps({"passed": True, "checks": checks}, indent=2) + "\n")
 print("timing regression passed", len(checks), "speed grades")

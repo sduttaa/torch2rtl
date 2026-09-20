@@ -1,0 +1,93 @@
+{
+  "description": "Explicit generated-clock toolflow experiment with fabric-only inference; not a physical-board measurement",
+  "source": "https://wiki.sipeed.com/hardware/en/tang/tang-nano-20k/nano-20k.html",
+  "fabric_memory_bits": {
+    "block_ram": 847872,
+    "distributed_ram": 41472
+  },
+  "resources": {
+    "lut": 20736,
+    "ff": 15552,
+    "bram": 46,
+    "dsp": 96,
+    "lutram_bits": 41472
+  },
+  "resource_weights": {},
+  "logic_lut_inputs": 4,
+  "resource_units": {
+    "dsp": "One signed 9-by-9 multiplier slot; an 18-by-18 multiplier occupies two slots",
+    "bram": "One 18-Kbit block"
+  },
+  "cell_costs": {
+    "LUT[1234]": {
+      "lut": 1
+    },
+    "ALU": {
+      "lut": 1
+    },
+    "DFF*": {
+      "ff": 1
+    },
+    "MULT9X9": {
+      "dsp": 1
+    },
+    "MULT18X18": {
+      "dsp": 2
+    },
+    "MULT36X36": {
+      "dsp": 8
+    },
+    "DPX9B": {
+      "bram": 1
+    },
+    "SDPX9B": {
+      "bram": 1
+    },
+    "SPX9B": {
+      "bram": 1
+    },
+    "SPX9": {
+      "bram": 1
+    },
+    "DPB": {
+      "bram": 1
+    },
+    "SDPB": {
+      "bram": 1
+    },
+    "SP": {
+      "bram": 1
+    },
+    "RAM16SDP1": {
+      "lut": 1,
+      "lutram_bits": 16
+    },
+    "RAM16SDP2": {
+      "lut": 2,
+      "lutram_bits": 32
+    },
+    "RAM16SDP4": {
+      "lut": 4,
+      "lutram_bits": 64
+    },
+    "MUX2_LUT*": {},
+    "IBUF": {},
+    "OBUF": {},
+    "GND": {},
+    "VCC": {}
+  },
+  "clock_hz": 114750000,
+  "synthesis": {
+    "command": "synth_gowin",
+    "family": "gw2a",
+    "flags": [
+      "-nowidelut"
+    ]
+  },
+  "place_route": {
+    "executable": "nextpnr-himbaechel",
+    "device": "GW2AR-LV18QN88C8/I7",
+    "family": "GW2A-18C",
+    "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "validation": {
+    "dice": 0.6500655307994757,
+    "iou": 0.4815533980582524,
+    "precision": 0.5880260818020154,
+    "recall": 0.7267399267399267,
+    "pixel_accuracy": 0.9993242832847424,
+    "true_positive": 992,
+    "false_positive": 695,
+    "false_negative": 373,
+    "true_negative": 1578484,
+    "samples": 49
+  },
+  "constant_bytes": 26988,
+  "input": {
+    "shape": [
+      1,
+      3,
+      256,
+      505
+    ],
+    "dtype": "uint8",
+    "preprocessing": [
+      [
+        1264,
+        640
+      ],
+      [
+        505,
+        256
+      ]
+    ]
+  },
+  "output": {
+    "shape": [
+      1,
+      1,
+      128,
+      252
+    ],
+    "dtype": "uint8",
+    "values": [
+      0,
+      1
+    ]
+  },
+  "numerics": "INT8 weights, explicitly bounded activations in byte containers, INT32 accumulation, INT64 fixed-point requantization",
+  "rounding": "nearest, ties toward positive infinity",
+  "shift": 16,
+  "activation_precision": {
+    "unsigned_bits": 4,
+    "signed_bits": 8,
+    "storage_containers": "uint8/int8; clamp bounds are explicit in the graph"
+  },
+  "activation_calibration_quantile": 0.999,
+  "weight_precision": {
+    "signed_bits": {
+      "shallow": 6,
+      "decode_middle": 6,
+      "decode_shallow": 6,
+      "middle": 6
+    },
+    "storage_container": "int8"
+  },
+  "activation_scale_axis": "tensor",
+  "prediction_threshold": {
+    "floating": 0,
+    "integer": 0,
+    "selection": "fixed zero"
+  },
+  "qat_integer_match_samples": 246,
+  "serialized_match_samples": 49,
+  "floating_tensor_nodes": 0,
+  "baseline_report": "/Users/Obi-wan/Documents/oneAI-scratches/OneAI.QuickStart/Projects/Scratches/Models/scratches_quantization_report.json",
+  "checkpoint": "build/training/full-context/best.pt",
+  "checkpoint_sha256": "e15dd3f0d029c0c7543470e77a3796846e606201fddf3c7dcfe2fa6505fbc190",
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "teacher_cache_fingerprint": "987c1b2b304b6b7381ea9daf38a730377d65d484824ce7d111d7795d048c2cf7",
+  "test_caveat": "Existing validation split used for checkpoint selection; no independent test set supplied.",
+  "initialized_qat": {
+    "path": "build/throughput-push/compact-recovered/qat.pt",
+    "sha256": "90f7d19b3790a7ba6a2f691f9fd7262a3be9c9be42e20a91cf77cb250051dbc3",
+    "method": "Preserve learned weights and activation scales; apply the explicitly supplied weight precision before training and verification."
+  }
+}

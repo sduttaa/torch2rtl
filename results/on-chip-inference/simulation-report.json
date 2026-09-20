@@ -1,0 +1,13 @@
+{
+  "cycles": 12249346,
+  "input_words": 387840,
+  "output_words": 96768,
+  "frame_completion_cycles": [
+    4628080,
+    8438713,
+    12249346
+  ],
+  "stalls": false,
+  "bit_exact": true,
+  "scheduled_transfers": true
+}

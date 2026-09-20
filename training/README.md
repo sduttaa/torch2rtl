@@ -186,6 +186,20 @@ The compiler derives storage widths from graph semantics, never calibration
 samples. Six-bit and four-bit experiments are separate candidates and do not
 replace the best full-range INT8 model automatically.
 
+`weight_bits` likewise accepts a signed precision (2–8 bits), or a mapping from
+convolution module names to precision; unspecified modules retain eight bits.
+Weights remain INT8 tensors in the export. The compiler stores their exact
+constant range and sign-extends them without changing their values.
+`--initialize-qat` preserves a prior QAT checkpoint's learned weights and
+activation scales while applying a newly supplied weight precision. All other
+graph, data, scale and arithmetic contracts must match. `--resume` requires
+unchanged precision too. Either path performs fresh integer/export verification.
+
+The current acceptance threshold is validation Dice **0.65**, with **30 sustained
+FPS** and fabric-only storage still required. Earlier results below are historical;
+the latest evidence and remaining gates are in
+[the throughput record](../docs/throughput-push.md).
+
 For accumulator `a`, multiplier `m` and shift `s`, requantization is:
 
 ```text

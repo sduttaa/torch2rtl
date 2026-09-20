@@ -11,7 +11,7 @@ module raster_window #(
   parameter integer LANES = 1, BITS = 8,
   parameter [BITS-1:0] PADDING_VALUE = 0,
   parameter MEMORY_STYLE = "auto",
-  parameter integer PACKED_LINES = 0, PIPELINED_READ = 0,
+  parameter integer PACKED_LINES = 0, PIPELINED_READ = 0, ALTERNATE_READ = 0,
   localparam integer CHANNEL_WORDS = (CHANNELS + LANES - 1) / LANES,
   localparam integer WORD_BITS = LANES * BITS,
   localparam integer EFFECTIVE_H = (KERNEL_H - 1) * DILATION_H + 1,
@@ -34,6 +34,7 @@ module raster_window #(
   input wire in_valid, output wire in_ready,
   output reg window_available, input wire release_window,
   input wire [WINDOW_BITS-1:0] window_address,
+  input wire [WINDOW_BITS-1:0] alternate_address, input wire select_alternate,
   output wire [WORD_BITS-1:0] window_data
 );
   reg [X_BITS-1:0] column;
@@ -43,12 +44,34 @@ module raster_window #(
   reg [ADDRESS_BITS-1:0] pending_address, address;
   reg [WORD_BITS-1:0] pending_data;
   reg pending, pending_output, pending_column_padding;
+  reg last_channel, last_column;
   wire row_padding, column_padding, eligible_row, eligible_column;
+  wire issue;
   generate
     if (PAD_H == 0) assign row_padding = 1'b0;
-    else assign row_padding = 32'(row) < PAD_H || 32'(row) >= PAD_H + HEIGHT;
+    else begin: padded_rows
+      reg padding_row;
+      assign row_padding = padding_row;
+      always @(posedge clk) begin
+        if (rst) padding_row <= 1;
+        else if (issue && last_channel && last_column) begin
+          if (row == Y_BITS'(PAD_H-1)) padding_row <= 0;
+          else if (row == Y_BITS'(PAD_H+HEIGHT-1)) padding_row <= 1;
+        end
+      end
+    end
     if (PAD_W == 0) assign column_padding = 1'b0;
-    else assign column_padding = 32'(column) < PAD_W || 32'(column) >= PAD_W + WIDTH;
+    else begin: padded_columns
+      reg padding_column;
+      assign column_padding = padding_column;
+      always @(posedge clk) begin
+        if (rst) padding_column <= 1;
+        else if (issue && last_channel) begin
+          if (column == X_BITS'(PAD_W-1)) padding_column <= 0;
+          else if (column == X_BITS'(PAD_W+WIDTH-1)) padding_column <= 1;
+        end
+      end
+    end
     if (EFFECTIVE_H == 1) assign eligible_row = 1'b1;
     else assign eligible_row = 32'(row) >= EFFECTIVE_H-1;
     if (EFFECTIVE_W == 1) assign eligible_column = 1'b1;
@@ -56,10 +79,12 @@ module raster_window #(
   endgenerate
   wire padding = row_padding || column_padding;
   // A one-word row needs a bubble to avoid a same-address read/write hazard.
-  wire collision = pending && !pending_column_padding && !column_padding && address == pending_address;
+  // Every real-column issue advances the circular address. Only a one-word
+  // row can reuse the pending write address on the following issue.
+  wire collision = LINE_WORDS == 1 && pending && !pending_column_padding && !column_padding;
   wire can_issue = !rst && (!window_available || release_window) &&
                    (PACKED_LINES != 0 && EFFECTIVE_H > 1 ? !pending : !(pending && pending_output) && !collision);
-  wire issue = can_issue && (padding || in_valid);
+  assign issue = can_issue && (padding || in_valid);
   assign in_ready = can_issue && !padding;
   wire output_pixel = eligible_row && eligible_column &&
                       (32'(row) - EFFECTIVE_H + 1) % STRIDE_H == 0 &&
@@ -109,13 +134,28 @@ module raster_window #(
   generate if (PIPELINED_READ != 0) begin: pipelined_read
     reg [HORIZONTAL_BITS-1:0] requested_offset, active_address;
     reg [ROW_BITS-1:0] requested_row, active_row;
+    wire [ROW_BITS-1:0] next_row;
     always @(posedge clk) begin
       requested_offset <= selected_offsets[window_address];
       requested_row <= selected_rows[window_address];
       active_address <= wrapped_address;
-      active_row <= requested_row;
+      active_row <= next_row;
     end
-    assign offset = requested_offset;
+    if (ALTERNATE_READ != 0) begin: alternate
+      reg [HORIZONTAL_BITS-1:0] alternate_offset;
+      reg [ROW_BITS-1:0] alternate_row;
+      reg selected;
+      always @(posedge clk) begin
+        alternate_offset <= selected_offsets[alternate_address];
+        alternate_row <= selected_rows[alternate_address];
+        selected <= select_alternate;
+      end
+      assign offset = selected ? alternate_offset : requested_offset;
+      assign next_row = selected ? alternate_row : requested_row;
+    end else begin: single
+      assign offset = requested_offset;
+      assign next_row = requested_row;
+    end
     assign read_address = active_address;
     assign read_row = active_row;
   end else begin: direct_read
@@ -155,6 +195,8 @@ module raster_window #(
       pending_output <= 0;
       pending_column_padding <= 0;
       window_available <= 0;
+      last_channel <= CHANNEL_WORDS == 1;
+      last_column <= PADDED_W == 1;
     end else begin
       if (PACKED_LINES != 0 && EFFECTIVE_H > 1) begin
         if (commit) pending <= 0;
@@ -168,11 +210,13 @@ module raster_window #(
         if (!column_padding) address <= address == ADDRESS_BITS'(LINE_WORDS-1) ? ADDRESS_BITS'(0) : address + 1'b1;
         pending_address <= address;
         pending_column_padding <= column_padding;
-        pending_output <= output_pixel && channel_word == CHANNEL_BITS'(CHANNEL_WORDS-1);
+        pending_output <= output_pixel && last_channel;
         pending_data <= issue_data;
-        if (channel_word == CHANNEL_BITS'(CHANNEL_WORDS-1)) begin
+        last_channel <= CHANNEL_WORDS == 1 || (!last_channel && channel_word == CHANNEL_BITS'(CHANNEL_WORDS-2));
+        if (last_channel) begin
           channel_word <= 0;
-          if (column == X_BITS'(PADDED_W-1)) begin
+          last_column <= PADDED_W == 1 || (!last_column && column == X_BITS'(PADDED_W-2));
+          if (last_column) begin
             column <= 0;
             row <= row == Y_BITS'(PADDED_H-1) ? Y_BITS'(0) : row + 1'b1;
           end else column <= column + 1'b1;
