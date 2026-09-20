@@ -50,7 +50,7 @@ def main():
         return
     if args.command == "emit-network":
         from .graph import actors, read
-        from .network import emit
+        from .network import edges, emit, fifo_width
         from .ranges import bounds, storage_bits
         config = json.loads(args.configuration.read_text())
         model_path = Path(config["model"])
@@ -68,6 +68,8 @@ def main():
                   "actors": [{"name": value.name, "operation": value.operation, "tensor": asdict(value.tensor),
                               "value_range": bounds(value), "stream_storage_bits": storage_bits(value)}
                              for value in graph.values],
+                  "fifos": [{"edge": name, "word_bits": fifo_width(source, config["lanes"]),
+                             "depth": config["fifo_depths"][name]} for name, source, *_ in edges(graph)],
                   "solver_verified": False, "hardware_fit_verified": False, "timing_verified": False}
         (args.output / "emission.json").write_text(json.dumps(report, indent=2) + "\n")
         print(f"Explicit-configuration RTL emitted to {args.output.resolve()}; scheduling, fit and timing remain to be checked")

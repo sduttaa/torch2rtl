@@ -7,7 +7,7 @@ from torch.nn import functional as F
 
 from torch2rtl.frontend import import_program
 from torch2rtl.graph import actors, read, evaluate
-from torch2rtl.network import edges, emit
+from torch2rtl.network import edges, emit, fifo_width
 from rtl_check import pack, simulate
 
 
@@ -95,7 +95,8 @@ def test_branched_convolution_network(tmp_path, lanes, stalls):
 
 @pytest.mark.parametrize("signed", [False, True])
 @pytest.mark.parametrize("line_layout", ["parallel", "packed"])
-def test_narrow_storage_preserves_branched_integer_values(tmp_path, monkeypatch, signed, line_layout):
+@pytest.mark.parametrize("lanes", [3, 4])
+def test_narrow_storage_preserves_branched_integer_values(tmp_path, monkeypatch, signed, line_layout, lanes):
     from torch2rtl.ranges import bounds, storage_bits
     torch.manual_seed(21)
     model = TinyBranched(activation_bits=5, signed=signed, raw_output=True)
@@ -112,15 +113,22 @@ def test_narrow_storage_preserves_branched_integer_values(tmp_path, monkeypatch,
     assert bounds(convs[0]) == ((-16, 15) if signed else (0, 31))
     assert all(storage_bits(value) == 5 for value in graph.values if value.operation in
                ("max_pool2d", "__interpolate.size_list_scale_list", "quantized_concat"))
-    lanes = 3
     rtl = emit(graph, lanes, {value.name: min(2, value.tensor.shape[1]) for value in convs},
                {name: 128 for name, *_ in edges(graph)},
                {value.name: {"line_layout": line_layout} for value in convs})
     assert "stream_fifo #(.WIDTH(15)" in rtl
+    assert fifo_width(graph.input, lanes) == 24
+    assert fifo_width(convs[1], lanes) == 5
+    for index, (_, source, *_) in enumerate(edges(graph)):
+        assert f"stream_fifo #(.WIDTH({fifo_width(source, lanes)}), .DEPTH(128)) fifo_{index}" in rtl
     input_words, expected_words = [], []
     for image in images:
         result = model(image)
         assert torch.equal(evaluate(graph, image), result)
         input_words.extend(word for pixel in image.permute(0, 2, 3, 1).reshape(-1, 3) for word in pack(pixel, 8, lanes))
         expected_words.extend(word for pixel in result.permute(0, 2, 3, 1).reshape(-1, 1) for word in pack(pixel, 8, lanes))
+    if lanes > 3:
+        # Padding is not a tensor channel; even arbitrary source padding must
+        # disappear without changing any signed or unsigned tensor value.
+        input_words = [word | (((index % 255)+1) << 24) for index, word in enumerate(input_words)]
     simulate(tmp_path, rtl, lanes*8, lanes*8, input_words, expected_words, True)

@@ -22,6 +22,7 @@ passes RTL simulation, but accuracy, fabric fit and 30 FPS remain unmet. The
 - [Implemented subset and verification](docs/implementation.md)
 - [Spatial RTL and full-model simulation](docs/spatial-backend.md)
 - [Spatial scheduling catalogue and solver limits](docs/spatial-scheduling.md)
+- [Optimized full-model schedule and narrower FIFOs](docs/direct-scheduling.md)
 
 All project-specific installations, source dependencies, environments, caches,
 and build outputs live in this directory under Documents. Existing Apple
@@ -65,7 +66,10 @@ actor/FIFO configurations. It supports branched raster networks and preserves
 integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
 full-model diagnostic schedule now passes RTL deadline checks with oversized
-FIFOs. Resource-feasible scheduling remains unresolved. Emission is not a fit certificate.
+FIFOs, including an optimized period for a fixed actor configuration.
+A slower schedule also passes with finite FIFOs and the catalogue's resource
+budgets, but nextpnr packing exceeds LUT capacity. Physical fit remains unresolved.
+Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
 while preserving byte tensor semantics. Training precision is always explicit.
 The optional `"fusions": ["convolution_pool"]` configuration entry enables an

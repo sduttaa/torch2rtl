@@ -8,7 +8,10 @@ repeated-frame RTL transfers against solver deadlines, including parameter
 selection, odd geometries, backpressure at joins and a deadlocking small FIFO
 allocation. A subsequent [full-model diagnostic schedule](solver-domains.md)
 also passes RTL transfer deadlines with oversized FIFOs and no resource budgets;
-the fabric-constrained scheduling problem remains incomplete.
+the subsequent [fabric-budget feasibility point](direct-scheduling.md) verifies
+a fixed fifteen-million-cycle schedule with finite FIFOs. It meets the input
+cost estimates but exceeds LUT capacity after physical packing. A physically
+feasible optimized schedule remains incomplete.
 
 An event time is the clock edge at which a transfer or internal state update
 occurs. Frame `n` repeats at `n*T + t[event]`. Actor and FIFO choices remain finite

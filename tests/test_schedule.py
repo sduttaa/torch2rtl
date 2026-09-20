@@ -102,3 +102,16 @@ def test_fifo_forward_latency_participates_in_the_schedule(depth, latency, perio
     assert solution.period == period
     assert all(solution.offsets[read] >= solution.offsets[write] + latency
                for write, read in zip(problem.fifos[0].writes, problem.fifos[0].reads))
+
+
+@pytest.mark.parametrize("delays", [{"1": 3, "2": 1, "5": 2}, {"1": 2, "2": 2, "5": 2}])
+@pytest.mark.parametrize("budget", [0, 1, 2, 5])
+def test_selected_forward_latency_matches_explicit_guarded_constraints(delays, budget):
+    model = replace(pipeline(budget=budget), resource_weights={"slots": 1})
+    fifo = model.fifos[0]
+    selected_delay = replace(model, fifos=(replace(fifo, forward_delays=delays),))
+    explicit_guards = replace(model, dependencies=model.dependencies + tuple(
+        Dependency(write, read, delay, when=((fifo.choice, option),))
+        for option, delay in delays.items() for write, read in zip(fifo.writes, fifo.reads)))
+    selected, explicit = solve(selected_delay), solve(explicit_guards)
+    assert (selected.status, selected.period, selected.selected) == (explicit.status, explicit.period, explicit.selected)

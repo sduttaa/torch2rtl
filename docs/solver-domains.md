@@ -1,5 +1,10 @@
 # Full-model periodic scheduling without offset branching
 
+The subsequent [direct scheduling investigation](direct-scheduling.md) removes
+the fixed-period constraint, proves a 4,591,040-cycle optimum for the same actor
+and FIFO choices, and verifies the optimized RTL deadlines. The account below
+preserves the earlier fixed-period experiment and its then-current settings.
+
 CP-SAT now returns a schedule for the complete retained INT8 model's
 **4,091,235 events**, and full RTL simulation meets the returned input/output
 transfer times over three frames. Every original model constraint is checked

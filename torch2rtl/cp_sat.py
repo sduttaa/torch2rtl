@@ -50,14 +50,20 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
                 for before, after in zip(writes_or_reads, writes_or_reads[1:]):
                     add(before, after, 1, when=fifo.when)
                 add(writes_or_reads[-1], writes_or_reads[0], 1, 1, fifo.when)
-        if not fifo.forward_delays:
-            for write, read in zip(fifo.writes, fifo.reads):
-                add(write, read, 1, when=fifo.when)
+        forward_delay = 1
+        if fifo.forward_delays:
+            first, last = min(fifo.forward_delays.values()), max(fifo.forward_delays.values())
+            forward_delay = first
+            if first != last:
+                forward_delay = model.new_int_var(first, last, f"{fifo.choice}/forward_delay")
+                model.add(forward_delay == sum(delay * chosen[fifo.choice, option]
+                                               for option, delay in fifo.forward_delays.items()))
+        # Availability is one inequality per word, even when many depth
+        # choices share a latency. Choices fix the auxiliary delay exactly.
+        for write, read in zip(fifo.writes, fifo.reads):
+            add(write, read, forward_delay, when=fifo.when)
         for option, depth in fifo.depths.items():
             active = fifo.when + ((fifo.choice, option),)
-            if fifo.forward_delays:
-                for write, read in zip(fifo.writes, fifo.reads):
-                    add(write, read, fifo.forward_delays[option], when=active)
             for index, write in enumerate(fifo.writes):
                 frame, word = divmod(index - depth, count)
                 # write_j >= read_h + frame*T + replacement_delay.
@@ -81,6 +87,13 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
     solver.parameters.random_seed = limits.seed
     solver.parameters.search_branching = cp_model.FIXED_SEARCH
     solver.parameters.instantiate_all_variables = False
+    # Event models benefit from direct integer propagation. A one-event
+    # resource/period relaxation retains presolve and LP for its choices.
+    if len(problem.events) > 1:
+        solver.parameters.cp_model_presolve = False
+        solver.parameters.cp_model_probing_level = 0
+        solver.parameters.linearization_level = 0
+        solver.parameters.new_linear_propagation = False
     start = monotonic()
     status = solver.solve(model)
     feasible = status in (cp_model.OPTIMAL, cp_model.FEASIBLE)

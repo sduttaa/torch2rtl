@@ -1,112 +1,86 @@
 # Current result
 
-There is a working compiler foundation and a verified path from PyTorch export
-through torch-mlir, CP-SAT, generated RTL, simulation, synthesis, placement/routing
-and bitstream packing. **The requested full-model 30-FPS result is not achieved.**
+**The requested accurate, fabric-memory-only 30-FPS design is not achieved.**
+The compiler now produces full-model RTL and CP-SAT schedules with independently
+checked constraints and RTL transfer deadlines. Accuracy, a resource-feasible
+optimized schedule and full-design physical timing remain unresolved. A slower
+four-bit-activation candidate now passes complete RTL simulation and whole-design
+synthesis within the supplied budgets, but nextpnr packing exceeds LUT capacity.
 
-| Work | Result |
-| --- | --- |
-| Local toolchain under Documents | Installed and verified, including native torch-mlir |
-| Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
-| Joint schedule/FIFO/resource solver | Full-model diagnostic schedule and RTL deadlines verified; resource-feasible allocation unresolved |
-| Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 329 passing, including spatial RTL, overflow, backpressure and integer training/export |
-| Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
-| Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
-| Physical-board inference measurement | Not performed |
+## Accuracy and deployment scope
 
-CP-SAT now schedules all **4.09 million events** of the retained full-range INT8
-model at a fixed five-million-cycle period. Every original constraint and all
-external RTL transfer deadlines passed over three real images. The diagnostic
-uses oversized FIFOs, omits resource budgets and uses explicit solver settings;
-it does not prove fabric fit or 30 FPS. [Scheduling evidence](docs/solver-domains.md).
+| Model | Validation Dice | Constants | Status |
+| --- | ---: | ---: | --- |
+| Supplied integer export | 0.676843 | 291,240 bytes | Baseline; contains FP32 computation and exceeds the tested fabric-storage budget |
+| Best retrained full-range INT8 | 0.667115 | 27,576 bytes | Integer export verified; accuracy target unmet |
+| Retrained INT8 weights / four-bit hidden activations | 0.656095 | 27,576 bytes | Smaller exact storage; accuracy target unmet |
 
-The complete **retrained** model now emits generic spatial RTL and matches its
-integer reference on three real validation images, with and without random
-stalls. Both observed inter-frame intervals were 4,582,512 cycles in the
-two-lane simulation with oversized verification FIFOs. That interval would require 137.47536 MHz for
-30 FPS, but its 6,213,376-byte logical FIFO allocation exceeds fabric memory.
-No full-model routed clock or feasible buffer allocation has been established.
-See [the spatial backend and reproduction](docs/spatial-backend.md).
+The retained full-range model matches QAT on all 246 supplied images and its
+serialized export on all 49 validation images. It has no floating-point tensor
+nodes and passes torch-mlir verification. The existing validation split has been
+used to select many experiments; no independent test set was supplied.
+Further training, decision calibration and lighting augmentation did not improve
+the retained checkpoint. [Training evidence](docs/training-results.md).
 
-The newest verified INT8 candidate reaches **0.667115 Dice**, with **27,576 bytes**
-of constants and **240,583,680 MACs** per inference. It remains below the required
-0.676843. The latest four-lane actor-only synthesis totals 22,169 LUT equivalents,
-7,614 FFs, 81 byte-multiplier slots and 60 BRAM blocks, before graph FIFOs. This
-configuration exceeds the supplied LUT and BRAM budgets and is not deployable.
+The user requires **both weights and activations in FPGA fabric memory**.
+SDRAM is excluded. The selected target remains explicit input in
+`inputs/target.json`: 46 BRAM blocks, 20,736 LUT equivalents, 15,552 FFs,
+96 byte-multiplier slots and 41,472 distributed-memory bits. Board names,
+resource budgets, model details and clocks are not compiler lookup tables.
 
-Explicitly retrained six-bit and four-bit hidden activations reach 0.660259 and
-0.656095 Dice. Generic range-based storage narrowing brings the four-bit actors
-to **44 BRAM blocks and 20,300 LUT equivalents before FIFOs**, with full-network
-numerical simulation passing on three images. This still fails accuracy and
-does not establish complete fabric fit or 30 FPS. The best full-range candidate
-is unchanged. [Detailed precision/storage evidence](docs/narrow-storage.md).
+## Latest scheduling and RTL evidence
 
-A survey of 191 convolution configurations improved the same four-bit graph's
-observed RTL frame interval from 4.66 million to 3.98 million cycles with
-oversized verification FIFOs, approximately 17% higher observed throughput.
-Area screens expose smaller configurations as well. These relaxations do not
-solve the full scheduling, fabric-fit or clock problem. Continued training and
-training-only decision calibration did not beat the best accuracy checkpoint.
-[Option survey and evidence](docs/option-survey.md).
+CP-SAT proves a **4,591,040-cycle minimum period** for the full-range INT8 model's
+fixed actor configuration and oversized verification FIFOs, within the reported
+period/offset caps. All **4,091,235 event offsets** pass an independent check of
+the original constraints. Full RTL accepts all 387,840 scheduled input words and
+produces all 96,768 bit-exact output words at their deadlines across three images.
 
-An optional exact convolution/max-pool fusion now removes repeated rescaling and
-an intermediate stream. Forty-eight synthesis measurements show useful resource
-tradeoffs, and full-network RTL verification remains bit-exact. The observed
-frame interval is still about 3.98 million cycles because another actor limits
-the rate. Exact window-path bounds strengthen CP-SAT without restricting
-per-word schedules. [Fusion, proof and measurements](docs/convolution-pool.md).
+That schedule requires 137.7312 MHz for 30 FPS, but its actors already exceed the
+LUT/BRAM budgets before graph FIFOs, and no full-design routed clock is available.
+This is a scoped scheduling optimum, not a deployable result.
+[Solver settings, exact FIFO narrowing and reproduction](docs/direct-scheduling.md).
 
-Measuring 191 additional parallel-line configurations and using the window-aware
-bounds subsequently reduced the same graph's observed interval to **3.81 million
-cycles**, about **4.6% higher throughput** than the 3.98-million-cycle selection.
-All 96,768 checked pixels match. The verification buffers still exceed fabric
-memory, and mild lighting augmentation did not improve the best accuracy.
-[Layout selection and evidence](docs/window-layouts.md).
+For the four-bit graph, a separate measured actor/layout selection achieves an
+observed RTL interval of about **3,807,732 cycles** with oversized FIFOs. This
+would require about 114.23 MHz for 30 FPS. Its necessary resource/actor-rate
+screen omits graph occupancy; it does not establish a feasible network schedule
+or physical fit. [Layout measurements](docs/window-layouts.md).
 
-The user authorized retraining while keeping weights and activations in fabric
-memory. The compact verified replacement reaches **0.659503 validation Dice**,
-below the supplied model's **0.676843**. Its constants total **26,988 bytes** and
-its direct workload is **212,686,848 MACs per inference**: 10.8× smaller constants
-and 12.0× fewer MACs than the original export. These are size/workload reductions,
-not a measured speedup. The serialized model uses integer tensors throughout,
-matches its QAT simulation on all 246 images, and imports through torch-mlir.
-See [training results](docs/training-results.md) and the
-[integer model report](build/training/cropped-integer/report.json).
-A previous wider-context integer candidate reaches **0.660307 Dice** with 37,644
-bytes of constants and 240,556,032 MACs per inference. All candidates remain below
-the accuracy requirement.
+## Implemented and verified
 
-The integration kernel improves from a 14-cycle frame period with one lane to
-five cycles with four lanes, selected by CP-SAT. Simulation confirms the periods.
-That is a 2.8× improvement for this small test over its serial configuration;
-it is not a performance claim for the full model or against another compiler.
-The selected core uses 397 synthesis LUT-equivalents and 135 FFs under the
-supplied cost rules. Routing the core in a test harness passes its 27-MHz target.
+- Tools installed under Documents: PyTorch, native torch-mlir, OR-Tools, Yosys,
+  nextpnr, IceStorm/Trellis/Apicula, Verilator, Icarus and openFPGALoader.
+- Generic integer convolution, pooling, nearest resize, aligned concatenation,
+  lookup and FIFO actors; independent output/reduction parallelism; exact range
+  narrowing; optional proved convolution/max-pool fusion.
+- Solver-independent periodic event contracts with actor choices, FIFO depths,
+  occupancy and resource constraints in CP-SAT; every feasible result checked
+  against the original model.
+- **341 tests pass**, including numerical overflow, branches, backpressure,
+  periodic schedules, signed storage, training and export.
+- A small integration kernel synthesizes, routes at 27 MHz and packs a bitstream.
+  That result is distinct from the requested full model. Physical-board inference
+  has not been measured; FP32 actors and board transport remain incomplete.
 
-The full model contains 291,240 bytes of constants, while the selected target has
-111,168 bytes of fabric RAM. Its dynamic activation quantization creates direct
-FP32 replay buffers as large as 12,386,304 bytes, and its convolutions execute in
-FP32 after dequantization. Merely changing reduction order does not resolve these
-constraints. See [the detailed workload findings](docs/workload-feasibility.md).
-
-Further generic checks did not bridge the gap. The tested per-tensor lossless
-encoding catalogue needs 271,633 bytes and is CP-SAT-infeasible even under a
-154,584-byte allowance that gives every LUT table and FF to storage. Regenerating
-index-only views reduces the largest candidate replay payload to 4,128,768 bytes,
-still much larger than fabric RAM. These results apply to the documented candidate
-representations, not every conceivable compression or recomputation architecture.
-
-The earlier deployment-decision blocker was removed by the user's retraining
-approval. The goal remains active and incomplete; see the
-[full-goal audit](docs/goal-audit.md). The existing model is unchanged, and no board/model special cases were added to
-compiler code. Target resources, clocks, parts, pins, candidate lane counts and
-FIFO depths are explicit inputs.
+Unused vector lanes are now omitted from FIFO storage using static tensor
+shapes. Measured 2,048-word FIFOs use one BRAM block at eight bits and two at
+16 bits. A complete candidate with all storage in fabric produces three bit-exact
+frames at observed intervals of **12,978,517 cycles**. Whole-network synthesis
+uses **43 BRAM blocks, 19,606 LUT equivalents, 6,795 FFs, 94 multiplier slots and
+19,200 distributed-memory bits**, within the supplied budgets. Placement/routing
+then exposes a physical overrun: packing requires **21,539 LUT sites versus
+20,736 available**. Placement was stopped; physical fit remains unmet.
+CP-SAT independently verifies every event and FIFO constraint for this same
+candidate at a fixed **15-million-cycle period**, and full RTL meets its deadlines
+on three images. This is a feasibility point under the catalogue cost estimates,
+not an optimized throughput or physical-fit result. Its validation Dice remains
+0.656095, and it does not meet the requested 30 FPS.
 
 - [Implementation and reproduction](docs/implementation.md)
 - [Installed toolchain](docs/toolchain.md)
-- [Full-model machine-readable analysis](build/workload/analysis.json)
-- [Verified full-model MLIR](build/workload/model.mlir)
-- [Integration compile result](build/acceptance/compiled/compile.json)
-- [Routed test-harness report](build/acceptance/physical/route-report.json)
-- [Tests](build/tests.log)
+- [Full-model diagnostic schedule and RTL verification](docs/direct-scheduling.md)
+- [Fusion proof and synthesis measurements](docs/convolution-pool.md)
+- [Original-export feasibility analysis](docs/workload-feasibility.md)
+- [Goal audit and remaining requirements](docs/goal-audit.md)
+- [Test log](build/tests.log)

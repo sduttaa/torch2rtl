@@ -6,10 +6,20 @@ The user has authorized training a smaller INT8 replacement on the supplied
 dataset, provided it matches or exceeds the existing model's accuracy. Both
 weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
 This removes the earlier decision blocker. The goal is active and incomplete.
-The latest [solver investigation](solver-domains.md) found a complete periodic
-schedule and verified full-model RTL input/output deadlines over three images.
-It uses oversized FIFOs and no resource budgets. This resolves a full-size
-diagnostic scheduling point, not the accuracy, fabric-fit or 30-FPS requirements.
+The latest [solver investigation](direct-scheduling.md) proves a 4,591,040-cycle
+minimum period for a fixed full-model actor/FIFO configuration and verifies
+every RTL input/output deadline over three images. It uses oversized FIFOs and
+no resource budgets. Exact unused-lane removal also reduces measured FIFO
+memory. A first joint solve with fabric budgets proves its finite catalogue
+infeasible within the stated caps; it does not prove all hardware choices
+infeasible. These are measured implementation advances. Accuracy, fabric fit
+and physical 30 FPS remain unmet, and this turn is progress rather than a
+repeated no-progress blocking condition.
+The subsequent fabric candidate passes CP-SAT and RTL deadline checks at a
+fixed fifteen-million-cycle period. Whole-design synthesis meets the supplied
+resource estimates, but nextpnr packing requires 21,539 LUT sites against 20,736
+available. Placement was stopped. This exposes a resource-accounting gap and
+does not establish physical fit. The model's Dice remains 0.656095.
 The latest exact convolution/pool fusion and implied window-path timing bounds
 are documented in [the fusion report](convolution-pool.md). They add verified
 implementation progress; they do not establish the missing accuracy, full-model

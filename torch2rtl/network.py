@@ -19,6 +19,11 @@ def edges(graph):
             for port, source in enumerate(references(value.args))]
 
 
+def fifo_width(source, lanes):
+    """Physical bits per word, omitting lanes absent from every tensor pixel."""
+    return min(lanes, source.tensor.shape[1]) * storage_bits(source)
+
+
 def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=None):
     memories = memories or {}
     convolution_actor = value.operation in ("quantized_convolution", "quantized_convolution_pool")
@@ -81,11 +86,15 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
     for edge_index, (name, source, _, _) in enumerate(channels):
         index = indices[source]
         element_bits = storage_bits(source)
+        stored_lanes = min(lanes, source.tensor.shape[1])
+        width = fifo_width(source, lanes)
         top += [f"wire [{bits-1}:0] edge_data_{edge_index}; wire edge_valid_{edge_index}, edge_ready_{edge_index}, space_{edge_index};",
-                f"wire [{lanes*element_bits-1}:0] packed_input_{edge_index}, packed_output_{edge_index};",
-                lane_cast(f"data_{index}", f"packed_input_{edge_index}", lanes, 8, element_bits),
-                lane_cast(f"packed_output_{edge_index}", f"edge_data_{edge_index}", lanes, element_bits, 8, source.tensor.signed),
-                f"stream_fifo #(.WIDTH({lanes*element_bits}), .DEPTH({depths[name]})) fifo_{edge_index} (",
+                f"wire [{width-1}:0] packed_input_{edge_index}, packed_output_{edge_index};",
+                lane_cast(f"data_{index}", f"packed_input_{edge_index}", stored_lanes, 8, element_bits),
+                lane_cast(f"packed_output_{edge_index}", f"edge_data_{edge_index}", stored_lanes, element_bits, 8, source.tensor.signed)]
+        if stored_lanes < lanes:
+            top.append(f"assign edge_data_{edge_index}[{bits-1}:{stored_lanes*8}] = '0;")
+        top += [f"stream_fifo #(.WIDTH({width}), .DEPTH({depths[name]})) fifo_{edge_index} (",
                 f".clk(clk), .rst(rst), .in_data(packed_input_{edge_index}), .in_valid(valid_{index} && ready_{index}), .in_ready(space_{edge_index}),",
                 f".out_data(packed_output_{edge_index}), .out_valid(edge_valid_{edge_index}), .out_ready(edge_ready_{edge_index}));"]
     for source, connections in outgoing.items():

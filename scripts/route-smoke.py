@@ -32,6 +32,8 @@ else:
         parser.error("--rtl requires positive --input-bits and --output-bits")
     input_bits, output_bits, rtl = args.input_bits, args.output_bits, args.rtl
 args.output.mkdir(parents=True, exist_ok=True)
+for name in ("routed.json", "route-report.json", "harness.fs"):
+    (args.output / name).unlink(missing_ok=True)
 harness = f"""
 module harness(input wire clk, input wire rst, output wire observed);
   reg [{input_bits-1}:0] source;
@@ -59,18 +61,28 @@ family = config["family"]
 if not family.isalnum():
     raise ValueError("Invalid family identifier")
 (args.output / "synth.ys").write_text(
-    f"read_verilog -sv harness.sv\nsynth_gowin -top harness -family {family} -json netlist.json\n")
+    f"read_verilog -sv harness.sv\nsynth_gowin -top harness -family {family}\n"
+    "bufnorm -conn\nclean\nwrite_json netlist.json\n")
 pnr = target["place_route"]
+route_command = [pnr["executable"], "--device", pnr["device"], "--vopt", "family=" + pnr["family"],
+                 "--vopt", "cst=" + str(args.constraints.resolve()), "--json", "netlist.json",
+                 "--freq", str(target["clock_hz"] / 1e6)]
 commands = [
     ["yosys", "-Q", "-T", "-s", "synth.ys"],
-    [pnr["executable"], "--device", pnr["device"], "--vopt", "family=" + pnr["family"],
-     "--vopt", "cst=" + str(args.constraints.resolve()), "--json", "netlist.json",
-     "--write", "routed.json", "--report", "route-report.json", "--freq", str(target["clock_hz"] / 1e6)],
+    route_command + ["--pack-only", "--report", "packing-report.json"],
+    route_command + ["--write", "routed.json", "--report", "route-report.json"],
     ["gowin_pack", "-d", pnr["family"], "-o", "harness.fs", "routed.json"],
 ]
-for name, command in zip(("synthesis", "place-route", "pack"), commands):
+for name, command in zip(("synthesis", "packing", "place-route", "pack"), commands):
     with (args.output / f"{name}.log").open("w") as log:
         subprocess.run(command, cwd=args.output, stdout=log, stderr=subprocess.STDOUT, check=True)
+    if name == "packing":
+        utilization = json.loads((args.output / "packing-report.json").read_text())["utilization"]
+        # Zero-capacity report entries include virtual bookkeeping cells.
+        exceeded = {resource: row for resource, row in utilization.items()
+                    if row["available"] > 0 and row["used"] > row["available"]}
+        if exceeded:
+            raise ValueError(f"Packed resource capacity exceeded: {exceeded}")
 result = json.loads((args.output / "route-report.json").read_text())
 print(json.dumps({"fmax": result.get("fmax"), "utilization": result.get("utilization"),
                   "physical_board_measured": False}, indent=2))
