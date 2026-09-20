@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 import torch
-from dataclasses import replace
 
 from rtl_check import pack, simulate
 from test_network import TinyBranched
@@ -11,7 +10,7 @@ from torch2rtl.graph import Graph, Value, actors, evaluate, read
 from torch2rtl.lower import Tensor
 from torch2rtl.network import edges, emit
 from torch2rtl.schedule import Limits
-from torch2rtl.spatial_schedule import ActorConfig, FifoConfig, problem, words
+from torch2rtl.spatial_schedule import ActorConfig, Events, FifoConfig, problem, words
 
 
 def check_schedule(directory, graph, lanes, actor_options, fifo_depths=(1, 2, 8), frames=4, budgets=None):
@@ -126,7 +125,7 @@ def test_joint_actor_parameter_choice(tmp_path):
     assert fast.period < slow.period
 
 
-def test_summed_cycle_bounds_preserve_the_unrestricted_optimum():
+def test_summed_cycle_bounds_preserve_the_unrestricted_optimum(monkeypatch):
     graph = branched(5)
     options = {value.name: {"selected": ActorConfig(2 if value.tensor.shape[1] > 1 else 1, 2)
                if value.operation == "quantized_convolution" else ActorConfig()}
@@ -135,7 +134,9 @@ def test_summed_cycle_bounds_preserve_the_unrestricted_optimum():
     model = problem(graph, 2, options, fifos, {}, 20000, 50000)
     bounds = [edge for edge in model.dependencies if edge.before == edge.after]
     assert bounds and all(edge.frames == 1 and edge.delay > 0 for edge in bounds)
-    original = replace(model, dependencies=tuple(edge for edge in model.dependencies if edge.before != edge.after))
+    with monkeypatch.context() as patch:
+        patch.setattr(Events, "implied", lambda *args: None)
+        original = problem(graph, 2, options, fifos, {}, 20000, 50000)
     strengthened = solve(model, Limits(seconds=20))
     baseline = solve(original, Limits(seconds=20))
     assert strengthened.status == baseline.status == "OPTIMAL"

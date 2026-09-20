@@ -21,10 +21,11 @@ def edges(graph):
 
 def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=None):
     memories = memories or {}
-    allowed = {"weight", "line", "line_layout"} if value.operation == "quantized_convolution" else {"storage"}
+    convolution_actor = value.operation in ("quantized_convolution", "quantized_convolution_pool")
+    allowed = {"weight", "line", "line_layout"} if convolution_actor else {"storage"}
     if not memories.keys() <= allowed:
         raise ValueError(f"Unknown memory mapping for {value.operation}")
-    if value.operation == "quantized_convolution":
+    if convolution_actor:
         return convolution.emit(value, lanes, output_lanes, memories.get("weight", "auto"),
                                 memories.get("line", "auto"), memories.get("line_layout", "parallel"), reduction_lanes)
     if reduction_lanes is not None:
@@ -47,7 +48,8 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
 def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None):
     memories = memories or {}
     reduction_lanes = reduction_lanes or {}
-    if not reduction_lanes.keys() <= {value.name for value in graph.values if value.operation == "quantized_convolution"}:
+    convolutions = {value.name for value in graph.values if value.operation in ("quantized_convolution", "quantized_convolution_pool")}
+    if not reduction_lanes.keys() <= convolutions:
         raise ValueError("Reduction parallelism refers to an unknown convolution")
     if not memories.keys() <= {value.name for value in graph.values if value is not graph.input}:
         raise ValueError("Memory mapping refers to an unknown actor")
@@ -57,7 +59,7 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
     channels = edges(graph)
     if set(depths) != {name for name, _, _, _ in channels} or any(type(depth) is not int or depth < 1 for depth in depths.values()):
         raise ValueError("Supply one positive logical FIFO depth for every graph edge")
-    if set(output_lanes) != {value.name for value in graph.values if value.operation == "quantized_convolution"}:
+    if set(output_lanes) != convolutions:
         raise ValueError("Supply output parallelism for every convolution")
     indices = {value: index for index, value in enumerate(graph.values)}
     outgoing, incoming = defaultdict(list), defaultdict(list)

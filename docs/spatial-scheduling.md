@@ -3,7 +3,7 @@
 These equations are implemented in `torch2rtl/spatial_schedule.py` using the
 agreed periodic event model. `schedule-network` accepts finite actor and FIFO
 catalogues, performs a necessary resource check, then solves their joint timing
-and occupancy problem with CP-SAT. Twenty-two spatial scheduling tests check
+and occupancy problem with CP-SAT. Spatial scheduling tests check
 repeated-frame RTL transfers against solver deadlines, including parameter
 selection, odd geometries, backpressure at joins and a deadlocking small FIFO
 allocation. This evidence does not establish a feasible full-model schedule.
@@ -21,6 +21,29 @@ registers. These constraints cancel intermediate offsets algebraically and
 leave every per-word schedule available. They strengthen propagation without
 adopting the proposed pixel-group restriction. Tests compare the optimum with
 and without these redundant constraints and continue to check RTL deadlines.
+
+The same implementation now summarizes the ordered issue path between each
+window release and the next window's first possible use. Let `g[j]` be this
+path delay, including frame wrap, intermediate issue gaps and the final read
+latency. This gives an implied dependency from the preceding release to
+`s[j]`. It retains all original issue/transfer events and constraints.
+
+For convolution, let `L` be the release offset (`D` ordinarily) and `E` the
+tile delay. Combining the compute and refill paths yields these stronger
+implied cycle sums:
+
+```text
+B = 1:  T >= sum_j max(E+1, L+g[j])
+B > 1:  T >= sum_j (E + max((B-1)*E+1, (B-2)*E+L+g[j]))
+```
+
+Each term chooses between two already-required paths to the next start. Their
+sum cancels the event offsets over one frame. General pooling similarly has
+`T >= pixels*channel_words*kernel_area + sum_j max(1,g[j])`. Tests remove all
+implied bounds/path summaries and obtain the same unrestricted optimum, as well
+as checking the resulting RTL deadlines. No fixed-spacing pixel group has been
+introduced. The [optional convolution/pool fusion](convolution-pool.md) uses the
+same equations with its measured implementation's tile and release delays.
 
 ## Window storage
 
@@ -145,8 +168,8 @@ For the new FIFO, `l=1` at depth one and `l=2` for larger synchronous-memory
 implementations; replacement can occur on the same edge as the retiring read.
 
 A literal word-event expansion of the real model is large, and this Mac has
-16 GiB RAM. After exact event aliases, the current model/configuration still
-has **4,091,235 events**, **5,513,378 actor dependencies**, and **1,601,728 FIFO
+16 GiB RAM. After the initial exact event aliases, the measured configuration
+had **4,091,235 events**, **5,513,378 actor dependencies**, and **1,601,728 FIFO
 words** across 23 edges. The frontend constructed it in about five seconds,
 with a peak process footprint around 1.5 GB. FIFO word-order constraints are
 omitted only where the actor contracts already imply them, including frame
@@ -182,6 +205,15 @@ infeasibility, and its fixed objective value is not an optimized period.
 The [probe report](../build/scheduling/fixed-period-probe/result.json) and
 [solver log](../build/scheduling/fixed-period-probe/solve.log) preserve that evidence.
 
+Repeating that fixed-period probe with the implied window paths and combined
+cycle bounds increases the actor dependencies to 5,842,283 while retaining
+4,091,235 events. It again returned `UNKNOWN`, with the same 721,829,009 integer
+propagations and no branches. The run completed normally: about 221 seconds in
+the solve call, 295 seconds monitored overall, and 6.95 GB observed peak RSS.
+The stronger bounds are valid but did not resolve this full-model scale issue.
+See the [window-bound report](../build/scheduling/window-bound-probe/result.json)
+and [monitor](../build/scheduling/window-bound-probe/monitor.json).
+
 Pixel-grouped scheduling would restrict this schedule family and could lose
 solutions. The user has been asked whether that tradeoff is acceptable; it has
 not been adopted. No external simulation-based FIFO optimizer has replaced
@@ -194,6 +226,7 @@ the requested CP-SAT occupancy model.
 uses these explicit catalogue fields:
 
 - `model`, optional `model_sha256`, and stream `lanes`;
+- optional `fusions`, with `convolution_pool` enabling the proved fusion;
 - `period_limit` and `offset_limit`, which bound the searched schedules;
 - `actor_options[actor_id][option_name]`, with `resources`, optional
   `output_lanes`, `reduction_lanes`, and `memories`;

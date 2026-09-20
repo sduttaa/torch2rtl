@@ -4,6 +4,7 @@ module integer_convolution #(
   parameter integer HEIGHT = 1, WIDTH = 1,
   parameter integer INPUT_CHANNELS = 1, OUTPUT_CHANNELS = 1,
   parameter integer KERNEL_H = 1, KERNEL_W = 1,
+  parameter integer POOL_H = 1, POOL_W = 1,
   parameter integer STRIDE_H = 1, STRIDE_W = 1,
   parameter integer DILATION_H = 1, DILATION_W = 1,
   parameter integer PAD_H = 0, PAD_W = 0, GROUPS = 1,
@@ -43,7 +44,11 @@ module integer_convolution #(
   localparam integer OUTPUT_BITS = OUTPUT_WORDS <= 1 ? 1 : $clog2(OUTPUT_WORDS),
   localparam integer BYTE_BITS = ACCUMULATOR_BYTES <= 1 ? 1 : $clog2(ACCUMULATOR_BYTES),
   localparam integer GROUP_BITS = MULTIPLIER_GROUPS <= 1 ? 1 : $clog2(MULTIPLIER_GROUPS),
-  localparam integer WINDOW_WORDS = KERNEL_H * KERNEL_W * CHANNEL_WORDS,
+  localparam integer POOL_ITEMS = POOL_H * POOL_W,
+  localparam integer POOL_BITS = POOL_ITEMS <= 1 ? 1 : $clog2(POOL_ITEMS),
+  localparam integer WINDOW_H = POOL_ITEMS == 1 ? KERNEL_H : (KERNEL_H-1)*DILATION_H+1+(POOL_H-1)*STRIDE_H,
+  localparam integer WINDOW_W = POOL_ITEMS == 1 ? KERNEL_W : (KERNEL_W-1)*DILATION_W+1+(POOL_W-1)*STRIDE_W,
+  localparam integer WINDOW_WORDS = WINDOW_H * WINDOW_W * CHANNEL_WORDS,
   localparam integer WINDOW_BITS = WINDOW_WORDS <= 1 ? 1 : $clog2(WINDOW_WORDS)
 ) (
   input wire clk, input wire rst,
@@ -54,15 +59,33 @@ module integer_convolution #(
   reg [2:0] state;
   reg [BLOCK_BITS-1:0] block;
   reg [STEP_BITS-1:0] dot_step;
+  reg [POOL_BITS-1:0] pool_item;
   reg [ROM_ADDRESS_BITS-1:0] weight_address;
   reg [BYTE_BITS-1:0] accumulator_byte;
   reg [GROUP_BITS-1:0] multiplier_group;
   wire window_available;
   wire release_window = state == DOT && dot_step == STEP_BITS'(DOT_STEPS-1) &&
-                        block == BLOCK_BITS'(BLOCKS-1);
+                        block == BLOCK_BITS'(BLOCKS-1) && pool_item == POOL_BITS'(POOL_ITEMS-1);
   wire [WINDOW_BITS-1:0] window_address;
   wire [SUBWORD_BITS-1:0] subword;
-  generate if (GROUPS == 1 && REDUCTION_LANES == LANES) begin: full_channel_window
+  generate if (POOL_ITEMS > 1) begin: pooled_window
+    wire [WINDOW_BITS-1:0] addresses [0:POOL_ITEMS*DOT_STEPS-1];
+    wire [SUBWORD_BITS-1:0] parts [0:DOT_STEPS-1];
+    genvar item, step;
+    for (item = 0; item < POOL_ITEMS; item = item + 1) begin: position
+      for (step = 0; step < DOT_STEPS; step = step + 1) begin: coordinate
+        localparam integer Y = (item / POOL_W)*STRIDE_H + (step / (GROUP_WORDS*KERNEL_W))*DILATION_H;
+        localparam integer X = (item % POOL_W)*STRIDE_W + ((step / GROUP_WORDS) % KERNEL_W)*DILATION_W;
+        assign addresses[item*DOT_STEPS+step] = WINDOW_BITS'((Y*WINDOW_W+X)*CHANNEL_WORDS + (step % GROUP_WORDS)/SUBWORDS);
+      end
+    end
+    for (step = 0; step < DOT_STEPS; step = step + 1) begin: subchannel
+      assign parts[step] = SUBWORD_BITS'((step % GROUP_WORDS) % SUBWORDS);
+    end
+    assign window_address = addresses[32'(pool_item)*DOT_STEPS+32'(dot_step)] +
+      WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(block)/TILES) * (GROUP_INPUTS/LANES));
+    assign subword = parts[dot_step];
+  end else if (GROUPS == 1 && REDUCTION_LANES == LANES) begin: full_channel_window
     assign window_address = WINDOW_BITS'(dot_step);
     assign subword = 0;
   end else begin: grouped_window
@@ -87,8 +110,8 @@ module integer_convolution #(
   end endgenerate
   raster_window #(
     .HEIGHT(HEIGHT), .WIDTH(WIDTH), .CHANNELS(INPUT_CHANNELS),
-    .KERNEL_H(KERNEL_H), .KERNEL_W(KERNEL_W), .STRIDE_H(STRIDE_H), .STRIDE_W(STRIDE_W),
-    .DILATION_H(DILATION_H), .DILATION_W(DILATION_W), .PAD_H(PAD_H), .PAD_W(PAD_W),
+    .KERNEL_H(WINDOW_H), .KERNEL_W(WINDOW_W), .STRIDE_H(STRIDE_H*POOL_H), .STRIDE_W(STRIDE_W*POOL_W),
+    .DILATION_H(POOL_ITEMS == 1 ? DILATION_H : 1), .DILATION_W(POOL_ITEMS == 1 ? DILATION_W : 1), .PAD_H(PAD_H), .PAD_W(PAD_W),
     .LANES(LANES), .BITS(INPUT_BITS), .MEMORY_STYLE(LINE_MEMORY), .PACKED_LINES(PACKED_LINES)
   ) window (
     .clk(clk), .rst(rst), .in_data(stored_input), .in_valid(in_valid), .in_ready(in_ready),
@@ -112,6 +135,9 @@ module integer_convolution #(
   // The emitter proves this width covers the final result, or retains all
   // 32 bits. Modular addition permits the same narrowing at every MAC step.
   reg signed [ACCUMULATOR_BITS-1:0] accumulator [0:OUTPUT_LANES-1];
+  reg signed [ACCUMULATOR_BITS-1:0] pool_maximum [0:OUTPUT_LANES-1];
+  wire signed [ACCUMULATOR_BITS-1:0] completed_dot [0:OUTPUT_LANES-1];
+  wire signed [ACCUMULATOR_BITS-1:0] selected_maximum [0:OUTPUT_LANES-1];
   reg signed [8:0] byte_operand [0:OUTPUT_LANES-1];
   reg signed [8:0] coefficient_operand [0:OUTPUT_LANES*REDUCTION_LANES-1];
   wire signed [17:0] product [0:OUTPUT_LANES*REDUCTION_LANES-1];
@@ -166,6 +192,9 @@ module integer_convolution #(
       end
     end
     assign dot_sum[output_lane] = dot;
+    assign completed_dot[output_lane] = accumulator[output_lane] + dot_sum[output_lane];
+    assign selected_maximum[output_lane] = pool_item == 0 || completed_dot[output_lane] > pool_maximum[output_lane] ?
+      completed_dot[output_lane] : pool_maximum[output_lane];
     assign group_sum[output_lane] = group_value;
     assign next_inner[output_lane] = group_sum[output_lane] +
       (product_first_group ? INNER_BITS'(0) : inner_sum[output_lane] << (8*REDUCTION_LANES));
@@ -197,6 +226,7 @@ module integer_convolution #(
       state <= IDLE;
       block <= 0;
       dot_step <= 0;
+      pool_item <= 0;
       weight_address <= 0;
       operand_valid <= 0;
       product_valid <= 0;
@@ -239,10 +269,24 @@ module integer_convolution #(
           end
         end
         if (!product_rq && product_last) begin
-          accumulator_byte <= BYTE_BITS'(ACCUMULATOR_BYTES-1);
-          multiplier_group <= GROUP_BITS'(MULTIPLIER_GROUPS-1);
-          for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) total_sum[channel] <= 0;
-          state <= RQ;
+          if (POOL_ITEMS > 1) begin
+            for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) begin
+              pool_maximum[channel] <= selected_maximum[channel];
+              accumulator[channel] <= pool_item == POOL_BITS'(POOL_ITEMS-1) ? selected_maximum[channel] :
+                ACCUMULATOR_BITS'(BIASES[(32'(block)*OUTPUT_LANES+channel)*32 +: 32]);
+            end
+          end
+          if (pool_item == POOL_BITS'(POOL_ITEMS-1)) begin
+            accumulator_byte <= BYTE_BITS'(ACCUMULATOR_BYTES-1);
+            multiplier_group <= GROUP_BITS'(MULTIPLIER_GROUPS-1);
+            for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) total_sum[channel] <= 0;
+            state <= RQ;
+          end else begin
+            pool_item <= pool_item + 1'b1;
+            dot_step <= 0;
+            weight_address <= ROM_ADDRESS_BITS'(32'(block)*DOT_STEPS);
+            state <= DOT;
+          end
         end
         if (product_rq && product_last_group && product_last_byte) state <= POST;
       end
@@ -251,6 +295,7 @@ module integer_convolution #(
         IDLE: if (window_available) begin
           block <= 0;
           dot_step <= 0;
+          pool_item <= 0;
           weight_address <= 0;
           for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
             accumulator[channel] <= ACCUMULATOR_BITS'(BIASES[channel*32 +: 32]);
@@ -274,6 +319,7 @@ module integer_convolution #(
           end else begin
             block <= block + 1'b1;
             dot_step <= 0;
+            pool_item <= 0;
             for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
               accumulator[channel] <= ACCUMULATOR_BITS'(BIASES[((32'(block)+1)*OUTPUT_LANES+channel)*32 +: 32]);
             state <= DOT;

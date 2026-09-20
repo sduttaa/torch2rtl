@@ -57,7 +57,11 @@ class Events:
         # Summing a complete one-frame dependency cycle cancels event offsets.
         # State the implied bound directly so presolve need not traverse every
         # word before learning it. This does not restrict the schedule family.
-        self.link(event, event, cycles, 1)
+        self.implied(event, event, cycles, 1)
+
+    def implied(self, before, after, delay, frames=0):
+        """A redundant path summary; independently removable for model checks."""
+        self.link(before, after, delay, frames)
 
 
 def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilation, releases, layout):
@@ -90,7 +94,7 @@ def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilati
                     completed.append(len(issues)-1)
     if real_word != len(inputs) or len(completed) != len(releases):
         raise ValueError("Window geometry disagrees with actor streams")
-    total_delay = 0
+    cumulative = [0]
     for index, event in enumerate(issues):
         following = (index+1) % len(issues)
         if packed:
@@ -98,12 +102,16 @@ def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilati
         else:
             delay = 2 if width*channel_words == 1 and not columns[index] and not columns[following] else 1
         events.link(event, issues[following], delay, int(following == 0))
-        total_delay += delay
-    events.period_bound(issues[0], total_delay)
+        cumulative.append(cumulative[-1]+delay)
+    events.period_bound(issues[0], cumulative[-1])
     for index, (release, release_delay) in zip(completed, releases):
         following = (index+1) % len(issues)
         events.link(release, issues[following], release_delay, int(following == 0))
-    return [(issues[index], readiness[index]) for index in completed]
+    # Once a window is released, all issues up to the next completed window
+    # form an ordered path. Summarize that path without restricting transfers.
+    gaps = [cumulative[index] - cumulative[completed[position-1]+1] + readiness[index]
+            + (cumulative[-1] if position == 0 else 0) for position, index in enumerate(completed)]
+    return [(issues[index], readiness[index]) for index in completed], gaps
 
 
 def convolution(events, prefix, value, inputs, outputs, lanes, config):
@@ -114,19 +122,36 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
     dot = parameters["KERNEL_H"]*parameters["KERNEL_W"]*ceil(
         (parameters["INPUT_CHANNELS"] // parameters["GROUPS"]) / parameters["REDUCTION_LANES"])
     requant = parameters["ACCUMULATOR_BYTES"]*ceil(parameters["MULTIPLIER_BYTES"] / parameters["REDUCTION_LANES"])
-    tile_cycles = dot + requant + 5
+    pool = (parameters["POOL_H"], parameters["POOL_W"])
+    tile_cycles = prod(pool)*(dot+2) + requant + 3
+    release_delay = prod(pool)*(dot+2) - 2
     starts = events.series(prefix+".start", pixels)
     posts = events.series(prefix+".post", pixels)
-    events.period_bound(starts[0], pixels*(blocks*tile_cycles+1))
     # Only the first tile can wait for the previous output pixel. Subsequent
     # tile commits have fixed offsets from it, and window release is fixed
     # relative to the last tile's start. Eliminate those events exactly.
-    releases = [(starts[pixel], dot) if blocks == 1 else (posts[pixel], (blocks-2)*tile_cycles+dot)
+    releases = [(starts[pixel], release_delay) if blocks == 1 else (posts[pixel], (blocks-2)*tile_cycles+release_delay)
                 for pixel in range(pixels)]
     data, weight, _, stride, padding, dilation, *_ = value.args
-    ready = window(events, prefix, inputs, data.tensor.shape, lanes, weight.shape[2:],
+    kernel = weight.shape[2:]
+    if prod(pool) > 1:
+        kernel = tuple((size-1)*dil+1+(extent-1)*step for size, dil, extent, step in zip(kernel, dilation, pool, stride))
+        stride = tuple(step*extent for step, extent in zip(stride, pool))
+        dilation = (1, 1)
+    ready, gaps = window(events, prefix, inputs, data.tensor.shape, lanes, kernel,
                    stride, padding, dilation, releases, config.line_layout)
+    # Combine each compute path with the corresponding window-refill path.
+    # Summing the longer implied path for every pixel gives a stronger cycle
+    # bound than summing compute and window traffic separately.
+    if blocks == 1:
+        cycle_bound = sum(max(tile_cycles+1, release_delay+gap) for gap in gaps)
+    else:
+        cycle_bound = sum(tile_cycles + max((blocks-1)*tile_cycles+1,
+                          (blocks-2)*tile_cycles+release_delay+gap) for gap in gaps)
+    events.period_bound(starts[0], cycle_bound)
     for pixel in range(pixels):
+        release, delay = releases[pixel-1]
+        events.implied(release, starts[pixel], delay+gaps[pixel], int(pixel == 0))
         events.link(ready[pixel][0], starts[pixel], ready[pixel][1])
         events.link(starts[pixel], posts[pixel], tile_cycles)
         events.link(outputs[(pixel*output_words-1) % len(outputs)], posts[pixel], frames=int(pixel == 0))
@@ -165,9 +190,11 @@ def pool(events, prefix, value, inputs, outputs, lanes):
         starts = events.series(prefix+".start", pixels)
         events.period_bound(starts[0], pixels*(channel_words*prod(kernel)+1))
         releases = commits[channel_words-1::channel_words]
-        ready = window(events, prefix, inputs, data.tensor.shape, lanes, kernel, stride, padding, dilation,
+        ready, gaps = window(events, prefix, inputs, data.tensor.shape, lanes, kernel, stride, padding, dilation,
                        [(event, 0) for event in releases], "parallel")
+        events.period_bound(starts[0], pixels*channel_words*prod(kernel) + sum(max(1, gap) for gap in gaps))
         for pixel in range(pixels):
+            events.implied(releases[pixel-1], starts[pixel], gaps[pixel], int(pixel == 0))
             events.link(ready[pixel][0], starts[pixel], ready[pixel][1])
             events.link(starts[pixel], commits[pixel*channel_words], prod(kernel))
             for word in range(pixel*channel_words+1, (pixel+1)*channel_words):
@@ -241,7 +268,7 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
             events.when = ((choice, name),)
             prefix = f"{value.name}.{name}"
             inputs, outputs = incoming[value], outgoing[value]
-            if value.operation == "quantized_convolution":
+            if value.operation in ("quantized_convolution", "quantized_convolution_pool"):
                 convolution(events, prefix, value, inputs[0], outputs, lanes, config)
             elif value.operation == "max_pool2d":
                 pool(events, prefix, value, inputs[0], outputs, lanes)

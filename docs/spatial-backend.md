@@ -155,7 +155,7 @@ Key artifacts:
 - [Earlier stem routing report](../build/convolution/stem-route/route-report.json)
 - [Proposed spatial event contracts](spatial-scheduling.md)
 
-The current test suite has **285 passing tests**, including independent reduction
+The current test suite has **313 passing tests**, including independent reduction
 widths, signed overflow, packed line storage, odd-size block pooling, frame
 boundaries, and input/output backpressure.
 

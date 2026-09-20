@@ -67,6 +67,9 @@ actors into joint schedule/FIFO constraints from explicit cost catalogues; the
 full-model solve remains unresolved. Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
 while preserving byte tensor semantics. Training precision is always explicit.
+The optional `"fusions": ["convolution_pool"]` configuration entry enables an
+exact, proved convolution/max-pool fusion. See its [contract and measured
+tradeoffs](docs/convolution-pool.md); it is not enabled by default.
 FP32 actors and board transport integration also remain work to do.
 Unsupported operations fail explicitly.
 Scheduled throughput is labeled as such; it is not a physical-board measurement.

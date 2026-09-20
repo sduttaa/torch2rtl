@@ -43,7 +43,7 @@ def main():
             raise ValueError("Catalogue refers to different model contents")
         catalogue["model_sha256"] = model_hash
         _, module = load(model_path)
-        report = compile_network(actors(read(module)), catalogue, json.loads(args.target.read_text()), args.output,
+        report = compile_network(actors(read(module), catalogue.get("fusions", ())), catalogue, json.loads(args.target.read_text()), args.output,
                                  Limits(seconds=args.seconds))
         (args.output / "model.mlir").write_text(str(module))
         print(json.dumps(report, indent=2))
@@ -58,7 +58,7 @@ def main():
         if "model_sha256" in config and config["model_sha256"] != model_hash:
             raise ValueError("Configuration refers to different model contents")
         _, module = load(model_path)
-        graph = actors(read(module))
+        graph = actors(read(module), config.get("fusions", ()))
         rtl = emit(graph, config["lanes"], config["output_lanes"], config["fifo_depths"],
                    config.get("memories"), config.get("reduction_lanes"))
         args.output.mkdir(parents=True, exist_ok=True)

@@ -33,7 +33,7 @@ model_hash = hashlib.sha256(model_path.read_bytes()).hexdigest()
 if "model_sha256" in config and config["model_sha256"] != model_hash:
     raise ValueError("Configuration refers to different model contents")
 _, module = load(model_path)
-graph = actors(read(module))
+graph = actors(read(module), config.get("fusions", ()))
 args.output.mkdir(parents=True, exist_ok=True)
 
 
@@ -76,6 +76,7 @@ totals = Counter()
 for record in records:
     totals.update(record.get("resources", {}))
 report = {"model_sha256": model_hash, "options" if args.options else "actors": records,
+          "fusions": config.get("fusions", []),
           "all_succeeded": all("error" not in record for record in records),
           "whole_design_routed": False}
 if not args.options:

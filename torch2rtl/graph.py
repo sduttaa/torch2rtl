@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from .lower import Tensor, tensor_type
+from .ranges import monotone_requantization
 
 
 @dataclass(eq=False)
@@ -384,8 +385,44 @@ def quantized_concatenations(graph):
     return replace(graph, replacements)
 
 
-def actors(graph):
-    return byte_comparisons(quantized_concatenations(quantized_convolutions(window_convolutions(graph))))
+def pooled_convolutions(graph):
+    """Fuse a single-use convolution with a monotone, nonoverlapping max pool.
+
+    Nonnegative rescaling, a nonwrapping INT64 result over the full INT32
+    accumulator range, and an in-range clamp make rescaling monotone. Thus
+    max(requantize(accumulators)) equals requantize(max(accumulators)), including
+    convolutions whose INT32 accumulation wraps. Reject unproved cases.
+    """
+    users = {value: 0 for value in graph.values}
+    for value in graph.values:
+        for parent in references(value.args):
+            users[parent] += 1
+    replacements = {}
+    for pool in graph.values:
+        if pool.operation != "max_pool2d":
+            continue
+        conv, kernel, stride, padding, dilation, ceil_mode = pool.args
+        if conv.operation != "quantized_convolution" or users[conv] != 1:
+            continue
+        if (len(kernel) != 2 or min(kernel) < 1 or tuple(stride or kernel) != tuple(kernel)
+                or tuple(padding) != (0, 0) or tuple(dilation) != (1, 1) or ceil_mode):
+            continue
+        if conv.tensor.bits != 8 or (pool.tensor.bits, pool.tensor.signed) != (8, conv.tensor.signed):
+            continue
+        if not monotone_requantization(conv):
+            continue
+        expected = (*conv.tensor.shape[:2], *(size//extent for size, extent in zip(conv.tensor.shape[2:], kernel)))
+        if pool.tensor.shape != expected or min(expected) < 1:
+            continue
+        replacements[pool] = Value(pool.name, "quantized_convolution_pool", (*conv.args, tuple(kernel)), pool.tensor)
+    return replace(graph, replacements)
+
+
+def actors(graph, fusions=()):
+    if set(fusions) - {"convolution_pool"}:
+        raise ValueError("Unknown optional fusion")
+    result = byte_comparisons(quantized_concatenations(quantized_convolutions(window_convolutions(graph))))
+    return pooled_convolutions(result) if "convolution_pool" in fusions else result
 
 
 def byte_comparisons(graph):
@@ -416,10 +453,13 @@ def evaluate(graph, image, trace=None):
         if value is graph.input:
             continue
         args = constant_argument(mapped(value.args, lambda parent: values[parent]))
-        if value.operation == "quantized_convolution":
-            data, weight, bias, stride, padding, dilation, groups, multiplier, offset, shift, low, high = args
+        if value.operation in ("quantized_convolution", "quantized_convolution_pool"):
+            data, weight, bias, stride, padding, dilation, groups, multiplier, offset, shift, low, high = args[:12]
             accumulator = integer_convolution(data.to(torch.int32), weight, bias, stride, padding, dilation, groups)
             result = ((accumulator.to(torch.int64) * multiplier[None, :, None, None] + offset) >> shift).clamp(low, high).to(dtype(value.tensor))
+            if value.operation == "quantized_convolution_pool":
+                # Keep the unfused operation order as the independent reference.
+                result = torch.nn.functional.max_pool2d(result, args[12])
         elif value.operation == "quantized_concat":
             inputs, multipliers, offset, shift, low, high = args
             scaled = torch.cat([data.to(torch.int64) * multiplier[None, :, None, None]

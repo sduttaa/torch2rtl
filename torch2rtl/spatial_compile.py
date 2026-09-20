@@ -54,6 +54,7 @@ def compile_network(graph, catalogue, target, directory, limits=Limits()):
         if solution.period is not None:
             selected = {name: catalogue["actor_options"][name][solution.selected["actor:"+name]] for name in actors}
             configuration = {"model": catalogue["model"], "model_sha256": catalogue["model_sha256"],
+                "fusions": catalogue.get("fusions", []),
                 "lanes": catalogue["lanes"],
                 "output_lanes": {name: spec["output_lanes"] for name, spec in selected.items() if spec.get("output_lanes") is not None},
                 "reduction_lanes": {name: spec["reduction_lanes"] for name, spec in selected.items() if spec.get("reduction_lanes") is not None},

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .ranges import bounds, storage_bits
+from .ranges import bounds, monotone_requantization, storage_bits
 
 
 def signed_bits(low, high):
@@ -22,9 +22,14 @@ def packed(values, bits):
 
 def configuration(actor, lanes, outputs, reduction_lanes=None):
     reduction_lanes = lanes if reduction_lanes is None else reduction_lanes
-    if actor.operation != "quantized_convolution":
+    if actor.operation not in ("quantized_convolution", "quantized_convolution_pool"):
         raise ValueError("A fused quantized convolution is required")
-    data, weight, bias, stride, padding, dilation, groups, multiplier, offset, shift, low, high = actor.args
+    data, weight, bias, stride, padding, dilation, groups, multiplier, offset, shift, low, high = actor.args[:12]
+    pool = actor.args[12] if actor.operation == "quantized_convolution_pool" else (1, 1)
+    if len(pool) != 2 or min(pool) < 1:
+        raise ValueError("Invalid fused pool geometry")
+    if actor.operation == "quantized_convolution_pool" and not monotone_requantization(actor):
+        raise ValueError("Fused pooling requires provably monotone requantization")
     if data.tensor.bits != 8 or actor.tensor.bits != 8:
         raise ValueError("The convolution actor currently uses 8-bit input/output elements")
     if len(data.tensor.shape) != 4 or data.tensor.shape[0] != 1:
@@ -43,8 +48,8 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
         raise ValueError("Output lanes exceed the channels in a convolution group")
     if weight.min() < -128 or weight.max() > 127:
         raise ValueError("The convolution actor requires exactly representable signed 8-bit weights")
-    expected = (batch, co, *((size+2*pad-(kernel-1)*dil-1)//step+1
-                             for size, pad, kernel, dil, step in zip((height, width), padding, (kh, kw), dilation, stride)))
+    expected = (batch, co, *((((size+2*pad-(kernel-1)*dil-1)//step+1)//extent)
+                             for size, pad, kernel, dil, step, extent in zip((height, width), padding, (kh, kw), dilation, stride, pool)))
     if actor.tensor.shape != expected:
         raise ValueError("Convolution result shape disagrees with its geometry")
     tiles = ceil((co // groups) / outputs)
@@ -98,6 +103,7 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
     byte_products = [byte*coefficient for byte in (-128, 255) for coefficient in multipliers]
     inner_bits = min(64, signed_bits(min(byte_products), max(byte_products)))
     parameters = {"HEIGHT": height, "WIDTH": width, "INPUT_CHANNELS": ci, "OUTPUT_CHANNELS": co,
+                  "POOL_H": pool[0], "POOL_W": pool[1],
                   "KERNEL_H": kh, "KERNEL_W": kw, "STRIDE_H": stride[0], "STRIDE_W": stride[1],
                   "DILATION_H": dilation[0], "DILATION_W": dilation[1], "PAD_H": padding[0], "PAD_W": padding[1],
                   "GROUPS": groups, "LANES": lanes, "OUTPUT_LANES": outputs, "INPUT_SIGNED": int(data.tensor.signed),

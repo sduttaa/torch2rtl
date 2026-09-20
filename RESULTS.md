@@ -10,7 +10,7 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Spatial contracts and catalogue CLI implemented; full-model solve remains unresolved |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 285 passing, including spatial RTL, overflow, backpressure and integer training/export |
+| Tests | 313 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
@@ -43,6 +43,13 @@ Area screens expose smaller configurations as well. These relaxations do not
 solve the full scheduling, fabric-fit or clock problem. Continued training and
 training-only decision calibration did not beat the best accuracy checkpoint.
 [Option survey and evidence](docs/option-survey.md).
+
+An optional exact convolution/max-pool fusion now removes repeated rescaling and
+an intermediate stream. Forty-eight synthesis measurements show useful resource
+tradeoffs, and full-network RTL verification remains bit-exact. The observed
+frame interval is still about 3.98 million cycles because another actor limits
+the rate. Exact window-path bounds strengthen CP-SAT without restricting
+per-word schedules. [Fusion, proof and measurements](docs/convolution-pool.md).
 
 The user authorized retraining while keeping weights and activations in fabric
 memory. The compact verified replacement reaches **0.659503 validation Dice**,

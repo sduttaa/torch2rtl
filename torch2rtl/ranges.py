@@ -3,6 +3,17 @@
 from .lower import integer_range
 
 
+def monotone_requantization(value):
+    """Prove a convolution's INT32-to-byte rescaling is nondecreasing."""
+    if value.tensor.bits != 8:
+        return False
+    coefficients, offset, shift, low, high = value.args[7:12]
+    floor, ceiling = integer_range(value.tensor)
+    return (floor <= low <= high <= ceiling and 0 <= shift < 64 and
+            all(int(coefficient) >= 0 and -(1 << 63) <= -(1 << 31)*int(coefficient)+int(offset)
+                <= ((1 << 31)-1)*int(coefficient)+int(offset) < 1 << 63 for coefficient in coefficients))
+
+
 def bounds(value):
     cache = {}
 
@@ -11,8 +22,8 @@ def bounds(value):
             return cache[node]
         full = integer_range(node.tensor)
         result = full
-        if node.operation in ("quantized_convolution", "quantized_concat"):
-            low, high = node.args[-2:]
+        if node.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_concat"):
+            low, high = node.args[-3:-1] if node.operation == "quantized_convolution_pool" else node.args[-2:]
             # The fused cast follows the clamp. Out-of-container bounds may
             # wrap, so retaining the entire destination range is necessary.
             if full[0] <= low <= high <= full[1]:

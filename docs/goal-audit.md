@@ -6,6 +6,10 @@ The user has authorized training a smaller INT8 replacement on the supplied
 dataset, provided it matches or exceeds the existing model's accuracy. Both
 weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
 This removes the earlier decision blocker. The goal is active and incomplete.
+The latest exact convolution/pool fusion and implied window-path timing bounds
+are documented in [the fusion report](convolution-pool.md). They add verified
+implementation progress; they do not establish the missing accuracy, full-model
+schedule, physical fit or 30-FPS result.
 Training runs, exact integer verification and their limits are documented in
 [the training notes](../training/README.md). The historical audit below applies
 to the original export, not a theorem about retrained models.
