@@ -75,8 +75,13 @@ module integer_convolution #(
   wire [POOL_BITS-1:0] read_pool = state == DOT ? pool_item :
     state == DOT_DRAIN && pool_item != POOL_BITS'(POOL_ITEMS-1) ? pool_item + 1'b1 : POOL_BITS'(0);
   wire starting_dot;
-  wire [STEP_BITS-1:0] read_step = state == DOT ?
-    (32'(dot_step)+2 < DOT_STEPS ? dot_step + STEP_BITS'(2) : STEP_BITS'(0)) :
+  // Keep the lookahead addition off the coordinate decoder's critical path.
+  // Drain cycles replace the final unused requests before the next dot starts.
+  reg [STEP_BITS-1:0] prefetch_step;
+  always @(posedge clk)
+    if (state != DOT) prefetch_step <= STEP_BITS'(DOT_STEPS > 2 ? 2 : 0);
+    else prefetch_step <= prefetch_step == STEP_BITS'(DOT_STEPS-1) ? STEP_BITS'(0) : prefetch_step + 1'b1;
+  wire [STEP_BITS-1:0] read_step = state == DOT ? prefetch_step :
     (starting_dot && DOT_STEPS > 1 ? STEP_BITS'(1) : STEP_BITS'(0));
   wire [WINDOW_BITS-1:0] window_address;
   wire [SUBWORD_BITS-1:0] subword;

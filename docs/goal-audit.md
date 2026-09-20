@@ -27,6 +27,13 @@ Gowin tool is now installed under Documents and passes a registered-DSP smoke
 design, offering an independent route for the unresolved timing validation.
 The goal remains active; 30 FPS is not demonstrated.
 
+The separate prefetch counter further improves nextpnr's reported limit to
+97.09 MHz. All 448 current production tests and three scheduled frames pass.
+The independent vendor route of the preceding FIFO configuration reports
+84.198 MHz and 2,861 setup violations at 156 MHz, exposing a DSP-to-accumulator
+critical path that nextpnr omitted. Completing primitive timing coverage and
+shortening arithmetic/control paths remain useful, authorized next steps.
+
 ## Current scope after the user's deployment decision
 
 The user now accepts validation Dice >= 0.65, superseding the earlier requirement

@@ -53,6 +53,11 @@ resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
 
+A separate window prefetch counter further raises the reported routed limit to
+**97.09 MHz** while preserving the 5,033,085-cycle schedule and all three
+bit-exact deadline frames. It still fails the required clock, and DSP timing
+coverage remains incomplete. [Evidence](docs/direct-scheduling.md#window-prefetch-counter).
+
 Registered FIFO readiness breaks long backpressure paths and raises the reported
 routed limit to **93.21 MHz**. CP-SAT is re-solved with a one-cycle slot-reuse gap:
 the fixed allocation takes **5,033,085 cycles**, and three complete frames meet

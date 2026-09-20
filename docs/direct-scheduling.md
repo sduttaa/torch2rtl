@@ -8,6 +8,24 @@ models and RAM input checks. Schedule-derived FPS figures are conditional on
 the configured clock being safe. Complete timing closure and physical-board
 throughput remain unverified. [Audit and evidence](timing-coverage.md).
 
+## Window prefetch counter
+
+A separate counter supplies the coordinates two steps ahead, removing the
+lookahead adder and terminal comparison from the address decoder. The existing
+drain cycles replace unused requests before the next dot product. This raises
+the reported routed setup limit to **97.0874 MHz**, with the same verified
+5,033,085-cycle schedule and three bit-exact deadline frames. Synthesis uses
+16,448 LUT / 6,551 FF; BRAM, DSP and distributed-memory use are unchanged.
+The critical path now begins at the synchronized reset and ends in a window
+coordinate register. It still misses 156 MHz and is not a complete timing
+certificate because DSP coverage remains unresolved.
+
+[All 448 production tests](../build/tests-prefetch-counter.log),
+[summary and hashes](../build/network/registered-ready-prefetch/summary.json),
+[136 actor/scheduling tests](../build/network/registered-ready-prefetch/tests.log),
+[deadline replay](../build/network/registered-ready-prefetch/deadline-replay/simulation.log),
+[DSP register proof](../build/verification/multiplier-registers/prefetch-counter-port-proof/report.json).
+
 ## Registered FIFO readiness
 
 Spatial FIFO readiness now depends only on registered occupancy. A retired
@@ -39,6 +57,11 @@ Evidence: [summary](../build/network/registered-fifo-ready/summary.json),
 [DSP register proof](../build/verification/multiplier-registers/registered-ready-port-proof/report.json).
 Earlier schedules with same-edge FIFO replacement are historical and do not
 certify the current RTL.
+
+An independent vendor run of this configuration reports 84.198 MHz and fails
+156 MHz. Its critical path starts at a DSP output and ends at an accumulator;
+this is not covered by the current nextpnr timing database. See the
+[vendor analysis](timing-coverage.md#independent-vendor-analysis) for scope.
 
 ## Pipelined window read
 

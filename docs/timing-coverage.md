@@ -86,3 +86,30 @@ design fails, nor that every ALU operation is affected. It does mean the custom
 carry mapping and its functional equivalence proofs cannot establish correct
 bitstream execution. Vendor comparison and eventual board tests must cover
 this separately from the known timing omissions.
+
+## Independent vendor analysis
+
+The official native Gowin Education 1.9.11.03 installation now runs under
+Documents. A one-multiplier test completes synthesis, placement/routing and
+setup/hold analysis, emitting explicit DSP timing arcs in SDF.
+
+The registered-FIFO-readiness network also completes an independent vendor run.
+Yosys exports the mapped primitive netlist using `write_verilog -noattr -noexpr
+-decimal`; the decimal option is necessary for the vendor's ALU parameter
+parser. Gowin imports those primitives, synthesizes its netlist format and runs
+its own placement/routing. The 27-MHz input constraint produces the intended
+156-MHz generated PLL clock in the vendor report.
+
+The vendor report **fails timing**, with **84.198 MHz Fmax**, 2,861 setup-violating
+endpoints and no hold violations. It analyzes 37,866 paths and 19,933 endpoints.
+The longest path starts at a DSP output and ends at a convolution accumulator,
+with 11.842 ns reported data delay. All 86 output-registered multipliers appear
+in the post-route model and SDF. This exposes a path omitted by the current
+nextpnr DSP timing model. The vendor generated a bitstream despite timing
+failure; file creation is not timing closure.
+
+This run uses the configuration before the separate prefetch counter. It is
+independent vendor routing, not timing certification of the nextpnr result;
+mapped/post-route functional equivalence and physical-board execution have not
+been established by this run. Full nextpnr DSP timing coverage remains open.
+[Report, scope and hashes](../build/verification/vendor-timing/network-synthesis/summary.json).
