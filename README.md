@@ -68,8 +68,8 @@ integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
 full-model schedule passes RTL deadline checks with finite fabric-only FIFOs.
 A lower-accuracy retrained candidate completes placement, routing and bitstream
-packing with a generated 108 MHz clock using an explicitly corrected nextpnr
-database. Its verified fixed-choice period is 9,630,209 cycles (11.21 scheduled
+packing with a generated 135 MHz clock using an explicitly corrected nextpnr
+database. Its verified fixed-choice period is 6,262,820 cycles (21.56 scheduled
 FPS). Its 0.6561 Dice meets the revised accuracy threshold; the
 30-FPS result remains unmet. See [the measured evidence](RESULTS.md).
 Emission is not a fit certificate.

@@ -1,5 +1,53 @@
 # Optimized full-model schedules and narrower FIFOs
 
+## Compact pooling FIFOs at 135 MHz
+
+Limiting each of the two pooling-output FIFOs to 128 words retains most of the
+row-sized queue's throughput gain while reducing placement pressure. All other
+actor settings match the retimed two-row-resize configuration. Complete CP-SAT
+proves **6,262,820 cycles** optimal for these fixed choices. All 3,024,739 offsets
+pass independent checking, and three bit-exact RTL frames meet every scheduled
+input/output deadline. They complete at 7,559,811; 13,822,631; and 20,085,451
+cycles. Scheduled and routed core RTL are byte-identical.
+
+A generated **135 MHz** PLL clock now passes full placement, routing, setup/hold
+checks and bitstream packing with explicit reference/output constraints and the
+corrected timing database. The verified period gives **21.5558 scheduled FPS**.
+Reported setup Fmax is **139.256 MHz**. A preceding 150 MHz attempt completes
+routing but fails setup timing at that same reported limit; it is not a 24-FPS
+result. The 135 MHz PLL uses the supplied 27 MHz reference, feedback ratio 5,
+input divider 1 and output divider 8 (VCO 1,080 MHz).
+
+The accepted model has **0.656095 validation Dice**, above the revised 0.65
+threshold, with INT8 weights and four-bit hidden activations. Both weights and
+activations stay in fabric. Native final utilization is **14,756 LUT4, 4,382 ALU,
+5,932 DFF, 46 BRAM, 59 MULT9X9, 356 RAM16SDP4 and one rPLL**. The RAM cells
+account for 22,784 distributed-memory bits. Packed counts include reservation
+cells (17,984 LUT4 and 8,068 DFF) and also pass capacity checks. The CP resource
+term uses the separately measured no-ALU core; physical carry/PLL utilization
+is checked by the full route. This remains a counter-source/checksum-sink
+harness, without real image transport or physical-board inference measurement.
+The 30-FPS requirement remains unmet.
+
+- [Artifact hashes, timing and scope](../build/network/pool-fifo-cap-128/summary.json)
+- [Complete schedule](../build/scheduling/pool-fifo-cap-128/report.json)
+- [Scheduled bit-exact replay](../build/scheduling/pool-fifo-cap-128/simulation/report.json)
+- [135 MHz physical run](../build/network/pool-fifo-cap-128/physical-135/status.json)
+- [150 MHz timing failure](../build/network/pool-fifo-cap-128/physical-fast/status.json)
+
+A 64-word FIFO diagnostic produces three bit-exact frames at 7,516,093-cycle
+intervals, so it gives up substantially more throughput. The larger row-sized
+FIFOs fit and route with the no-ALU mapping, but miss their 108 MHz constraint
+at a reported 107.112 MHz; their carry mapping fails placement and default
+wide-LUT mapping exceeds packed capacity. These controls are not adopted.
+
+New measured weight-ROM choices permit rebalanced simulations at **4,579,922**
+and **4,935,229 cycles** per frame, each bit-exact across three images. Both
+fit whole-core synthesis but exceed the default carry mapping's packed LUT
+capacity. Restricted short-adder carry mapping is being evaluated separately;
+these are not yet routed 30-FPS results.
+
+
 ## Retimed pooling and generated inference clock
 
 The generic convolution actor now registers a completed dot product before the

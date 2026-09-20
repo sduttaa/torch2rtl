@@ -16,6 +16,17 @@ verification FIFOs. An 80-epoch focal-loss continuation retains exactly the same
 58 state tensors and score. The existing validation split has been used for
 many choices; no independent test set was supplied. [Training evidence](training-results.md).
 
+The newest verified result is **21.56 scheduled FPS at a generated 135 MHz**,
+with 0.656095 Dice and fabric-only weights/activations. Complete CP-SAT proves
+6,262,820 cycles for the fixed choices, and three bit-exact RTL frames meet every
+transfer deadline. Placement, routing, timing and bitstream packing pass.
+There is no physical-board inference measurement. Faster rebalanced candidates
+reach 4.58M and 4.94M cycles in simulation but exceed packed logic capacity with
+the default carry mapping; implementation work continues on that limit.
+[Latest evidence](direct-scheduling.md#compact-pooling-fifos-at-135-mhz).
+
+The preceding result is retained below for comparison.
+
 The current verified physical result uses a generated **108 MHz** clock and
 provides **11.21 scheduled FPS** from the unchanged 9,630,209-cycle complete
 CP-SAT proof. Three frames are bit-exact and meet every transfer deadline. The

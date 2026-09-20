@@ -4,7 +4,7 @@
 The compiler now produces full-model RTL and CP-SAT schedules with independently
 checked constraints and RTL transfer deadlines. A four-bit-activation candidate
 now completes **full-model placement, routing and bitstream packing**, with setup
-and hold checks passing with a generated 108 MHz clock using an explicitly corrected nextpnr database.
+and hold checks passing with a generated 135 MHz clock using an explicitly corrected nextpnr database.
 Its weights and activations fit fabric memory. Its 0.656095 validation Dice
 meets the user's revised >= 0.65 threshold. Thirty-FPS throughput remains unmet; the toolflow harness has not been run as inference on a physical board.
 
@@ -46,6 +46,18 @@ SDRAM is excluded. The selected target remains explicit input in
 resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
+
+The latest accepted candidate achieves **21.56 scheduled FPS** at a generated
+**135 MHz**, with full routing, timing checks and bitstream packing complete.
+CP-SAT proves its **6,262,820-cycle** fixed-choice period, and all scheduled
+transfers pass three-frame bit-exact RTL replay. Native final use is 14,756 LUT4,
+4,382 ALU, 5,932 FF, 46 BRAM, 59 multiplier slots and 22,784 distributed-memory
+bits. Its **0.656095 Dice meets the revised accuracy threshold**. Thirty FPS
+and physical-board inference remain unverified. A 150 MHz attempt fails timing;
+it is not counted as a throughput result.
+[Current scheduling, timing and artifact evidence](docs/direct-scheduling.md#compact-pooling-fifos-at-135-mhz).
+
+The preceding 108 MHz result is retained below for comparison.
 
 Retiming the fused pooling comparison and eliminating unreachable non-pooling
 hardware preserve all numerical results while improving physical timing. An
