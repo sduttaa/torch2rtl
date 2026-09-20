@@ -1,0 +1,66 @@
+{
+  "description": "User-selected Tang Nano 20K; external target input, not a compiler default",
+  "source": "https://wiki.sipeed.com/hardware/en/tang/tang-nano-20k/nano-20k.html",
+  "fabric_memory_bits": {
+    "block_ram": 847872,
+    "distributed_ram": 41472
+  },
+  "resources": {
+    "lut": 20736,
+    "ff": 15552,
+    "bram": 46,
+    "dsp": 48,
+    "lutram_bits": 41472
+  },
+  "resource_weights": {
+    "lut": 1,
+    "ff": 1
+  },
+  "cell_costs": {
+    "LUT[1234]": {
+      "lut": 1
+    },
+    "ALU": {
+      "lut": 1
+    },
+    "DFF*": {
+      "ff": 1
+    },
+    "MULT9X9": {
+      "dsp": 1
+    },
+    "MULT18X18": {
+      "dsp": 1
+    },
+    "MULT36X36": {
+      "dsp": 4
+    },
+    "RAM16SDP1": {
+      "lut": 1,
+      "lutram_bits": 16
+    },
+    "RAM16SDP2": {
+      "lut": 2,
+      "lutram_bits": 32
+    },
+    "RAM16SDP4": {
+      "lut": 4,
+      "lutram_bits": 64
+    },
+    "MUX2_LUT*": {},
+    "IBUF": {},
+    "OBUF": {},
+    "GND": {},
+    "VCC": {}
+  },
+  "clock_hz": 27000000,
+  "synthesis": {
+    "command": "synth_gowin",
+    "family": "gw2a"
+  },
+  "place_route": {
+    "executable": "nextpnr-himbaechel",
+    "device": "GW2AR-LV18QN88C8/I7",
+    "family": "GW2A-18C"
+  }
+}

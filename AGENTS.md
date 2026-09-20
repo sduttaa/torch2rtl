@@ -1,0 +1,22 @@
+# Project requirements
+
+- Keep compiler code simple and minimal while pursuing high measured throughput.
+- Discuss the optimization mathematics with the user before implementing it.
+- Keep project installations, environments, caches, and outputs under Documents.
+- Board and model information must be explicit user input. Do not hardcode board
+  names, parts, resource budgets, pinouts, clocks, or model-specific details in
+  compiler code. Generic target-family mechanisms are allowed.
+- Do not use version suffixes such as `v1` or `v2` in variable names. Use meaningful
+  descriptive names.
+- Preserve integer or floating-point numerical contracts; never silently quantize.
+- Reduction reassociation is allowed. Keep each chosen reduction topology
+  deterministic; validate against a documented reference using explicit tolerances.
+  Preserve other floating-point rules; do not implicitly contract multiply-adds.
+- Initial floating-point support is FP32; quantized integer formats are model inputs.
+- Use frozen weights, acyclic inference graphs, and one clock domain initially.
+- Put scheduling and FIFO occupancy directly into the CP-SAT problem.
+- Use ordered FIFO slot-reuse constraints, fixed-order self-timed actor contracts,
+  and one-inference periodic schedules as the agreed modeling basis.
+- Keep weights and working storage in FPGA fabric memory; exclude SDRAM.
+- Keep the optimization problem independent of its initial CP-SAT backend.
+- Do not tune rules for particular models. Measure generic template behavior.

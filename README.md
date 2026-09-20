@@ -1,0 +1,63 @@
+# torch2rtl
+
+PyTorch export → torch-mlir → streaming hardware actors → SystemVerilog.
+
+The objective is a small, generic compiler for fast FPGA inference with all
+weights and working storage on chip. The first board is the Tang Nano 20K.
+Lattice support follows through the same actor and optimization interfaces.
+
+**Status: native toolchain installed; a tested integer actor compiler prototype
+works. The requested Scratches model has not been compiled to a 30-FPS design.**
+Its floating-point/dynamic-quantization semantics and memory requirements need
+a deployment decision; see the [workload findings](docs/workload-feasibility.md).
+
+- [Optimization proposal](docs/optimization-model.md)
+- [Current results](RESULTS.md)
+- [Joint scheduling and FIFO mathematics](docs/scheduling-model.md)
+- [Toolchain setup](docs/toolchain.md)
+- [Implemented subset and verification](docs/implementation.md)
+
+All project-specific installations, source dependencies, environments, caches,
+and build outputs live in this directory under Documents. Existing Apple
+developer tools supply the native compiler and SDK.
+
+## Principles
+
+- Prefer a few parameterized actor families and explicit data contracts.
+- Use generic shape- and dtype-based rules, never model-name special cases.
+- Fuse only when legality and a conservative benefit are established.
+- Select finite legal hardware configurations with a solver-independent problem;
+  initially translate it to OR-Tools CP-SAT.
+- Measure sustained throughput after routing and verify numerical correctness.
+- Unsupported semantics and models that cannot fit must fail clearly.
+- All board/model specifics are user inputs; no board/model lookup tables.
+- FP32 with permitted reduction reassociation and explicit numerical validation.
+- Schedule and size FIFOs directly in the solver; use fabric memory only.
+
+## Run
+
+```sh
+source ./env.sh
+python -m torch2rtl inspect /path/to/model.pt2 \
+  --target /path/to/target.json --fps 30 --output build/inspection
+python -m torch2rtl compile /path/to/model.pt2 \
+  --target /path/to/target.json --lanes 1 2 4 --depths 1 2 \
+  --output build/compiled
+pytest -q
+```
+
+The current RTL subset supports one integer tensor input, compatible pointwise
+add/subtract/multiply, casts, clamp/ReLU, reshape and an optional final full-tensor
+sum. It preserves intermediate integer widths, including wraparound. It reads
+the verified torch-mlir module, fuses compatible pointwise operations, proves
+integer ranges for narrower internal storage, synthesizes candidate hardware,
+and solves the joint parameter/schedule/FIFO problem using CP-SAT.
+
+FP32, convolution, general branched actor networks, transport integration and
+the full model remain work to do. Unsupported operations fail explicitly.
+Scheduled throughput is labeled as such; it is not a physical-board measurement.
+The solver interface is plain dataclasses; OR-Tools is confined to `cp_sat.py`.
+
+`inputs/target.json` and `inputs/smoke.cst` materialize the user's initial board
+selection as external data. They are never loaded by default. Compiler source
+contains no board, pin, resource-budget or model-name lookup table.

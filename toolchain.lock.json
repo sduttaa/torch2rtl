@@ -1,0 +1,18 @@
+{
+  "platform": "darwin-arm64",
+  "python": "3.11.16",
+  "oss_cad_release": "2026-09-19",
+  "oss_cad_sha256": "01577fe50829202f76013a30606193134778f577b7a959618dc4ffe94c9a037e",
+  "source_commits": {
+    "torch-mlir": "0d633318dbdd7c3ee80dbb4ed7b7d55e4103e221",
+    "llvm-project": "10dbfc4863c9aea2fb237022c3f47fc24c02265e",
+    "stablehlo": "7b1b15781ccbd770f50c7eef4b0c3e03834649fd"
+  },
+  "cad_wrapper_adjustment": "scripts/localize-cad.py",
+  "python_packages": "requirements.lock",
+  "cad_python_accelerators": {
+    "numpy": "2.4.6",
+    "msgspec": "0.21.1",
+    "fastcrc": "0.5.0"
+  }
+}

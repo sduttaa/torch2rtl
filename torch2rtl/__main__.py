@@ -1,0 +1,53 @@
+import argparse
+import hashlib
+import json
+from pathlib import Path
+
+from .analysis import analyze
+from .frontend import load
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Import, inspect, and compile frozen PyTorch exports")
+    sub = parser.add_subparsers(dest="command", required=True)
+    inspect = sub.add_parser("inspect", help="Verify through torch-mlir and account workload requirements")
+    inspect.add_argument("model", type=Path)
+    inspect.add_argument("--target", type=Path, required=True)
+    inspect.add_argument("--fps", type=float)
+    inspect.add_argument("--output", type=Path, required=True)
+    compile_parser = sub.add_parser("compile", help="Compile the supported integer actor subset")
+    compile_parser.add_argument("model", type=Path)
+    compile_parser.add_argument("--target", type=Path, required=True)
+    compile_parser.add_argument("--lanes", type=int, nargs="+", required=True)
+    compile_parser.add_argument("--depths", type=int, nargs="+", required=True)
+    compile_parser.add_argument("--seconds", type=float, default=30)
+    compile_parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    target = json.loads(args.target.read_text())
+    program, module = load(args.model)
+    if args.command == "compile":
+        from .compiler import compile_module
+        from .schedule import Limits
+        report = compile_module(module, target, args.lanes, args.depths, args.output, Limits(seconds=args.seconds))
+        print(json.dumps({key: value for key, value in report["solution"].items() if key != "offsets"}, indent=2))
+        print(f"Scheduled throughput (before timing closure): {report['scheduled_fps']:.3f} inferences/s")
+        print(f"RTL and synthesis outputs: {args.output.resolve()}")
+        return
+    report = analyze(program, target, args.fps)
+    report["model"] = {"path": str(args.model.resolve()),
+                       "sha256": hashlib.sha256(args.model.read_bytes()).hexdigest()}
+    report["target"] = target
+    args.output.mkdir(parents=True, exist_ok=True)
+    (args.output / "model.mlir").write_text(str(module))
+    (args.output / "analysis.json").write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report["summary"], indent=2))
+    for finding in report["findings"]:
+        print(f"{finding['code']}: {finding['message']}")
+    print(f"Verified MLIR and report: {args.output.resolve()}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except ValueError as error:
+        raise SystemExit(f"error: {error}") from None

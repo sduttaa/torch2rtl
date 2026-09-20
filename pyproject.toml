@@ -1,0 +1,10 @@
+[project]
+name = "torch2rtl"
+version = "0.0.0"
+description = "A small torch-mlir to streaming RTL compiler"
+requires-python = ">=3.11"
+dependencies = ["torch", "ortools"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
