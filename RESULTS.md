@@ -35,7 +35,8 @@ index-only views reduces the largest candidate replay payload to 4,128,768 bytes
 still much larger than fabric RAM. These results apply to the documented candidate
 representations, not every conceivable compression or recomputation architecture.
 
-The model/board/deployment tradeoff is queued for discussion. In the meantime,
+The goal is blocked on the model/board/deployment tradeoff queued for discussion;
+see the [full-goal audit](docs/goal-audit.md). In the meantime,
 the existing model is unchanged, and no board/model special cases were added to
 compiler code. Target resources, clocks, parts, pins, candidate lane counts and
 FIFO depths are explicit inputs.
