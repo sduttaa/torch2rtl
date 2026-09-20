@@ -70,7 +70,9 @@ full-model schedule passes RTL deadline checks with finite fabric-only FIFOs.
 A lower-accuracy retrained candidate completes placement, routing and bitstream
 packing with a generated 135 MHz clock using an explicitly corrected nextpnr
 database. Its verified fixed-choice period is 6,262,820 cycles (21.56 scheduled
-FPS). Its 0.6561 Dice meets the revised accuracy threshold; the
+FPS if 135 MHz is safe). A subsequent [timing coverage audit](docs/timing-coverage.md)
+found missing datapath models, so the clock is not fully verified.
+Its 0.6561 Dice meets the revised accuracy threshold; the
 30-FPS result remains unmet. See [the measured evidence](RESULTS.md).
 Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage

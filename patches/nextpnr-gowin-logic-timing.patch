@@ -1,0 +1,27 @@
+--- a/himbaechel/uarch/gowin/gowin_arch_gen.py
++++ b/himbaechel/uarch/gowin/gowin_arch_gen.py
+@@ -1944,11 +1944,10 @@
+     for speed, groups in db.timing.items():
+         for group, arc in groups.items():
+             if group == "lut":
+-                lut = tmg.add_cell_variant(speed, "LUT4")
+-                lut.add_comb_arc("I0", "F", group_to_timingvalue(arc["a_f"]))
+-                lut.add_comb_arc("I1", "F", group_to_timingvalue(arc["b_f"]))
+-                lut.add_comb_arc("I2", "F", group_to_timingvalue(arc["c_f"]))
+-                lut.add_comb_arc("I3", "F", group_to_timingvalue(arc["d_f"]))
++                for width in range(1, 5):
++                    lut = tmg.add_cell_variant(speed, f"LUT{width}")
++                    for pin, key in enumerate(("a_f", "b_f", "c_f", "d_f")[:width]):
++                        lut.add_comb_arc(f"I{pin}", "F", group_to_timingvalue(arc[key]))
+                 mux5 = tmg.add_cell_variant(speed, "MUX2_LUT5")
+                 mux5.add_comb_arc("I0", "O", group_to_timingvalue(arc["m0_ofx0"]))
+                 mux5.add_comb_arc("I1", "O", group_to_timingvalue(arc["m1_ofx1"]))
+@@ -1982,7 +1981,7 @@
+                         sram.add_comb_arc(f"RAD[{rad}]", f"DO[{do}]", group_to_timingvalue(arc[f"rad{rad}_do"]))
+                     sram.add_clock_out("CLK", f"DO[{do}]", ClockEdge.RISING, group_to_timingvalue(arc["clk_do"]))
+                 for di in range(4):
+-                    sram.add_setup_hold("CLK", f"DI[{di}", ClockEdge.RISING, group_to_timingvalue(arc["clk_di_set"]), group_to_timingvalue(arc["clk_di_hold"]))
++                    sram.add_setup_hold("CLK", f"DI[{di}]", ClockEdge.RISING, group_to_timingvalue(arc["clk_di_set"]), group_to_timingvalue(arc["clk_di_hold"]))
+                 sram.add_setup_hold("CLK", "WRE", ClockEdge.RISING, group_to_timingvalue(arc["clk_wre_set"]), group_to_timingvalue(arc["clk_wre_hold"]))
+                 for wad in range(4):
+                     sram.add_setup_hold("CLK", f"WAD[{wad}]", ClockEdge.RISING, group_to_timingvalue(arc[f"clk_wad{wad}_set"]), group_to_timingvalue(arc[f"clk_wad{wad}_hold"]))

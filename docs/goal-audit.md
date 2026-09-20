@@ -1,5 +1,22 @@
 # Full-goal audit
 
+## Timing coverage correction
+
+The installed nextpnr flow lacks multiplier timing, small-LUT variants and
+certain RAM input checks. The 21.56-FPS figure below is a schedule-derived
+estimate at the generated clock, not fully verified hardware throughput.
+Placement, bitstream packing and numerical/schedule verification remain valid.
+This correction supersedes the stronger historical timing claims below.
+[Audit evidence](timing-coverage.md). The goal remains active and incomplete.
+
+With the additional LUT/RAM timing checks, the old 135-MHz candidate reports
+65.16 MHz and fails. A faster 5,033,075-cycle configuration now places and
+routes after absorbing 1,298 product registers into DSPs; it reports 61.80 MHz
+and fails 156 MHz. All 448 compiler tests and three complete scheduled frames
+pass. Placement progress is real, but address pipelining and complete DSP
+timing validation remain outstanding. Neither frequency is a complete certified
+limit because multiplier timing is still missing.
+
 ## Current scope after the user's deployment decision
 
 The user now accepts validation Dice >= 0.65, superseding the earlier requirement

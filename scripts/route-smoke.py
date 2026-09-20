@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Place/route generated RTL inside an observable source/sink test harness.
 
-The harness tests physical tool compatibility and internal timing. It does not
+The harness tests physical tool compatibility and runs the tool's timing checks.
+A successful return does not establish timing-model coverage. It does not
 implement a user's external transport or establish inference on a physical board.
 """
 import argparse
@@ -112,5 +113,9 @@ for name, command in zip(("synthesis", "packing", "place-route", "pack"), comman
         if exceeded:
             raise ValueError(f"Packed resource capacity exceeded: {exceeded}")
 result = json.loads((args.output / "route-report.json").read_text())
-print(json.dumps({"fmax": result.get("fmax"), "utilization": result.get("utilization"),
-                  "physical_board_measured": False}, indent=2))
+summary = {"fmax": result.get("fmax"), "utilization": result.get("utilization"),
+           "tool_timing_checks_passed": True, "timing_coverage_verified": False,
+           "physical_board_measured": False,
+           "scope": "Tool-reported timing only; primitive and path coverage require separate verification."}
+(args.output / "toolflow-summary.json").write_text(json.dumps(summary, indent=2) + "\n")
+print(json.dumps(summary, indent=2))

@@ -1,5 +1,11 @@
 # Current result
 
+**Timing correction:** the installed nextpnr database omits multiplier timing,
+small-LUT variants and certain RAM input checks. Earlier timing passes below
+are tool results, not complete timing closure. The 21.56-FPS figure is conditional
+on a safe 135 MHz clock; it is not verified hardware throughput.
+[Coverage audit and evidence](docs/timing-coverage.md).
+
 **Accuracy meets the revised threshold; fabric-memory-only 30 FPS is not achieved.**
 The compiler now produces full-model RTL and CP-SAT schedules with independently
 checked constraints and RTL transfer deadlines. A four-bit-activation candidate
@@ -47,8 +53,11 @@ resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
 
-The latest accepted candidate achieves **21.56 scheduled FPS** at a generated
-**135 MHz**, with full routing, timing checks and bitstream packing complete.
+The latest routed candidate has a **21.56 scheduled FPS estimate** at a generated
+**135 MHz**, with routing and bitstream packing complete. Its timing pass has
+incomplete datapath coverage, as documented above.
+Re-running it with corrected LUT/RAM coverage fails 135 MHz and reports a
+65.16-MHz setup limit. The earlier 135-MHz pass is superseded.
 CP-SAT proves its **6,262,820-cycle** fixed-choice period, and all scheduled
 transfers pass three-frame bit-exact RTL replay. Native final use is 14,756 LUT4,
 4,382 ALU, 5,932 FF, 46 BRAM, 59 multiplier slots and 22,784 distributed-memory
@@ -60,8 +69,17 @@ it is not counted as a throughput result.
 A subsequent generic constant-based optimization removes unused requantizer
 paths, saving **1,199 LUT equivalents and 125 registers** in a faster allocation
 without changing its numerical outputs or cycle count. All **448 tests** pass.
-That faster allocation still fails physical placement, so 21.56 FPS remains the
-verified result. [Implementation evidence](docs/direct-scheduling.md#coefficient-aware-multiplier-sharing).
+That faster allocation still fails physical placement. The earlier 21.56-FPS
+estimate also requires complete timing validation.
+[Implementation evidence](docs/direct-scheduling.md#coefficient-aware-multiplier-sharing).
+
+A further 5,033,075-cycle allocation now places and routes after absorbing
+1,298 product registers into the DSP blocks and removing a redundant register
+enable. All 448 compiler tests and three complete scheduled RTL frames pass.
+It still fails the requested 156-MHz clock, reporting 61.80 MHz with the expanded
+timing checks; multiplier timing remains unresolved. The next implementation
+work is pipelining the long window-address path.
+[Placement and verification evidence](docs/direct-scheduling.md#uniform-spatial-reduction-experiment).
 
 The preceding 108 MHz result is retained below for comparison.
 

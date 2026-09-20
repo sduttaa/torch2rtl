@@ -1,5 +1,55 @@
 # Optimized full-model schedules and narrower FIFOs
 
+## Timing coverage correction
+
+The historical routing results in this document pass the tool's implemented
+checks, but a subsequent audit found missing multiplier and small-LUT timing
+models and RAM input checks. Schedule-derived FPS figures are conditional on
+the configured clock being safe. Complete timing closure and physical-board
+throughput remain unverified. [Audit and evidence](timing-coverage.md).
+
+## Uniform spatial reduction experiment
+
+Using the full stream width for spatial reductions and a 256-word first pooling
+FIFO gives a **5,033,075-cycle** period. Complete CP-SAT proves that period for
+the fixed choices and independently checks 3,024,739 event offsets. Three
+bit-exact frames meet all transfer deadlines at cycles 6,076,346; 11,109,421;
+and 16,142,496. This needs at least 150.99225 MHz for 30 FPS.
+
+The tested whole core uses 16,292 LUT equivalents, 6,345 FFs, 46 BRAMs, 86
+multiplier slots and 24,576 distributed-memory bits. Both a minimum-16-bit
+carry mapping and a logic-only mapping fail physical placement. Aggregate
+resource counts therefore do not establish physical feasibility.
+[Complete schedule](../build/scheduling/uniform-spatial-reduction/report.json),
+[RTL replay](../build/scheduling/uniform-spatial-reduction/simulation/simulation.log),
+[carry route](../build/network/uniform-spatial-reduction/carry-min-16/physical/status.json),
+[logic route](../build/network/uniform-spatial-reduction/logic-only/physical/status.json).
+
+An experimental netlist transformation absorbs 1,298 exclusive product
+registers into 86 multiplier output registers. Sequential equivalence passes
+for all transformed outputs under the documented primitive functional contract,
+including arbitrary clock enables. This is a build experiment; it supplies no
+missing DSP timing data and is not adopted as a throughput result.
+[Equivalence proof](../build/verification/multiplier-registers/uniform-port-proof/report.json).
+
+Removing the redundant product-register enable makes all multiplier clock
+controls compatible. Data is consumed only when `product_valid` is asserted;
+the register's value during other cycles is unobservable. This one-line actor
+change passes **448 regression tests** and the same three scheduled, bit-exact
+frames. Its logic-only synthesis saves another 21 LUT equivalents.
+
+With register absorption and the minimum-16-bit carry mapping, the faster full
+network now **places and routes**, using 16,496 native LUT4, 1,212 ALU, 5,094
+fabric FFs, 46 BRAMs, 86 multiplier slots, 384 distributed-memory blocks and one
+PLL. The new LUT/RAM timing checks report **61.8047 MHz**, failing the requested
+156 MHz. No bitstream is packed after this failed timing check. The remaining
+reported critical path is again the dot-step-to-window-read path; DSP timing
+also remains unmodeled. Thus this resolves a placement problem but does not
+establish 30 FPS.
+[Route report](../build/network/ungated-products/registered-multipliers/physical/route-report.json),
+[register equivalence](../build/verification/multiplier-registers/ungated-port-proof/report.json),
+[deadline replay](../build/network/ungated-products/deadline-replay/simulation.log).
+
 ## Compact pooling FIFOs at 135 MHz
 
 Limiting each of the two pooling-output FIFOs to 128 words retains most of the
