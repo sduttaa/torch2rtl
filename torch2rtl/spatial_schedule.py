@@ -89,7 +89,7 @@ def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilati
                     real_word += 1
                 issues.append(event)
                 columns.append(column_padding)
-                readiness.append(2*(effective_h-1)+1 if packed and not column_padding else 2)
+                readiness.append(effective_h if packed and not column_padding else 2)
                 if output and channel == channel_words-1:
                     completed.append(len(issues)-1)
     if real_word != len(inputs) or len(completed) != len(releases):

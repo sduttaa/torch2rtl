@@ -1,5 +1,6 @@
 from pathlib import Path
 from math import ceil
+import subprocess
 
 import numpy as np
 import pytest
@@ -16,6 +17,7 @@ from rtl_check import pack, simulate
     ((1, 3, 3), (1, 3), (1, 1), (1, 1), (0, 1), 2),
     ((7, 5, 4), (3, 2), (2, 1), (2, 2), (0, 1), 2),
     ((6, 8, 1), (2, 2), (3, 3), (1, 1), (0, 0), 1),
+    ((3, 1, 1), (3, 1), (1, 1), (1, 1), (1, 0), 1),
 ])
 def test_raster_windows_across_frames(tmp_path, shape, kernel, stride, dilation, padding, lanes, stalls, packed_lines):
     height, width, channels = shape
@@ -52,6 +54,18 @@ module inference (
 endmodule
 """
     source = (Path(__file__).parents[1] / "torch2rtl/templates/window.sv").read_text()
+    if packed_lines and (kh-1)*dh+1 > 1:
+        # The no_rw_check declaration is valid only when the parent never
+        # overlaps transactions and simultaneous RAM accesses are disjoint.
+        assertions = """
+  always @(posedge clk) if (!rst) begin
+    if (issue && busy) $fatal(1, "Overlapping packed-row transactions");
+    if (busy && !complete && read_location == location)
+      $fatal(1, "Packed-row read/write collision");
+  end
+"""
+        marker = source.rfind("endmodule")
+        source = source[:marker] + assertions + source[marker:]
     input_words, expected = [], []
     generator = np.random.default_rng(99)
     for _ in range(3):
@@ -64,3 +78,43 @@ endmodule
                     for column in range(kw):
                         expected.extend(pack(padded[y+row*dh, x+column*dw], 8, lanes))
     simulate(tmp_path, wrapper + source, lanes*8, lanes*8, input_words, expected, stalls)
+
+
+@pytest.mark.parametrize("parameters", [
+    {"HEIGHT": 3, "WIDTH": 1, "CHANNELS": 1, "KERNEL_H": 2, "KERNEL_W": 1, "LANES": 1, "PAD_H": 1},
+    {"HEIGHT": 5, "WIDTH": 3, "CHANNELS": 3, "KERNEL_H": 3, "KERNEL_W": 2,
+     "DILATION_H": 2, "LANES": 2, "PAD_H": 2, "PAD_W": 1},
+    {"HEIGHT": 4, "WIDTH": 7, "CHANNELS": 5, "KERNEL_H": 3, "KERNEL_W": 3,
+     "LANES": 4, "PAD_H": 1, "PAD_W": 1},
+])
+def test_packed_memory_accesses_never_collide(tmp_path, parameters):
+    # Check the actual parent controller with arbitrary input-valid, release
+    # and reset signals. Only the first cycle is constrained to reset.
+    source = (Path(__file__).parents[1] / "torch2rtl/templates/window.sv").read_text()
+    assertions = """
+  always @(posedge clk) if (!rst) begin
+    assert (!issue || !busy);
+    if (busy && !complete) assert (read_location != location);
+  end
+"""
+    marker = source.rfind("endmodule")
+    (tmp_path / "window.sv").write_text(source[:marker] + assertions + source[marker:])
+    assignments = " ".join(f"-set {key} {value}" for key, value in parameters.items())
+    script = f"""
+read_verilog -formal -sv window.sv
+chparam {assignments} -set PACKED_LINES 1 raster_window
+hierarchy -top raster_window
+proc
+flatten
+memory_map
+opt
+async2sync
+chformal -lower
+sat -seq 6 -tempinduct -set-at 1 rst 1 -prove-asserts -verify
+"""
+    (tmp_path / "proof.ys").write_text(script)
+    result = subprocess.run(["yosys", "-Q", "-T", "-s", "proof.ys"], cwd=tmp_path,
+                            capture_output=True, text=True, timeout=30)
+    (tmp_path / "proof.log").write_text(result.stdout + result.stderr)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Induction step proven: SUCCESS!" in result.stdout

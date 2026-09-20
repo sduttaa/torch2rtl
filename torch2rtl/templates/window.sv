@@ -161,7 +161,7 @@ module raster_window #(
 endmodule
 
 // Pack several row delays into one addressed memory. Each accepted word
-// visits the rows in order using a synchronous read followed by a write.
+// visits the rows in order, reading the next row while writing the previous.
 // This trades input bandwidth for fewer partially filled memory banks.
 module packed_line_store #(
   parameter integer ROWS = 1, LINE_WORDS = 1, BITS = 8,
@@ -174,44 +174,45 @@ module packed_line_store #(
   input wire [ADDRESS_BITS-1:0] address, input wire [BITS-1:0] data,
   output wire complete, output wire [ROWS*BITS-1:0] delayed
 );
-  reg busy, writing;
+  reg busy;
   reg [ROW_BITS-1:0] row;
   reg [MEMORY_BITS-1:0] location;
   reg [BITS-1:0] carry, read_data;
-  (* ram_style = MEMORY_STYLE *) reg [BITS-1:0] memory [0:ROWS*LINE_WORDS-1];
+  // A transaction finishes before the next issue. While busy, the read is
+  // one full row ahead of the write, so enabled accesses never collide.
+  (* ram_style = MEMORY_STYLE, no_rw_check *) reg [BITS-1:0] memory [0:ROWS*LINE_WORDS-1];
   reg [BITS-1:0] saved [0:ROWS-1];
-  assign complete = !rst && busy && writing && row == ROW_BITS'(ROWS-1);
+  wire [MEMORY_BITS-1:0] next_location = location + MEMORY_BITS'(LINE_WORDS);
+  wire [MEMORY_BITS-1:0] read_location = issue ? MEMORY_BITS'(address) : next_location;
+  assign complete = !rst && busy && row == ROW_BITS'(ROWS-1);
   genvar index;
   generate for (index = 0; index < ROWS; index = index + 1) begin: result
     assign delayed[index*BITS +: BITS] = index == ROWS-1 ? read_data : saved[index];
     always @(posedge clk)
-      if (!rst && busy && writing && row == ROW_BITS'(index)) saved[index] <= read_data;
+      if (!rst && busy && row == ROW_BITS'(index)) saved[index] <= read_data;
   end endgenerate
   always @(posedge clk) begin
-    if (!rst && busy && !writing) read_data <= memory[location];
-    if (!rst && busy && writing) memory[location] <= carry;
+    if (!rst) begin
+      if (issue || (busy && !complete)) read_data <= memory[read_location];
+      if (busy) memory[location] <= carry;
+    end
   end
   always @(posedge clk) begin
     if (rst) begin
       busy <= 0;
-      writing <= 0;
     end else begin
       if (issue) begin
         busy <= 1;
-        writing <= 0;
         row <= 0;
         location <= MEMORY_BITS'(address);
         carry <= data;
       end
       if (busy) begin
-        writing <= !writing;
-        if (writing) begin
-          carry <= read_data;
-          if (complete) busy <= 0;
-          else begin
-            row <= row + 1'b1;
-            location <= location + MEMORY_BITS'(LINE_WORDS);
-          end
+        carry <= read_data;
+        if (complete) busy <= 0;
+        else begin
+          row <= row + 1'b1;
+          location <= next_location;
         end
       end
     end

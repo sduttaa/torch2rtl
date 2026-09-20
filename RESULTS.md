@@ -14,15 +14,17 @@ placement. Neither result is a physical fabric-fit certificate.
 | Model | Validation Dice | Constants | Status |
 | --- | ---: | ---: | --- |
 | Supplied integer export | 0.676843 | 291,240 bytes | Baseline; contains FP32 computation and exceeds the tested fabric-storage budget |
-| Best retrained full-range INT8 | 0.667115 | 27,576 bytes | Integer export verified; accuracy target unmet |
+| Best retrained full-range INT8 | 0.667590 | 27,576 bytes | Integer export verified; accuracy target unmet |
 | Retrained INT8 weights / four-bit hidden activations | 0.656095 | 27,576 bytes | Smaller exact storage; accuracy target unmet |
 
 The retained full-range model matches QAT on all 246 supplied images and its
 serialized export on all 49 validation images. It has no floating-point tensor
-nodes and passes torch-mlir verification. The existing validation split has been
+nodes, passes torch-mlir verification, and matches complete RTL outputs for three
+images under backpressure using oversized verification FIFOs. The existing validation split has been
 used to select many experiments; no independent test set was supplied.
-Further training, decision calibration and lighting augmentation did not improve
-the retained checkpoint. New per-channel activation calibration also falls short:
+Batch-wide Dice loss improves the previous 0.667115 score slightly to 0.667590.
+Decision calibration and lighting augmentation did not improve their starting
+checkpoint. Per-channel activation calibration also falls short:
 0.663091 Dice for full-range INT8 and 0.656158 for four-bit hidden activations.
 Both pass all 246 QAT/integer and 49 saved-export comparisons and verify through
 torch-mlir. [Training evidence](docs/training-results.md).
@@ -34,6 +36,20 @@ SDRAM is excluded. The selected target remains explicit input in
 resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
+
+Pipelining the generic packed row memory reduces its refill latency, with
+simulation assertions and three induction proofs checking collision freedom.
+CP-SAT proves a **14,007,135-cycle optimum** for the smaller-logic fixed
+configuration. All 3,024,739 offsets pass the independent checker and every RTL
+transfer deadline is met across three images. This improves throughput by about
+0.77% for that configuration but would still require **420.21 MHz** for 30 FPS.
+
+After remeasuring 198 packed actor options, a new selection uses 18,853 packed
+LUT sites, 46 BRAM blocks and 64 multiplier slots. It produces three bit-exact
+frames at 14,002,180-cycle intervals, then fails placement. No full-model routed
+clock is available. [Row-memory and placement evidence](docs/direct-scheduling.md#pipelined-packed-row-memory).
+
+### Earlier full-range candidate
 
 CP-SAT proves a **4,591,040-cycle minimum period** for the full-range INT8 model's
 fixed actor configuration and oversized verification FIFOs, within the reported
@@ -62,7 +78,7 @@ or physical fit. [Layout measurements](docs/window-layouts.md).
 - Solver-independent periodic event contracts with actor choices, FIFO depths,
   occupancy and resource constraints in CP-SAT; every feasible result checked
   against the original model.
-- **363 tests pass**, including numerical overflow, branches, backpressure,
+- **371 tests pass**, including numerical overflow, branches, backpressure,
   periodic schedules, signed storage, training and export.
 - A small integration kernel synthesizes, routes at 27 MHz and packs a bitstream.
   That result is distinct from the requested full model. Physical-board inference

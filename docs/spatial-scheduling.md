@@ -66,12 +66,16 @@ must wait for `release[j]`. The actor can begin using the window no earlier than
 rule. Frame wrap obeys the same raster and storage dependencies.
 
 The optional packed line layout serializes row delays in one RAM. With
-`R = effective_height-1 > 0`, a real-column issue commits after `2*R` cycles
-(one synchronous read and one write per row). Its next issue and the actor's
-first window use are at least `2*R+1` cycles later. Horizontal padding bypasses
+`R = effective_height-1 > 0`, a real-column issue commits after `R` cycles:
+the initial synchronous read is followed by writing each row while reading the
+next. Its next issue and the actor's first window use are at least `R+1` cycles
+later. Enabled simultaneous reads and writes address different rows, and a new
+transaction cannot overlap the previous transaction. Horizontal padding bypasses
 RAM and commits one cycle after issue, so its next issue/use delay is two.
 When `R=0` the ordinary parallel contract applies. Both layouts retain the
 same release dependency; storage savings do not imply equal throughput.
+The implementation and verification evidence is in the
+[pipelined-row investigation](direct-scheduling.md#pipelined-packed-row-memory).
 
 ## Convolution
 

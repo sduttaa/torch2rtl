@@ -26,9 +26,10 @@ The requested replacement must satisfy three separate checks:
 3. A routed implementation sustains at least 30 inferences/second, including
    backpressure. MAC counts and hypothetical clock rates are not measured FPS.
 
-The latest verified integer result has Dice **0.667115**, 27,576 bytes of constants
-and 240,583,680 MACs per inference. Its full graph passes numerical RTL simulation
-with oversized verification buffers, but it has not met the accuracy or hardware
+The latest verified integer result has Dice **0.667590**, 27,576 bytes of constants
+and 240,583,680 MACs per inference. It passes exact integer/export checks,
+torch-mlir verification and full-model RTL simulation with oversized verification
+buffers. It does not meet the accuracy or hardware
 deployment checks. The compact verified integer result has Dice **0.659503**, 26,988 bytes of
 constants and 212,686,848 direct MACs per inference. A wider candidate reaches
 **0.660307** with 37,644 bytes and 240,556,032 MACs. Neither has satisfied the
@@ -45,8 +46,14 @@ checkpoint with:
 
 ```sh
 python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
-  --output build/training/reproduced --epochs 40 --learning-rate 0.00003 --shift 16
+  --config training/experiments/scratches-batch-dice.json \
+  --resume build/training/short-requantizer/qat.pt \
+  --output build/training/reproduced --epochs 80 --learning-rate 0.00003 --shift 16
 ```
+
+`loss.dice_reduction` selects `sample` (the default mean of per-image Dice losses)
+or `batch` (one Dice ratio across all batch pixels). This is an explicit training
+choice; it does not change deployment arithmetic or the reported validation metric.
 
 `quantize.py --resume PATH_TO_QAT` continues saved QAT weights and calibrated
 scales with a fresh AdamW optimizer and learning-rate schedule. The original

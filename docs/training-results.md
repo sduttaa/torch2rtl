@@ -1,10 +1,55 @@
 # Fabric-only retraining results
 
-The most accurate verified integer replacement now reaches **0.667115 Dice** versus
+The most accurate verified integer replacement now reaches **0.667590 Dice** versus
 **0.676843** for the supplied export. It has **27,576 bytes** of constants and
 **240,583,680 MACs per inference**. None of the candidates has met the requested
 accuracy or complete 30-FPS deployment requirement.
 Weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
+
+## Batch Dice experiment
+
+The best verified full-range INT8 candidate now reaches **0.667590 Dice**,
+still below the supplied model's **0.676843**. Continuing the earlier QAT
+checkpoint for 80 epochs with batch-wide Dice loss selected epoch 52.
+Preprocessing, the original split, graph, calibrated quantizers and fixed zero
+decision threshold are unchanged. The loss combines BCE, batch Dice and teacher
+logit supervision with weights 0.45, 0.45 and 0.10.
+
+Its IoU is 0.501040, precision 0.632961 and recall 0.706227; TP/FP/FN are
+964/559/401. Constants remain 27,576 bytes and direct work remains 240,583,680
+MACs per image. It matches QAT on all 246 images and its saved integer export on
+all 49 validation images. No floating tensor nodes remain, and torch-mlir
+verification passes. The model SHA-256 is
+`ce6102156eca515ecac4976210539a5fab9556490c853e593e7b27f36d735231`.
+This small validation improvement does not establish better generalization.
+The complete emitted RTL also matches 96,768 output words over three real
+images with randomized source/sink stalls. That check uses oversized FIFOs and
+does not establish fabric fit or a routed clock.
+
+- [Verified integer model](../build/training/batch-dice-integer/model.pt2)
+- [Verification report](../build/training/batch-dice-integer/report.json)
+- [MLIR and workload inspection](../build/training/batch-dice-integer/inspection/analysis.json)
+- [Explicit experiment input](../training/experiments/scratches-batch-dice.json)
+- [Complete RTL numerical check](../build/network/batch-dice/simulation/report.json)
+
+```sh
+python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
+  --config training/experiments/scratches-batch-dice.json \
+  --resume build/training/short-requantizer/qat.pt \
+  --output build/training/batch-dice-integer --epochs 80 --learning-rate 0.00003 --shift 16
+```
+
+The previous 0.667115 model remains preserved. A diagnostic that predicted from
+its final exact accumulator before byte requantization scored only 0.665781;
+that numerical change was not adopted. The existing validation split is still
+used for checkpoint selection, with no independent test set supplied.
+
+A further 100-epoch QAT run raised batch Dice's loss weight to 0.80, with BCE and
+teacher supervision at 0.10 each. It retained epoch zero as its best checkpoint
+at 0.667590; no trained improvement was adopted. All 246 QAT/integer and 49
+saved-export checks pass. Its [configuration](../training/experiments/scratches-overlap-loss.json),
+[history](../build/training/overlap-loss-integer/history.json) and
+[verification](../build/training/overlap-loss-integer/report.json) are preserved.
 
 ## Per-channel calibration investigation
 
@@ -20,7 +65,7 @@ the original preprocessing, split and fixed zero prediction threshold:
 Both use INT8 weights, a fixed requantization shift of 16 and 240,583,680 MACs per
 inference. They match QAT on all 246 images and the saved integer export on all
 49 validation images, contain no floating tensor nodes, and pass torch-mlir
-verification. The best full-range model remains the earlier 0.667115 candidate;
+verification. At the time, the best full-range model remained the 0.667115 candidate;
 neither new model is adopted as satisfying the accuracy requirement. The tiny
 change from 0.656095 to 0.656158 in the four-bit experiment is not a meaningful
 demonstration of better generalization.
@@ -70,7 +115,7 @@ on training images reached only 0.661053 Dice. The best checkpoint remains
 unchanged. The [option/training investigation](option-survey.md) includes the
 train/validation gap, exact integer verification and reproducible artifacts.
 
-The newest candidate retains the wider input stage and uses an explicitly trained
+The earlier 0.667115 candidate retains the wider input stage and uses an explicitly trained
 fixed-point right shift of 16 for requantization, reducing multiplier magnitudes.
 It preserves input/output resolution, preprocessing and the original split.
 Its IoU is 0.500504, precision 0.616005 and recall 0.727473;
@@ -79,9 +124,9 @@ reloaded export matches on all 49 validation images. It contains no floating
 tensor nodes and passes torch-mlir import. Its SHA-256 is
 `0e45449076070d202642d263ec06f6300aa99d46ea364c94406c742e12d4d31d`.
 
-- [Latest integer model](../build/training/short-requantizer/model.pt2)
-- [Latest verification report](../build/training/short-requantizer/report.json)
-- [Latest MLIR and workload accounting](../build/training/short-requantizer/inspection/analysis.json)
+- [Earlier integer model](../build/training/short-requantizer/model.pt2)
+- [Earlier verification report](../build/training/short-requantizer/report.json)
+- [Earlier MLIR and workload accounting](../build/training/short-requantizer/inspection/analysis.json)
 - [Full-model RTL evidence and limits](spatial-backend.md)
 
 The earlier wider-stem model with a shift of 24 reached 0.663747 Dice. Its

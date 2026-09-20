@@ -349,7 +349,10 @@ def loss_function(logits, target, teacher, config):
     positive_weight = logits.new_tensor(config["positive_weight"])
     bce = F.binary_cross_entropy_with_logits(logits, target, pos_weight=positive_weight)
     probability = logits.sigmoid()
-    dims = (1, 2, 3)
+    reduction = config.get("dice_reduction", "sample")
+    if reduction not in ("sample", "batch"):
+        raise ValueError("Dice reduction must be sample or batch")
+    dims = (1, 2, 3) if reduction == "sample" else (0, 1, 2, 3)
     dice = 1 - ((2 * (probability * target).sum(dims) + 1) /
                 (probability.sum(dims) + target.sum(dims) + 1)).mean()
     if config.get("distillation_loss", "bce") == "logit":

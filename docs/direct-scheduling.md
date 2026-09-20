@@ -1,5 +1,65 @@
 # Optimized full-model schedules and narrower FIFOs
 
+## Pipelined packed row memory
+
+The generic packed row store now overlaps each row write with the next row's
+synchronous read. With `R` delayed rows, commit latency falls from `2R` to `R`
+cycles; the next issue/window-use delay is `R+1`. The scheduling adapter uses
+the new measured contract. FIFO occupancy remains inside the agreed CP-SAT
+model; the change does not restrict its schedule space.
+
+The RTL has one explicit read port. The parent excludes overlapping transactions,
+and simultaneous read/write addresses differ by a complete row. A local
+`no_rw_check` attribute allows Yosys to avoid unnecessary read-first emulation.
+Multi-frame randomized-stall tests assert both properties, and temporal induction
+proves them for three elaborated geometries: a one-word row, a dilated kernel,
+and ragged channel vectors. These are parameterized test cases, not a formal
+proof over every possible parameter value. The initial two-read RTL trial did
+not infer BRAM correctly and was discarded.
+
+For the previous smaller-logic allocation, the complete schedule now has a
+**14,007,135-cycle optimum**, with all 3,024,739 offsets independently checked.
+Its period cap is 20 million and offset cap 40 million. All 387,840 input and
+96,768 output words meet their RTL deadlines over three real images, with frame
+completions at 15,605,061; 29,612,196; and 43,619,331 cycles. This is about a
+0.77% throughput improvement over the same allocation's old 14,114,637-cycle
+interval. CP-SAT takes 75.4 seconds; the full monitored process takes 194.7
+seconds and peaks at 5.97 GB sampled RSS. At the proved period, 30 FPS would
+require **420.21405 MHz**, which has not been achieved.
+
+All 198 packed actor options were recharacterized. A subsequent resource/rate
+screen chooses slightly smaller actors while reserving the same FIFO storage:
+
+| Configuration | Whole-core LUT / FF | BRAM / multiplier slots | Packed LUT / FF | Result |
+| --- | ---: | ---: | ---: | --- |
+| Previous allocation, new row implementation | 17,584 / 5,999 | 46 / 70 | 19,252 / 7,833 | Placement fails |
+| New measured selection | 17,005 / 5,877 | 46 / 64 | 18,853 / 7,711 | Placement fails |
+
+Both use 19,200 distributed-memory bits and produce bit-exact outputs for three
+images. The new selection's observed interval is 14,002,180 cycles; it does not
+have a full CP-SAT optimality proof. The screen omits graph occupancy and its
+six-million-cycle screening period is not an achieved network period. Doubling
+the two large skip buffers is infeasible within this finite actor catalogue even
+at a 16-million-cycle screening period. This is a scoped catalogue result, not
+an impossibility theorem about other implementations. None of these designs
+establishes physical fit, a routed clock or 30 FPS. The unchanged four-bit-hidden
+model still scores 0.656095 Dice.
+
+- [Row access proofs](../build/verification/row-collisions/report.json)
+- [Complete fixed schedule](../build/scheduling/pipelined-row-schedule/report.json)
+- [RTL deadline replay](../build/scheduling/pipelined-row-schedule/simulation/report.json)
+- [198 measured packed options](../build/network/pipelined-row-safe/options/report.json)
+- [New allocation screen](../build/scheduling/pipelined-row-screen/scale-1-period-6000000/screen.json)
+- [New allocation numerical check](../build/network/pipelined-row-selected/simulation/report.json)
+- [New allocation packing](../build/network/pipelined-row-selected/physical/packing-report.json)
+- [New allocation placement failure](../build/network/pipelined-row-selected/physical/place-route.log)
+
+```sh
+PYTHONPATH="$PWD" python build/scheduling/replay.py \
+  --schedule build/scheduling/pipelined-row-schedule \
+  --vectors build/network/window-layouts/fused/simulation --frames 3
+```
+
 ## Interval search and physical-resource checks
 
 CP-SAT now proves the finite-FIFO candidate's **12,978,517-cycle optimum** in

@@ -2,69 +2,36 @@
 
 ## Current scope after the user's deployment decision
 
-The user has authorized training a smaller INT8 replacement on the supplied
-dataset, provided it matches or exceeds the existing model's accuracy. Both
-weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
-This removes the earlier decision blocker. The goal is active and incomplete.
-Interval branching now proves the fixed finite-FIFO candidate's 12,978,517-cycle
-optimum, and all three frames meet their RTL deadlines. A smaller-logic candidate
-passes aggregate packing capacity but fails placement. Per-channel activation
-calibration produces verified integer exports without closing the accuracy gap.
-The suite passes 363 tests. These changes make measured progress without meeting
-the requested accurate, fabric-only 30-FPS result.
-The latest [solver investigation](direct-scheduling.md) proves a 4,591,040-cycle
-minimum period for a fixed full-model actor/FIFO configuration and verifies
-every RTL input/output deadline over three images. It uses oversized FIFOs and
-no resource budgets. Exact unused-lane removal also reduces measured FIFO
-memory. A first joint solve with fabric budgets proves its finite catalogue
-infeasible within the stated caps; it does not prove all hardware choices
-infeasible. These are measured implementation advances. Accuracy, fabric fit
-and physical 30 FPS remain unmet, and this turn is progress rather than a
-repeated no-progress blocking condition.
-The subsequent fabric candidate passes CP-SAT and RTL deadline checks at a
-fixed fifteen-million-cycle period. Whole-design synthesis meets the supplied
-resource estimates, but nextpnr packing requires 21,539 LUT sites against 20,736
-available. Placement was stopped. This exposes a resource-accounting gap and
-does not establish physical fit. The model's Dice remains 0.656095.
-The latest exact convolution/pool fusion and implied window-path timing bounds
-are documented in [the fusion report](convolution-pool.md). They add verified
-implementation progress; they do not establish the missing accuracy, full-model
-schedule, physical fit or 30-FPS result.
-The subsequent [line-layout survey](window-layouts.md) measured 191 more
-configurations and improved the same four-bit graph's observed RTL throughput
-by about 4.6%, with bit-exact outputs. Its verification FIFOs remain oversized.
-A targeted lighting-augmentation experiment did not improve accuracy. These
-are completed investigations with useful measured progress, not a completed goal.
-Training runs, exact integer verification and their limits are documented in
-[the training notes](../training/README.md). The historical audit below applies
-to the original export, not a theorem about retrained models.
+The user authorized training a smaller INT8 replacement if it matches or exceeds
+0.676843 validation Dice, with both weights and activations in FPGA fabric memory.
+The goal remains **active and incomplete**. This removes the earlier deployment
+decision blocker; no new user authorization is needed for the ongoing work.
 
-The latest retrained export reaches 0.667115 Dice versus the required 0.676843.
-Its complete graph now emits generic RTL and matches three real images in
-simulation with backpressure. That simulation uses oversized FIFOs. Selected
-actor costs also exceed LUT/BRAM budgets before graph FIFOs, even though
-separate reduction parallelism brought one configuration within the DSP budget. Accuracy,
-full-model joint scheduling/resource selection, fabric fit and full-design
-timing remain incomplete. Spatial event contracts and their smaller-graph
-solver/RTL deadline tests are now implemented; the full per-word scale probe
-returned UNKNOWN within its limits. [Spatial evidence](spatial-backend.md) records these limits.
-The target's DSP accounting now uses 96 byte-multiplier slots instead of 48
-18-bit slots; the selected FPGA and physical capacities have not changed.
+The best verified integer candidate now reaches **0.667590 Dice**, with 27,576
+bytes of constants. It passes all 246 QAT/integer and 49 saved-export comparisons
+and torch-mlir verification. The existing validation split has been used for
+many architecture/checkpoint choices; there is no independent test set.
+[Training evidence](training-results.md).
 
-Further explicit six-bit and four-bit activation experiments did not improve
-accuracy. Generic, exact range propagation nevertheless reduced a four-bit
-actor configuration to 44 BRAM blocks and 20,300 LUT equivalents, before FIFOs.
-Both mixed-precision graphs pass sampled full-model RTL verification. This is
-implementation progress, not completion or a new no-progress blocker. The
-[storage report](narrow-storage.md) preserves costs, model hashes, tests and limits.
+The generic packed row store now pipelines reads and writes, reducing refill
+latency without changing the agreed scheduling/FIFO formulation. CP-SAT proves
+a 14,007,135-cycle optimum for a fixed smaller-logic four-bit configuration;
+all 3,024,739 offsets pass independent checking and all three RTL frames meet
+their transfer deadlines. Three induction cases prove the row-access safety
+properties. Remeasuring 198 actor options finds a smaller allocation, but it
+still fails placement after packing 18,853 LUT sites, 46 BRAMs and 64 byte
+multiplier slots. Its observed interval is 14,002,180 cycles and its Dice remains
+0.656095. [Scheduling and placement evidence](direct-scheduling.md).
 
-The subsequent [option survey](option-survey.md) measured 191 convolution
-configurations and improved the same mixed-precision graph's sampled RTL frame
-interval by selecting different reduction/output widths. More QAT training did
-not improve the best validation score. Exact cycle-sum bounds strengthen the
-existing CP-SAT formulation, but full-model diagnostic searches still return
-`UNKNOWN`. This turn produced measured progress; the complete goal remains
-active and unproven.
+These are verified implementation and training advances, not a complete,
+accurate 30-FPS design or a repeated no-progress blocking condition. The complete
+suite passes 371 tests. No full-model routed clock, physical inference result,
+or accuracy-qualified fabric-only deployment is available. Board/model specifics
+remain explicit external inputs. The earlier fixed full-range schedule used
+oversized FIFOs and does not establish fabric fit.
+
+The historical audit below concerns the original supplied export. It is not an
+impossibility theorem about retrained models or other hardware implementations.
 
 ## Original-export audit
 
