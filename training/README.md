@@ -114,6 +114,16 @@ convolution weights. Optional feature distillation uses training images only;
 its FP16 cache is a training acceleration, not deployment precision. Cached
 features require unaugmented, uncropped images.
 
+For explicit graph descriptions, `initial_checkpoint` restores dense weights
+before an optional `factor_rank` decomposition. Each selected convolution becomes
+a depthwise spatial convolution followed by a pointwise convolution, initialized
+with a separate truncated SVD for each input channel. `factor_exclude` lists
+module names to retain unchanged. This changes the trained model and generally
+introduces approximation error; it is not an exact compiler rewrite. Acceptance
+still requires quantized accuracy, complete RTL verification, fabric fit and
+physical throughput checks. `factor_rank` and `input_rank` select different
+decompositions and cannot both be used for the same graph.
+
 The provided directory has no separate test set. The existing validation split
 is used for checkpoint and architecture selection, as it was in the supplied
 quantization report. This comparison does not establish performance on an

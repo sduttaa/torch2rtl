@@ -351,3 +351,36 @@ def test_channel_quantized_branches_import_and_match_full_rtl(tmp_path):
         inputs.extend(word for pixel in image.permute(0, 2, 3, 1).reshape(-1, 2) for word in pack(pixel, 8, lanes))
         expected.extend(word for pixel in reference.permute(0, 2, 3, 1).reshape(-1, 1) for word in pack(pixel, 8, lanes))
     simulate(tmp_path, rtl, 8*lanes, 8*lanes, inputs, expected, True)
+
+
+def test_separable_checkpoint_quantizes_imports_and_matches_rtl(tmp_path):
+    from train import factor_convolutions
+    from torch2rtl.frontend import load
+    from torch2rtl.graph import actors, evaluate, read
+    from torch2rtl.network import edges, emit
+    from rtl_check import pack, simulate
+
+    torch.manual_seed(83)
+    floating = torch.nn.Sequential(torch.nn.Conv2d(2, 4, 3, padding=1),
+                                   torch.nn.BatchNorm2d(4), torch.nn.ReLU(),
+                                   torch.nn.Conv2d(4, 2, 1)).eval()
+    factored = factor_convolutions(floating, 2)
+    images = torch.randint(0, 256, (3, 2, 5, 7), dtype=torch.uint8)
+    qat = prepare(factored, images, [0, 1], 1, 16)
+    integer = integer_model(qat)
+    verify(qat, integer, images, [0, 1, 2], 1)
+    path = tmp_path / "separable.pt2"
+    torch.export.save(torch.export.export(integer.layers, (images[:1],), strict=True), path)
+    _, module = load(path)
+    graph = actors(read(module))
+    convolutions = [value for value in graph.values if value.operation == "quantized_convolution"]
+    assert any(value.args[6] == 2 for value in convolutions)
+    output_lanes = {value.name: min(2, value.tensor.shape[1] // value.args[6]) for value in convolutions}
+    rtl = emit(graph, 1, output_lanes, {name: 128 for name, *_ in edges(graph)})
+    inputs, expected = [], []
+    for image in images.split(1):
+        reference = integer.layers(image)
+        assert torch.equal(evaluate(graph, image), reference)
+        inputs.extend(word for pixel in image.permute(0, 2, 3, 1).reshape(-1, 2) for word in pack(pixel, 8, 1))
+        expected.extend(word for pixel in reference.permute(0, 2, 3, 1).reshape(-1, 2) for word in pack(pixel, 8, 1))
+    simulate(tmp_path, rtl, 8, 8, inputs, expected, True)

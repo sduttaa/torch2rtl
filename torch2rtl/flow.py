@@ -8,21 +8,31 @@ import re
 import subprocess
 
 
+def synthesis_command(config, top):
+    """Build one family command from explicit target settings, not script text."""
+    command = config["command"]
+    if command not in {"synth_gowin", "synth_ice40", "synth_ecp5"}:
+        raise ValueError(f"Unsupported synthesis family command: {command}")
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", top):
+        raise ValueError("Invalid synthesis top identifier")
+    family = config.get("family")
+    if family and not re.fullmatch(r"[A-Za-z0-9_]+", family):
+        raise ValueError("Invalid synthesis family identifier")
+    flags = config.get("flags", [])
+    if not isinstance(flags, list) or any(not isinstance(flag, str) or not re.fullmatch(r"-[A-Za-z][A-Za-z0-9_-]*", flag) for flag in flags):
+        raise ValueError("Synthesis flags must be a list of individual option names")
+    family_arg = f" -family {family}" if family else ""
+    return f"{command} -top {top}{family_arg}" + "".join(f" {flag}" for flag in flags)
+
+
 def synthesize(rtl, directory, target):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "inference.sv").write_text(rtl)
-    config = target["synthesis"]
-    command = config["command"]
-    if command not in {"synth_gowin", "synth_ice40", "synth_ecp5"}:
-        raise ValueError(f"Unsupported synthesis family command: {command}")
-    family = config.get("family")
-    if family and not re.fullmatch(r"[A-Za-z0-9_]+", family):
-        raise ValueError("Invalid synthesis family identifier")
-    family_arg = f" -family {family}" if family else ""
+    command = synthesis_command(target["synthesis"], "inference")
     # Recent Yosys may retain alias buffers after family mapping. They are
     # connections, not physical cells; remove them before costing or routing.
-    script = (f"read_verilog -sv inference.sv\n{command} -top inference{family_arg}\n"
+    script = (f"read_verilog -sv inference.sv\n{command}\n"
               "bufnorm -conn\nclean\nwrite_json netlist.json\n")
     (directory / "synth.ys").write_text(script)
     with (directory / "synthesis.log").open("w") as log:

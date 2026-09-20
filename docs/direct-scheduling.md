@@ -60,6 +60,50 @@ PYTHONPATH="$PWD" python build/scheduling/replay.py \
   --vectors build/network/window-layouts/fused/simulation --frames 3
 ```
 
+## Synthesis mapping investigation
+
+Two bounded mapping diagnostics use the same new allocation and RTL above:
+
+| Yosys family flag | Packed LUT sites | Packed FF sites | Physical outcome |
+| --- | ---: | ---: | --- |
+| Default | 18,853 | 7,711 | Placement failed |
+| `-noalu` | 17,780 | 7,710 | Placement failed |
+| `-nowidelut` | 18,155 | 7,711 | Placement interrupted after 929.4 seconds |
+
+All use 46 BRAM blocks and 64 multiplier slots. The four-input-LUT mapping
+reports 20 legalized placement iterations, then makes no further logged progress
+for 590 seconds. It is stopped at an external fifteen-minute diagnostic budget
+(observed after the limit). It has no completed placement/routing certificate,
+bitstream or measured clock. Its result is inconclusive, not an infeasibility
+proof or a physical-fit claim. Disabling carry cells also reduces aggregate LUT
+usage but does not resolve placement. Neither experiment changes RTL scheduling,
+numerics or the model's 0.656095 Dice score.
+
+`synthesis.flags` now accepts explicit standalone family-option names in target
+JSON. Characterization and the routing harness share the same validated command
+builder; no flag is enabled by default. Resource catalogues must be remeasured
+for the chosen mapping. These are target settings, with no board/model lookup
+rule added to the compiler. The full regression suite passes **378 tests**.
+
+- [Carry-free placement failure](../build/network/pipelined-row-noalu/physical/place-route.log)
+- [Four-input-LUT packing report](../build/network/pipelined-row-nowidelut/physical/packing-report.json)
+- [Placement interruption record](../build/network/pipelined-row-nowidelut/termination.json)
+- [Effective target input for the LUT4 experiment](../build/network/pipelined-row-nowidelut/target.json)
+
+The original diagnostics used copies of the routing script with one synthesis
+flag added. The shared flag interface reproduces the same synthesis settings:
+
+```sh
+python scripts/route-smoke.py \
+  --rtl build/network/pipelined-row-selected/rtl/inference.sv \
+  --input-bits 32 --output-bits 32 \
+  --target build/network/pipelined-row-nowidelut/target.json \
+  --constraints inputs/smoke.cst --output build/network/reproduced-mapping
+```
+
+The routing command itself has no external time limit; the recorded diagnostic
+was stopped separately after verifying its process identity and elapsed time.
+
 ## Interval search and physical-resource checks
 
 CP-SAT now proves the finite-FIFO candidate's **12,978,517-cycle optimum** in

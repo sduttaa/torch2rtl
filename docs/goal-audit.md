@@ -25,10 +25,19 @@ multiplier slots. Its observed interval is 14,002,180 cycles and its Dice remain
 
 These are verified implementation and training advances, not a complete,
 accurate 30-FPS design or a repeated no-progress blocking condition. The complete
-suite passes 371 tests. No full-model routed clock, physical inference result,
+suite passes 378 tests. No full-model routed clock, physical inference result,
 or accuracy-qualified fabric-only deployment is available. Board/model specifics
 remain explicit external inputs. The earlier fixed full-range schedule used
 oversized FIFOs and does not establish fabric fit.
+
+Two subsequent 300-epoch depthwise/pointwise architecture trials reduce direct
+operation counts but reach only 0.647327 and 0.644617 floating-point Dice, so
+neither is adopted. Training-only threshold calibration leaves the best INT8
+score unchanged. A four-input-LUT mapping reaches 20 placement iterations before
+an external fifteen-minute diagnostic stop; it supplies no completed physical
+certificate. Generic synthesis flags and a QAT module-ReLU fix have regression
+coverage. These bounded investigations add measured progress without meeting
+the full goal, and no external/user-input blocker has been established.
 
 The historical audit below concerns the original supplied export. It is not an
 impossibility theorem about retrained models or other hardware implementations.

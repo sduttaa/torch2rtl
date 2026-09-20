@@ -315,8 +315,10 @@ def prepare_graph(model, images, train_indices, batch_size, shift, unsigned_bits
     scales, unsigned = {}, {}
     for node in list(model.graph.nodes):
         users = list(node.users)
-        relu_user = (users[0] if len(users) == 1 and users[0].op == "call_function" and
-                     users[0].target in (F.relu, torch.relu) else None)
+        relu_user = (users[0] if len(users) == 1 and
+                     ((users[0].op == "call_function" and users[0].target in (F.relu, torch.relu)) or
+                      (users[0].op == "call_module" and isinstance(model.get_submodule(users[0].target), nn.ReLU)))
+                     else None)
         if node.op == "placeholder":
             scales[node] = torch.full_like(maxima[node.name], 1/255) if calibration.channelwise else 1/255
             unsigned[node] = True

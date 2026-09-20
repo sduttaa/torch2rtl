@@ -8,6 +8,10 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from torch2rtl.flow import synthesis_command
 
 parser = argparse.ArgumentParser(description=__doc__)
 source = parser.add_mutually_exclusive_group(required=True)
@@ -57,11 +61,8 @@ endmodule
 config = target["synthesis"]
 if config["command"] != "synth_gowin":
     raise ValueError("This routing smoke script currently supports the Gowin family flow")
-family = config["family"]
-if not family.isalnum():
-    raise ValueError("Invalid family identifier")
 (args.output / "synth.ys").write_text(
-    f"read_verilog -sv harness.sv\nsynth_gowin -top harness -family {family}\n"
+    f"read_verilog -sv harness.sv\n{synthesis_command(config, 'harness')}\n"
     "bufnorm -conn\nclean\nwrite_json netlist.json\n")
 pnr = target["place_route"]
 route_command = [pnr["executable"], "--device", pnr["device"], "--vopt", "family=" + pnr["family"],

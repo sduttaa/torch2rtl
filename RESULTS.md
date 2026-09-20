@@ -29,6 +29,11 @@ checkpoint. Per-channel activation calibration also falls short:
 Both pass all 246 QAT/integer and 49 saved-export comparisons and verify through
 torch-mlir. [Training evidence](docs/training-results.md).
 
+Two lower-operation architectures complete 300 epochs each, reducing direct work
+to 128.6M and 165.0M MACs. Their floating-point Dice scores are only 0.647327 and
+0.644617; neither is adopted. Training-only threshold calibration of the best
+INT8 checkpoint retains zero and its existing 0.667590 score.
+
 The user requires **both weights and activations in FPGA fabric memory**.
 SDRAM is excluded. The selected target remains explicit input in
 `inputs/target.json`: 46 BRAM blocks, 20,736 LUT equivalents, 15,552 FFs,
@@ -48,6 +53,12 @@ After remeasuring 198 packed actor options, a new selection uses 18,853 packed
 LUT sites, 46 BRAM blocks and 64 multiplier slots. It produces three bit-exact
 frames at 14,002,180-cycle intervals, then fails placement. No full-model routed
 clock is available. [Row-memory and placement evidence](docs/direct-scheduling.md#pipelined-packed-row-memory).
+
+A four-input-LUT synthesis mapping reduces packed use to 18,155 LUT sites and
+progresses through 20 placement iterations, but the diagnostic is interrupted
+after 929 seconds without completing placement/routing. Disabling carry cells
+instead uses 17,780 LUT sites and still fails placement. These experiments do
+not establish physical fit. The mapping flags are now explicit target inputs.
 
 ### Earlier full-range candidate
 
@@ -78,7 +89,7 @@ or physical fit. [Layout measurements](docs/window-layouts.md).
 - Solver-independent periodic event contracts with actor choices, FIFO depths,
   occupancy and resource constraints in CP-SAT; every feasible result checked
   against the original model.
-- **371 tests pass**, including numerical overflow, branches, backpressure,
+- **378 tests pass**, including numerical overflow, branches, backpressure,
   periodic schedules, signed storage, training and export.
 - A small integration kernel synthesizes, routes at 27 MHz and packs a bitstream.
   That result is distinct from the requested full model. Physical-board inference

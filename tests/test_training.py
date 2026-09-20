@@ -1,7 +1,7 @@
 import torch
 import pytest
 
-from training.train import make_model, loss_function
+from training.train import make_model, loss_function, factor_convolutions
 
 
 def test_factorization_starts_from_supplied_checkpoint(tmp_path):
@@ -35,3 +35,33 @@ def test_batch_dice_aggregates_pixels_instead_of_weighting_each_image_equally():
     assert (logits.grad[target.bool()] < 0).all() and (logits.grad[~target.bool()] > 0).all()
     with pytest.raises(ValueError, match="Dice reduction"):
         loss_function(logits, target, logits.detach(), {**config, "dice_reduction": "unknown"})
+
+
+def test_graph_factorization_restores_weights_before_svd_and_honors_exclusions(tmp_path):
+    config = {"image_channels": [0, 1, 2], "graph": [
+        {"name": "spatial", "op": "conv", "inputs": ["image"], "channels": 6, "kernel": 3, "padding": 1},
+        {"name": "retained", "op": "conv", "inputs": ["spatial"], "channels": 4, "kernel": 3, "padding": 1},
+    ], "graph_output": "retained"}
+    torch.manual_seed(17)
+    source = make_model(config).eval()
+    # Construct a known rank-two kernel for every input channel, so this tests
+    # exact reconstructability rather than accepting an arbitrary SVD error.
+    with torch.no_grad():
+        for channel in range(3):
+            source.spatial.weight[:, channel] = (torch.randn(6, 2) @ torch.randn(2, 9)).reshape(6, 3, 3)
+    checkpoint = tmp_path / "source.pt"
+    torch.save({"state": source.state_dict()}, checkpoint)
+    options = {**config, "initial_checkpoint": str(checkpoint), "factor_rank": 2, "factor_exclude": ["retained"]}
+    factored = make_model(options).eval()
+    image = torch.randn(2, 3, 7, 9)
+    torch.testing.assert_close(factored(image), source(image), rtol=1e-4, atol=1e-5)
+    assert factored.get_submodule("spatial.0").groups == 3
+    assert factored.get_submodule("spatial.0").out_channels == 6
+    assert isinstance(factored.retained, torch.nn.Conv2d)
+    torch.testing.assert_close(factored.retained.weight, source.retained.weight)
+    with pytest.raises(ValueError, match="one convolution factorization"):
+        make_model({**options, "input_rank": 1})
+    with pytest.raises(ValueError, match="not found"):
+        factor_convolutions(source, 2, ["absent"])
+    with pytest.raises(ValueError, match="positive integer"):
+        factor_convolutions(source, 0)

@@ -120,6 +120,14 @@ for a future compiler invocation must arrive as user input, including its
 resources, part/package, clocks and pin constraints. There is no board database
 or model-specific configuration in this repository's compiler code.
 
+Optional `synthesis.flags` is a JSON list of individual Yosys family-option
+names, such as `["-nowidelut"]`. Both actor characterization and the routing
+harness use the same validated synthesis command. Defaults are unchanged.
+Changing these flags changes the measured hardware implementation: regenerate
+the corresponding resource catalogue rather than reusing costs from another
+mapping. Only standalone option names are accepted; this field is not a Yosys
+script or a shell command.
+
 ## Official references
 
 - [OSS CAD Suite releases and installation](https://github.com/YosysHQ/oss-cad-suite-build)

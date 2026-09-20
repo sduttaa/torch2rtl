@@ -65,12 +65,16 @@ def make_model(config):
         model = make_graph(config)
         if "initial_checkpoint" in config:
             restore(model, torch.load(config["initial_checkpoint"], weights_only=True)["state"], config)
+        if "factor_rank" in config:
+            if "input_rank" in config:
+                raise ValueError("Choose one convolution factorization")
+            return factor_convolutions(model, config["factor_rank"], config.get("factor_exclude", ()))
         return factor_inputs(model, config) if "input_rank" in config else model
     if "prune_channels" in config:
         model = prune_channels(load_teacher(config.get("initializer", config["teacher"])), config)
         if "input_rank" in config:
             return factor_inputs(model, config)
-        return factor_convolutions(model, config["factor_rank"]) if "factor_rank" in config else model
+        return factor_convolutions(model, config["factor_rank"], config.get("factor_exclude", ())) if "factor_rank" in config else model
     layers = []
     channels = len(config["image_channels"])
     for spec in config["layers"]:
@@ -217,10 +221,14 @@ importance ranking; the FX graph propagates selections to each consumer.
     return graph
 
 
-def factor_convolutions(model, rank):
+def factor_convolutions(model, rank, exclude=()):
     """Initialize depthwise/pointwise factors with independent kernel SVDs."""
+    if type(rank) is not int or rank < 1:
+        raise ValueError("Convolution factor rank must be a positive integer")
+    if set(exclude) - dict(model.named_modules()).keys():
+        raise ValueError("Excluded convolution module was not found")
     for name, conv in list(model.named_modules()):
-        if not isinstance(conv, nn.Conv2d) or conv.groups != 1 or conv.in_channels == 1:
+        if name in exclude or not isinstance(conv, nn.Conv2d) or conv.groups != 1 or conv.in_channels == 1:
             continue
         kh, kw = conv.kernel_size
         if min(conv.out_channels, kh * kw) <= rank:

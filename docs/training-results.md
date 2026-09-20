@@ -51,6 +51,47 @@ saved-export checks pass. Its [configuration](../training/experiments/scratches-
 [history](../build/training/overlap-loss-integer/history.json) and
 [verification](../build/training/overlap-loss-integer/report.json) are preserved.
 
+Selecting a decision threshold from the 197 training images for the new batch
+Dice checkpoint also selects **zero**, leaving validation Dice unchanged at
+0.667590. All exact checks pass; there is no newly improved model to adopt.
+[Threshold experiment](../build/training/batch-threshold-integer/report.json).
+
+## Lower-operation architecture experiments
+
+Two 300-epoch floating-point runs replace selected dense convolutions with
+depthwise/pointwise pairs initialized by per-input-channel kernel SVD. The input
+stage and dilated context convolution are retained through explicit experiment
+settings. Both use the preserved dense checkpoint, original preprocessing/split,
+training crops, batch Dice and teacher logits. Neither meets the accuracy target
+or improves the retained INT8 model, so neither is adopted or presented as a
+deployable replacement.
+
+| Factor rank | Direct MACs | Raw convolution weights | Best floating Dice | Selected epoch |
+| ---: | ---: | ---: | ---: | ---: |
+| 2 | 128,623,104 | 12,496 elements | 0.647327 | 217 |
+| 3 | 164,959,488 | 15,910 elements | 0.644617 | 173 |
+
+At INT8 each raw weight would occupy one byte; these counts exclude biases,
+requantization coefficients, buffers and physical memory packing. They are not
+serialized integer constant sizes, fabric-fit evidence or measured hardware
+speedups. The complete trained candidates have not been quantized or lowered
+to RTL. A separate synthetic regression verifies factorized grouped convolutions
+through QAT, integer export, torch-mlir and RTL with backpressure. That test also
+exposed a training-preparation gap: a single-user `nn.ReLU` module is now absorbed
+into the preceding quantizer just like functional ReLU.
+
+- [Rank-two input](../training/experiments/scratches-separable.json)
+- [Rank-two training report](../build/training/separable/report.json)
+- [Rank-three input](../training/experiments/scratches-separable-rank-three.json)
+- [Rank-three training report](../build/training/separable-rank-three/report.json)
+
+```sh
+python training/train.py --config training/experiments/scratches-separable.json \
+  --output build/training/separable
+python training/train.py --config training/experiments/scratches-separable-rank-three.json \
+  --output build/training/separable-rank-three
+```
+
 ## Per-channel calibration investigation
 
 Explicit per-channel activation scales did not close the accuracy gap. Both
