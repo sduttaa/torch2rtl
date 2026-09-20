@@ -7,12 +7,12 @@ on a safe 135 MHz clock; it is not verified hardware throughput.
 [Coverage audit and evidence](docs/timing-coverage.md).
 
 **Accuracy meets the revised threshold; fabric-memory-only 30 FPS is not achieved.**
-The compiler now produces full-model RTL and CP-SAT schedules with independently
-checked constraints and RTL transfer deadlines. A four-bit-activation candidate
-now completes **full-model placement, routing and bitstream packing**, with setup
-and hold checks passing with a generated 135 MHz clock using an explicitly corrected nextpnr database.
-Its weights and activations fit fabric memory. Its 0.656095 validation Dice
-meets the user's revised >= 0.65 threshold. Thirty-FPS throughput remains unmet; the toolflow harness has not been run as inference on a physical board.
+The compiler produces full-model RTL and CP-SAT schedules with independently
+checked constraints and RTL transfer deadlines. The latest pipelined candidate
+places and routes, but **fails timing at the required clock**. Its weights and
+activations fit fabric memory. Its 0.656095 validation Dice meets the user's
+revised >= 0.65 threshold. The toolflow harness has not been run as inference on
+a physical board.
 
 ## Accuracy and deployment scope
 
@@ -53,7 +53,15 @@ resource budgets, model details and clocks are not compiler lookup tables.
 
 ## Latest scheduling and RTL evidence
 
-The latest routed candidate has a **21.56 scheduled FPS estimate** at a generated
+Window-read pipelining preserves the 5,033,075-cycle schedule and raises the
+reported routed setup limit from 61.80 to **77.48 MHz** with the expanded LUT/RAM
+checks. It still fails 156 MHz and needs at least **150.99225 MHz** for 30 FPS.
+DSP timing coverage remains incomplete. All 448 candidate regression tests and
+three bit-exact scheduled frames pass. The longest reported path now crosses
+actor/FIFO backpressure logic. This is useful implementation progress, not a
+30-FPS result. [Evidence](docs/direct-scheduling.md#pipelined-window-read).
+
+A previous routed candidate has a **21.56 scheduled FPS estimate** at a generated
 **135 MHz**, with routing and bitstream packing complete. Its timing pass has
 incomplete datapath coverage, as documented above.
 Re-running it with corrected LUT/RAM coverage fails 135 MHz and reports a

@@ -8,6 +8,35 @@ models and RAM input checks. Schedule-derived FPS figures are conditional on
 the configured clock being safe. Complete timing closure and physical-board
 throughput remain unverified. [Audit and evidence](timing-coverage.md).
 
+## Pipelined window read
+
+The circular window now optionally registers its decoded row/offset and wrapped
+memory address. Convolution issues coordinates two edges ahead, using existing
+idle, drain and requantization cycles to prime those registers. The actor's
+transfer contract and numerical behavior are unchanged; other window users
+retain the direct-read interface.
+
+For the same 5,033,075-cycle allocation, whole-core synthesis changes from
+16,271 LUT / 6,345 FF to **16,340 LUT / 6,483 FF**, retaining 46 BRAM, 86 multiplier
+slots and 24,576 distributed-memory bits. All 448 production tests pass. Three
+full frames are bit-exact and satisfy every existing CP-SAT deadline at cycles
+6,076,346, 11,109,421 and 16,142,496. The separate proof for absorbing 1,298
+register bits into 86 DSPs also passes.
+
+Placement and routing complete in 167.7 seconds, but timing fails at 156 MHz.
+With the expanded LUT/RAM timing database, the reported setup limit improves
+from 61.80 to **77.4773 MHz**. The critical path now crosses several actor/FIFO
+ready signals; the prior window-read path is no longer the longest reported
+path. The 30-FPS target needs 150.99225 MHz. DSP timing remains incomplete, so
+this is an implementation comparison rather than certified throughput.
+
+Evidence: [candidate configuration](../build/network/pipelined-window-read/configuration.json),
+[production regression log](../build/tests-pipelined-window.log),
+[deadline replay](../build/network/pipelined-window-read/deadline-replay/simulation.log),
+[resources](../build/network/pipelined-window-read/resources.json),
+[route report](../build/network/pipelined-window-read/registered-multipliers/physical/route-report.json),
+[DSP register proof](../build/verification/multiplier-registers/pipelined-window-port-proof/report.json).
+
 ## Uniform spatial reduction experiment
 
 Using the full stream width for spatial reductions and a 256-word first pooling

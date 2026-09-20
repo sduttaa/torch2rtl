@@ -1,6 +1,7 @@
 // Raster input consists of channel vectors, with zero padding in the final
 // vector of each pixel. A completed window is retained until release_window.
 // Read addresses enumerate kernel y, kernel x, then the channel vector.
+// PIPELINED_READ accepts coordinates two edges before their data is consumed.
 module raster_window #(
   parameter integer HEIGHT = 1, WIDTH = 1, CHANNELS = 1,
   parameter integer KERNEL_H = 1, KERNEL_W = 1,
@@ -10,7 +11,7 @@ module raster_window #(
   parameter integer LANES = 1, BITS = 8,
   parameter [BITS-1:0] PADDING_VALUE = 0,
   parameter MEMORY_STYLE = "auto",
-  parameter integer PACKED_LINES = 0,
+  parameter integer PACKED_LINES = 0, PIPELINED_READ = 0,
   localparam integer CHANNEL_WORDS = (CHANNELS + LANES - 1) / LANES,
   localparam integer WORD_BITS = LANES * BITS,
   localparam integer EFFECTIVE_H = (KERNEL_H - 1) * DILATION_H + 1,
@@ -22,6 +23,7 @@ module raster_window #(
   localparam integer HORIZONTAL_BITS = HORIZONTAL_WORDS <= 1 ? 1 : $clog2(HORIZONTAL_WORDS),
   localparam integer WINDOW_WORDS = KERNEL_H * KERNEL_W * CHANNEL_WORDS,
   localparam integer WINDOW_BITS = WINDOW_WORDS <= 1 ? 1 : $clog2(WINDOW_WORDS),
+  localparam integer ROW_BITS = KERNEL_H <= 1 ? 1 : $clog2(KERNEL_H),
   localparam integer X_BITS = PADDED_W <= 1 ? 1 : $clog2(PADDED_W),
   localparam integer Y_BITS = PADDED_H <= 1 ? 1 : $clog2(PADDED_H),
   localparam integer CHANNEL_BITS = CHANNEL_WORDS <= 1 ? 1 : $clog2(CHANNEL_WORDS),
@@ -95,12 +97,32 @@ module raster_window #(
   end endgenerate
 
   wire [WORD_BITS-1:0] horizontal [0:KERNEL_H-1];
-  wire [WORD_BITS-1:0] selected_words [0:WINDOW_WORDS-1];
+  wire [ROW_BITS-1:0] selected_rows [0:WINDOW_WORDS-1];
   wire [HORIZONTAL_BITS-1:0] selected_offsets [0:WINDOW_WORDS-1];
-  wire [HORIZONTAL_BITS:0] circular_address = {1'b0, horizontal_address} + {1'b0, selected_offsets[window_address]};
-  wire [HORIZONTAL_BITS-1:0] read_address = HORIZONTAL_BITS'(
+  wire [HORIZONTAL_BITS-1:0] offset;
+  wire [ROW_BITS-1:0] read_row;
+  wire [HORIZONTAL_BITS:0] circular_address = {1'b0, horizontal_address} + {1'b0, offset};
+  wire [HORIZONTAL_BITS-1:0] wrapped_address = HORIZONTAL_BITS'(
     circular_address >= (HORIZONTAL_BITS+1)'(HORIZONTAL_WORDS) ?
     circular_address - (HORIZONTAL_BITS+1)'(HORIZONTAL_WORDS) : circular_address);
+  wire [HORIZONTAL_BITS-1:0] read_address;
+  generate if (PIPELINED_READ != 0) begin: pipelined_read
+    reg [HORIZONTAL_BITS-1:0] requested_offset, active_address;
+    reg [ROW_BITS-1:0] requested_row, active_row;
+    always @(posedge clk) begin
+      requested_offset <= selected_offsets[window_address];
+      requested_row <= selected_rows[window_address];
+      active_address <= wrapped_address;
+      active_row <= requested_row;
+    end
+    assign offset = requested_offset;
+    assign read_address = active_address;
+    assign read_row = active_row;
+  end else begin: direct_read
+    assign offset = selected_offsets[window_address];
+    assign read_address = wrapped_address;
+    assign read_row = selected_rows[window_address];
+  end endgenerate
   // One circular bank per selected row packs short channel vectors together.
   // The pointer after a complete pixel identifies the oldest horizontal tap.
   genvar ky, kx, word;
@@ -115,12 +137,12 @@ module raster_window #(
   generate for (ky = 0; ky < KERNEL_H; ky = ky + 1) begin: selected_row
     for (kx = 0; kx < KERNEL_W; kx = kx + 1) begin: selected_column
       for (word = 0; word < CHANNEL_WORDS; word = word + 1) begin: selected_channel
-        assign selected_words[(ky*KERNEL_W+kx)*CHANNEL_WORDS+word] = horizontal[ky];
+        assign selected_rows[(ky*KERNEL_W+kx)*CHANNEL_WORDS+word] = ROW_BITS'(ky);
         assign selected_offsets[(ky*KERNEL_W+kx)*CHANNEL_WORDS+word] = HORIZONTAL_BITS'(kx*DILATION_W*CHANNEL_WORDS+word);
       end
     end
   end endgenerate
-  assign window_data = selected_words[window_address];
+  assign window_data = horizontal[read_row];
 
   always @(posedge clk) begin
     if (rst) begin

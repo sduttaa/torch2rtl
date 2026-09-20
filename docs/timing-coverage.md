@@ -75,3 +75,14 @@ DSP timing remains missing even in this stronger check, so 65.1593 MHz is not
 a complete certified limit either.
 [Full-model report](../build/verification/timing-coverage/full-model/route-report.json),
 [database hashes and comparison](../build/verification/timing-coverage/correction-summary.json).
+
+## Additional hardware validation risk
+
+An upstream [Apicula issue](https://github.com/YosysHQ/apicula/issues/514)
+reports incorrect silicon results for one composed ALU design on this device,
+despite successful RTL and mapped-netlist simulation. Its reported workaround
+is `synth_gowin -noalu`; the issue remains open. This is not evidence that our
+design fails, nor that every ALU operation is affected. It does mean the custom
+carry mapping and its functional equivalence proofs cannot establish correct
+bitstream execution. Vendor comparison and eventual board tests must cover
+this separately from the known timing omissions.

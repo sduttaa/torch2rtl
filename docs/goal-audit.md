@@ -13,9 +13,11 @@ With the additional LUT/RAM timing checks, the old 135-MHz candidate reports
 65.16 MHz and fails. A faster 5,033,075-cycle configuration now places and
 routes after absorbing 1,298 product registers into DSPs; it reports 61.80 MHz
 and fails 156 MHz. All 448 compiler tests and three complete scheduled frames
-pass. Placement progress is real, but address pipelining and complete DSP
-timing validation remain outstanding. Neither frequency is a complete certified
-limit because multiplier timing is still missing.
+pass. Subsequent window-address pipelining preserves all transfer deadlines and
+improves the reported limit to 77.48 MHz. It still fails the required clock; the
+longest reported path now crosses actor/FIFO backpressure signals. Complete
+DSP timing validation remains outstanding. None of these frequencies is a
+complete certified limit because multiplier timing is still missing.
 
 ## Current scope after the user's deployment decision
 

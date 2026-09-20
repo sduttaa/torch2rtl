@@ -67,6 +67,17 @@ module integer_convolution #(
   wire window_available;
   wire release_window = state == DOT && dot_step == STEP_BITS'(DOT_STEPS-1) &&
                         block == BLOCK_BITS'(BLOCKS-1) && pool_item == POOL_BITS'(POOL_ITEMS-1);
+  // Issue read coordinates two edges ahead. The existing IDLE, drain and
+  // requantization cycles prime the pipeline without adding actor cycles.
+  wire [BLOCK_BITS-1:0] read_block = state == IDLE ? BLOCK_BITS'(0) :
+    state == DOT || state == DOT_DRAIN ? block :
+    block == BLOCK_BITS'(BLOCKS-1) ? BLOCK_BITS'(0) : block + 1'b1;
+  wire [POOL_BITS-1:0] read_pool = state == DOT ? pool_item :
+    state == DOT_DRAIN && pool_item != POOL_BITS'(POOL_ITEMS-1) ? pool_item + 1'b1 : POOL_BITS'(0);
+  wire starting_dot;
+  wire [STEP_BITS-1:0] read_step = state == DOT ?
+    (32'(dot_step)+2 < DOT_STEPS ? dot_step + STEP_BITS'(2) : STEP_BITS'(0)) :
+    (starting_dot && DOT_STEPS > 1 ? STEP_BITS'(1) : STEP_BITS'(0));
   wire [WINDOW_BITS-1:0] window_address;
   wire [SUBWORD_BITS-1:0] subword;
   generate if (POOL_ITEMS > 1) begin: pooled_window
@@ -83,11 +94,11 @@ module integer_convolution #(
     for (step = 0; step < DOT_STEPS; step = step + 1) begin: subchannel
       assign parts[step] = SUBWORD_BITS'((step % GROUP_WORDS) % SUBWORDS);
     end
-    assign window_address = addresses[32'(pool_item)*DOT_STEPS+32'(dot_step)] +
-      WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(block)/TILES) * (GROUP_INPUTS/LANES));
+    assign window_address = addresses[32'(read_pool)*DOT_STEPS+32'(read_step)] +
+      WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
     assign subword = parts[dot_step];
   end else if (GROUPS == 1 && REDUCTION_LANES == LANES) begin: full_channel_window
-    assign window_address = WINDOW_BITS'(dot_step);
+    assign window_address = WINDOW_BITS'(read_step);
     assign subword = 0;
   end else begin: grouped_window
     wire [WINDOW_BITS-1:0] addresses [0:DOT_STEPS-1];
@@ -97,7 +108,7 @@ module integer_convolution #(
       assign addresses[step] = WINDOW_BITS'((step / GROUP_WORDS)*CHANNEL_WORDS + (step % GROUP_WORDS)/SUBWORDS);
       assign parts[step] = SUBWORD_BITS'((step % GROUP_WORDS) % SUBWORDS);
     end
-    assign window_address = addresses[dot_step] + WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(block)/TILES) * (GROUP_INPUTS/LANES));
+    assign window_address = addresses[read_step] + WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
     assign subword = parts[dot_step];
   end endgenerate
   wire [LANES*8-1:0] window_data;
@@ -113,7 +124,7 @@ module integer_convolution #(
     .HEIGHT(HEIGHT), .WIDTH(WIDTH), .CHANNELS(INPUT_CHANNELS),
     .KERNEL_H(WINDOW_H), .KERNEL_W(WINDOW_W), .STRIDE_H(STRIDE_H*POOL_H), .STRIDE_W(STRIDE_W*POOL_W),
     .DILATION_H(POOL_ITEMS == 1 ? DILATION_H : 1), .DILATION_W(POOL_ITEMS == 1 ? DILATION_W : 1), .PAD_H(PAD_H), .PAD_W(PAD_W),
-    .LANES(LANES), .BITS(INPUT_BITS), .MEMORY_STYLE(LINE_MEMORY), .PACKED_LINES(PACKED_LINES)
+    .LANES(LANES), .BITS(INPUT_BITS), .MEMORY_STYLE(LINE_MEMORY), .PACKED_LINES(PACKED_LINES), .PIPELINED_READ(1)
   ) window (
     .clk(clk), .rst(rst), .in_data(stored_input), .in_valid(in_valid), .in_ready(in_ready),
     .window_available(window_available), .release_window(release_window),
@@ -217,6 +228,10 @@ module integer_convolution #(
   wire [31:0] tile_channel = (GROUPS == 1 ? 32'(block) : 32'(block) % TILES) * OUTPUT_LANES;
   wire [31:0] group_channel = GROUPS == 1 ? 32'd0 : (32'(block) / TILES) * GROUP_OUTPUTS;
   assign out_valid = output_pending && !rst;
+  assign starting_dot = (state == IDLE && window_available) ||
+    (state == DOT_DRAIN && product_valid && !product_rq && product_last && pool_item != POOL_BITS'(POOL_ITEMS-1)) ||
+    (state == POST && (!output_pending || output_finished) && block != BLOCK_BITS'(BLOCKS-1));
+
   integer lane;
   always @* begin
     out_data = 0;
