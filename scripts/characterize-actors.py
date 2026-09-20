@@ -37,8 +37,10 @@ args.output.mkdir(parents=True, exist_ok=True)
 def measure(value):
     directory = args.output / value.name
     record = {"name": value.name, "operation": value.operation, "output_shape": value.tensor.shape,
-              "lanes": config["lanes"], "output_lanes": config["output_lanes"].get(value.name)}
-    rtl = actor_rtl(value, config["lanes"], record["output_lanes"])
+              "lanes": config["lanes"], "output_lanes": config["output_lanes"].get(value.name),
+              "memories": config.get("memories", {}).get(value.name, {}),
+              "reduction_lanes": config.get("reduction_lanes", {}).get(value.name)}
+    rtl = actor_rtl(value, config["lanes"], record["output_lanes"], record["memories"], record["reduction_lanes"])
     try:
         record["resources"] = synthesize(rtl, directory, target)
     except Exception as error:

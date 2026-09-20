@@ -1,23 +1,34 @@
 # Fabric-only retraining results
 
-The most accurate verified integer replacement now reaches **0.663747 Dice** versus
+The most accurate verified integer replacement now reaches **0.667115 Dice** versus
 **0.676843** for the supplied export. It has **27,576 bytes** of constants and
 **240,583,680 MACs per inference**. None of the candidates has met the requested
 accuracy or complete 30-FPS deployment requirement.
 Weights and activations must remain in FPGA fabric memory; SDRAM is excluded.
 
-The newest candidate widens the initial feature stage through an explicit
-training configuration. It preserves input/output resolution, preprocessing and
-the original split. Its IoU is 0.496722, precision 0.614473 and recall 0.721612;
-TP/FP/FN are 985/618/380. QAT/integer masks match on all 246 images, and the
+The newest candidate retains the wider input stage and uses an explicitly trained
+fixed-point right shift of 16 for requantization, reducing multiplier magnitudes.
+It preserves input/output resolution, preprocessing and the original split.
+Its IoU is 0.500504, precision 0.616005 and recall 0.727473;
+TP/FP/FN are 993/619/372. QAT/integer masks match on all 246 images, and the
 reloaded export matches on all 49 validation images. It contains no floating
 tensor nodes and passes torch-mlir import. Its SHA-256 is
-`5213f7a2fc4349f0f4bc79ab87ebed6e41efbc22053afa7af88e4e73a406aa0c`.
+`0e45449076070d202642d263ec06f6300aa99d46ea364c94406c742e12d4d31d`.
 
-- [Latest integer model](../build/training/wide-stem-integer/model.pt2)
-- [Latest verification report](../build/training/wide-stem-integer/report.json)
-- [Latest MLIR and workload accounting](../build/training/wide-stem-integer/inspection/analysis.json)
+- [Latest integer model](../build/training/short-requantizer/model.pt2)
+- [Latest verification report](../build/training/short-requantizer/report.json)
+- [Latest MLIR and workload accounting](../build/training/short-requantizer/inspection/analysis.json)
 - [Full-model RTL evidence and limits](spatial-backend.md)
+
+The earlier wider-stem model with a shift of 24 reached 0.663747 Dice. Its
+artifacts remain in `build/training/wide-stem-integer`. Aligned crop flips
+(0.639923), stronger teacher-logit loss (0.659151), and input-rank factorization
+(0.637018) did not improve floating-point validation accuracy and were not
+adopted. Factorization reduced raw convolution weights to 14,948 bytes and
+line-buffer screening storage to 31,758 bytes, but failed the accuracy criterion.
+A training-only threshold probe also failed to improve the previous integer model.
+Increasing the positive-class loss weight from 15 to 30 during the new QAT run
+raised recall but reduced Dice to 0.661634, so that candidate was not adopted.
 
 An additional full-image fine-tuning experiment reached 0.661219 in floating
 point and 0.658210 after QAT. It did not improve on the compact integer model.

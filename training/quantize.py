@@ -20,7 +20,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from train import read_data, make_model, metrics, predict, loss_function, augment_batch, teacher_fingerprint, crop_batch
+from train import read_data, make_model, metrics, predict, loss_function, training_batch, teacher_fingerprint
 
 
 def round_ste(value):
@@ -311,9 +311,7 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
                 indices = order[start:start + config["batch_size"]]
                 image, target = images[indices].float() / 255, masks[indices].float()
                 teacher = teacher_logits[indices]
-                image, target, teacher = augment_batch(image, target, teacher, config)
-                if "crop" in config:
-                    image, target, teacher = crop_batch(image, target, teacher, config["crop"])
+                image, target, teacher = training_batch(image, target, teacher, config)
                 optimizer.zero_grad(set_to_none=True)
                 loss = loss_function(model(image), target, teacher, config["loss"])
                 loss.backward()
@@ -350,7 +348,7 @@ def run(checkpoint_path, output, epochs, learning_rate, shift, config_path=None)
     metadata = {"validation": validation, "constant_bytes": constants,
                 "input": {"shape": list(images[:1].shape), "dtype": "uint8", "preprocessing": config["image_resize"]},
                 "output": {"shape": list(predicted[:1].shape), "dtype": "uint8", "values": [0, 1]},
-                "numerics": "INT8 weights, UINT8 hidden activations, INT32 accumulation, INT64 fixed-point requantization",
+                "numerics": "INT8 weights, signed/unsigned 8-bit activations as declared by the graph, INT32 accumulation, INT64 fixed-point requantization",
                 "rounding": "nearest, ties toward positive infinity", "shift": shift,
                 "qat_integer_match_samples": len(train_indices) + len(validation_indices),
                 "serialized_match_samples": len(validation_indices), "floating_tensor_nodes": 0,

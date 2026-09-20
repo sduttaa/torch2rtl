@@ -61,7 +61,10 @@ def read_data(config):
 
 def make_model(config):
     if "graph" in config:
-        return make_graph(config)
+        model = make_graph(config)
+        if "initial_checkpoint" in config:
+            restore(model, torch.load(config["initial_checkpoint"], weights_only=True)["state"], config)
+        return factor_inputs(model, config) if "input_rank" in config else model
     if "prune_channels" in config:
         model = prune_channels(load_teacher(config.get("initializer", config["teacher"])), config)
         if "input_rank" in config:
@@ -421,6 +424,17 @@ def crop_batch(image, target, teacher, config):
     return tuple(torch.stack(values) for values in result)
 
 
+def training_batch(image, target, teacher, config):
+    after_crop = config.get("augmentation_after_crop", False)
+    if not after_crop:
+        image, target, teacher = augment_batch(image, target, teacher, config)
+    if "crop" in config:
+        image, target, teacher = crop_batch(image, target, teacher, config["crop"])
+    if after_crop:
+        image, target, teacher = augment_batch(image, target, teacher, config)
+    return image, target, teacher
+
+
 def train(config, output, resume=None):
     output.mkdir(parents=True, exist_ok=True)
     (output / "config.json").write_text(json.dumps(config, indent=2) + "\n")
@@ -519,9 +533,7 @@ def train(config, output, resume=None):
             image = images[indices].float() / 255
             target = masks[indices].float()
             soft_target = teacher_logits[indices]
-            image, target, soft_target = augment_batch(image, target, soft_target, config)
-            if "crop" in config:
-                image, target, soft_target = crop_batch(image, target, soft_target, config["crop"])
+            image, target, soft_target = training_batch(image, target, soft_target, config)
             optimizer.zero_grad(set_to_none=True)
             if feature_teacher is not None:
                 teacher_features.clear()

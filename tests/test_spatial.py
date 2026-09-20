@@ -15,6 +15,11 @@ from rtl_check import pack, simulate
     ((7, 9, 5), (3, 3), (2, 2), (1, 1), (2, 2), 4, 8, True),
     ((1, 1, 1), (1, 1), (1, 1), (0, 0), (1, 1), 1, 8, True),
     ((5, 7, 3), (2, 3), (1, 2), (0, 1), (1, 1), 2, 16, True),
+    ((9, 11, 5), (3, 4), (3, 4), (0, 0), (1, 1), 2, 8, True),
+    ((5, 7, 1), (2, 3), (2, 3), (0, 0), (1, 1), 4, 16, True),
+    ((8, 6, 3), (4, 6), (4, 6), (0, 0), (1, 1), 4, 8, False),
+    ((4, 9, 5), (1, 3), (1, 3), (0, 0), (1, 1), 3, 8, True),
+    ((9, 4, 5), (3, 1), (3, 1), (0, 0), (1, 1), 3, 8, False),
 ])
 def test_max_pool_stream(tmp_path, shape, kernel, stride, padding, dilation, lanes, bits, signed, stalls):
     height, width, channels = shape

@@ -25,16 +25,28 @@ must wait for `release[j]`. The actor can begin using the window no earlier than
 `window_available`. The circular horizontal bank does not alter this ownership
 rule. Frame wrap obeys the same raster and storage dependencies.
 
+The optional packed line layout serializes row delays in one RAM. With
+`R = effective_height-1 > 0`, a real-column issue commits after `2*R` cycles
+(one synchronous read and one write per row). Its next issue and the actor's
+first window use are at least `2*R+1` cycles later. Horizontal padding bypasses
+RAM and commits one cycle after issue, so its next issue/use delay is two.
+When `R=0` the ordinary parallel contract applies. Both layouts retain the
+same release dependency; storage savings do not imply equal throughput.
+
 ## Convolution
 
 For a selected configuration:
 
 ```text
-D = kernel_height * kernel_width * ceil(input_channels_per_group / lanes)
-N = accumulator_bytes * ceil(multiplier_bytes / lanes)
+D = kernel_height * kernel_width * ceil(input_channels_per_group / reduction_lanes)
+N = accumulator_bytes * ceil(multiplier_bytes / reduction_lanes)
 B = groups * ceil(output_channels_per_group / output_lanes)
 E = D + N + 5
 ```
+
+Reduction parallelism may be a divisor of stream-vector width. Window and FIFO
+word counts still use stream width; only arithmetic/weight-ROM width and these
+compute delays use reduction parallelism. Output parallelism is independent.
 
 Let `s[j]` be the idle-to-dot-product transition, `post[j,b]` the output-bank
 update for tile `b`, and `o[j,k]` the accepted output words of pixel `j`.
@@ -63,12 +75,30 @@ a throughput certificate.
 
 ## Other actors
 
-Max pooling scans `K = kernel_height*kernel_width` taps per output channel word.
+General max pooling scans `K = kernel_height*kernel_width` taps per output channel word.
 After accepting a window at event `s`, its first output-register commit is at
 least `s+K`. Later commits are separated by at least `K` cycles and cannot
 overwrite an unconsumed prior output. Each transfer follows its commit by at
 least one cycle. The final commit releases the window; the next window can start
 one edge later if available.
+
+Nonoverlapping, unpadded, undilated max pooling instead accumulates one reduced
+row. Let `i[k]` be ordered input transfers, `last[j]` the final input word of
+output block/channel-vector `j`, `c[j]` its output-register commit, and `o[j]`
+its accepted output. Its elastic input stage and output register require:
+
+```text
+c[j] >= i[last[j]] + 1
+c[j] >= o[j-1]
+o[j] >= c[j] + 1
+i[last[j]+1] >= c[j]
+```
+
+Input transfers remain ordered at least one cycle apart, including ignored
+right/bottom remainders. Other input commits are exactly one cycle after their
+transfers and need no separate scheduling variable. Same-address forwarding
+preserves consecutive RAM updates. These new contract equations still need
+trace/solver validation before serving as a throughput certificate.
 
 Nearest resampling reads a complete source row before issuing its first output
 read. Each synchronous RAM read reaches the output register one cycle before

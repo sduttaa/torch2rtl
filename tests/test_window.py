@@ -8,6 +8,7 @@ from rtl_check import pack, simulate
 
 
 @pytest.mark.parametrize("stalls", [False, True])
+@pytest.mark.parametrize("packed_lines", [False, True])
 @pytest.mark.parametrize("shape,kernel,stride,dilation,padding,lanes", [
     ((5, 7, 3), (3, 3), (1, 1), (1, 1), (1, 1), 2),
     ((7, 9, 5), (2, 3), (2, 2), (2, 1), (2, 0), 4),
@@ -16,7 +17,7 @@ from rtl_check import pack, simulate
     ((7, 5, 4), (3, 2), (2, 1), (2, 2), (0, 1), 2),
     ((6, 8, 1), (2, 2), (3, 3), (1, 1), (0, 0), 1),
 ])
-def test_raster_windows_across_frames(tmp_path, shape, kernel, stride, dilation, padding, lanes, stalls):
+def test_raster_windows_across_frames(tmp_path, shape, kernel, stride, dilation, padding, lanes, stalls, packed_lines):
     height, width, channels = shape
     kh, kw = kernel
     sh, sw = stride
@@ -27,7 +28,8 @@ def test_raster_windows_across_frames(tmp_path, shape, kernel, stride, dilation,
     bits = max(1, (window_words - 1).bit_length())
     parameters = {"HEIGHT": height, "WIDTH": width, "CHANNELS": channels,
                   "KERNEL_H": kh, "KERNEL_W": kw, "STRIDE_H": sh, "STRIDE_W": sw,
-                  "DILATION_H": dh, "DILATION_W": dw, "PAD_H": ph, "PAD_W": pw, "LANES": lanes}
+                  "DILATION_H": dh, "DILATION_W": dw, "PAD_H": ph, "PAD_W": pw, "LANES": lanes,
+                  "PACKED_LINES": int(packed_lines)}
     assignments = ", ".join(f".{key}({value})" for key, value in parameters.items())
     wrapper = f"""
 module inference (

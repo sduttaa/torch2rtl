@@ -8,6 +8,7 @@ module integer_convolution #(
   parameter integer DILATION_H = 1, DILATION_W = 1,
   parameter integer PAD_H = 0, PAD_W = 0, GROUPS = 1,
   parameter integer LANES = 1, OUTPUT_LANES = 1, INPUT_SIGNED = 0,
+  parameter integer REDUCTION_LANES = LANES,
   parameter integer ACCUMULATOR_BYTES = 4, MULTIPLIER_BYTES = 8,
   parameter integer ACCUMULATOR_BITS = ACCUMULATOR_BYTES * 8,
   parameter integer INNER_BITS = MULTIPLIER_BYTES * 8 + 9 > 64 ? 64 : MULTIPLIER_BYTES * 8 + 9,
@@ -15,23 +16,26 @@ module integer_convolution #(
   parameter integer SHIFT = 0,
   parameter [63:0] OFFSET = 0, LOW = 0, HIGH = 255,
   parameter WEIGHT_MEMORY = "auto", LINE_MEMORY = "auto",
+  parameter integer PACKED_LINES = 0,
   localparam integer GROUP_INPUTS = INPUT_CHANNELS / GROUPS,
   localparam integer GROUP_OUTPUTS = OUTPUT_CHANNELS / GROUPS,
   localparam integer CHANNEL_WORDS = (INPUT_CHANNELS + LANES - 1) / LANES,
-  localparam integer GROUP_WORDS = (GROUP_INPUTS + LANES - 1) / LANES,
+  localparam integer GROUP_WORDS = (GROUP_INPUTS + REDUCTION_LANES - 1) / REDUCTION_LANES,
+  localparam integer SUBWORDS = LANES / REDUCTION_LANES,
+  localparam integer SUBWORD_BITS = SUBWORDS <= 1 ? 1 : $clog2(SUBWORDS),
   localparam integer OUTPUT_WORDS = (OUTPUT_CHANNELS + LANES - 1) / LANES,
   localparam integer TILES = (GROUP_OUTPUTS + OUTPUT_LANES - 1) / OUTPUT_LANES,
   localparam integer BLOCKS = GROUPS * TILES,
   localparam integer DOT_STEPS = KERNEL_H * KERNEL_W * GROUP_WORDS,
-  localparam integer ROM_WIDTH = OUTPUT_LANES * LANES * 8,
+  localparam integer ROM_WIDTH = OUTPUT_LANES * REDUCTION_LANES * 8,
   localparam integer ROM_DEPTH = BLOCKS * DOT_STEPS,
-  localparam integer MULTIPLIER_GROUPS = (MULTIPLIER_BYTES + LANES - 1) / LANES,
-  localparam integer COEFFICIENT_BITS = MULTIPLIER_GROUPS * LANES * 8,
+  localparam integer MULTIPLIER_GROUPS = (MULTIPLIER_BYTES + REDUCTION_LANES - 1) / REDUCTION_LANES,
+  localparam integer COEFFICIENT_BITS = MULTIPLIER_GROUPS * REDUCTION_LANES * 8,
   localparam integer PADDED_ACCUMULATOR_BITS = ACCUMULATOR_BYTES * 8,
   parameter [ROM_WIDTH*ROM_DEPTH-1:0] WEIGHTS = 0,
   parameter [BLOCKS*OUTPUT_LANES*32-1:0] BIASES = 0,
   parameter [BLOCKS*OUTPUT_LANES*COEFFICIENT_BITS-1:0] MULTIPLIERS = 0,
-  parameter [OUTPUT_LANES*LANES-1:0] PRODUCT_MASK = {OUTPUT_LANES*LANES{1'b1}},
+  parameter [OUTPUT_LANES*REDUCTION_LANES-1:0] PRODUCT_MASK = {OUTPUT_LANES*REDUCTION_LANES{1'b1}},
   localparam integer BLOCK_BITS = BLOCKS <= 1 ? 1 : $clog2(BLOCKS),
   localparam integer STEP_BITS = DOT_STEPS <= 1 ? 1 : $clog2(DOT_STEPS),
   localparam integer ROM_ADDRESS_BITS = ROM_DEPTH <= 1 ? 1 : $clog2(ROM_DEPTH),
@@ -56,19 +60,27 @@ module integer_convolution #(
   wire release_window = state == DOT && dot_step == STEP_BITS'(DOT_STEPS-1) &&
                         block == BLOCK_BITS'(BLOCKS-1);
   wire [WINDOW_BITS-1:0] window_address;
-  generate if (GROUPS == 1) begin: full_channel_window
+  wire [SUBWORD_BITS-1:0] subword;
+  generate if (GROUPS == 1 && REDUCTION_LANES == LANES) begin: full_channel_window
     assign window_address = WINDOW_BITS'(dot_step);
+    assign subword = 0;
   end else begin: grouped_window
-    assign window_address = WINDOW_BITS'(
-      (32'(dot_step) / GROUP_WORDS) * CHANNEL_WORDS +
-      (32'(block) / TILES) * GROUP_WORDS + 32'(dot_step) % GROUP_WORDS);
+    wire [WINDOW_BITS-1:0] addresses [0:DOT_STEPS-1];
+    wire [SUBWORD_BITS-1:0] parts [0:DOT_STEPS-1];
+    genvar step;
+    for (step = 0; step < DOT_STEPS; step = step + 1) begin: coordinate
+      assign addresses[step] = WINDOW_BITS'((step / GROUP_WORDS)*CHANNEL_WORDS + (step % GROUP_WORDS)/SUBWORDS);
+      assign parts[step] = SUBWORD_BITS'((step % GROUP_WORDS) % SUBWORDS);
+    end
+    assign window_address = addresses[dot_step] + WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(block)/TILES) * (GROUP_INPUTS/LANES));
+    assign subword = parts[dot_step];
   end endgenerate
   wire [LANES*8-1:0] window_data;
   raster_window #(
     .HEIGHT(HEIGHT), .WIDTH(WIDTH), .CHANNELS(INPUT_CHANNELS),
     .KERNEL_H(KERNEL_H), .KERNEL_W(KERNEL_W), .STRIDE_H(STRIDE_H), .STRIDE_W(STRIDE_W),
     .DILATION_H(DILATION_H), .DILATION_W(DILATION_W), .PAD_H(PAD_H), .PAD_W(PAD_W),
-    .LANES(LANES), .MEMORY_STYLE(LINE_MEMORY)
+    .LANES(LANES), .MEMORY_STYLE(LINE_MEMORY), .PACKED_LINES(PACKED_LINES)
   ) window (
     .clk(clk), .rst(rst), .in_data(in_data), .in_valid(in_valid), .in_ready(in_ready),
     .window_available(window_available), .release_window(release_window),
@@ -83,7 +95,7 @@ module integer_convolution #(
   always @(posedge clk)
     if (state == DOT) weight_word <= weight_memory[weight_address];
 
-  reg [LANES*8-1:0] input_word;
+  reg [REDUCTION_LANES*8-1:0] input_word;
   reg operand_valid, operand_rq, operand_last;
   reg operand_first_group, operand_last_group, operand_last_byte;
   reg product_valid, product_rq, product_last;
@@ -92,8 +104,8 @@ module integer_convolution #(
   // 32 bits. Modular addition permits the same narrowing at every MAC step.
   reg signed [ACCUMULATOR_BITS-1:0] accumulator [0:OUTPUT_LANES-1];
   reg signed [8:0] byte_operand [0:OUTPUT_LANES-1];
-  reg signed [8:0] coefficient_operand [0:OUTPUT_LANES*LANES-1];
-  wire signed [17:0] product [0:OUTPUT_LANES*LANES-1];
+  reg signed [8:0] coefficient_operand [0:OUTPUT_LANES*REDUCTION_LANES-1];
+  wire signed [17:0] product [0:OUTPUT_LANES*REDUCTION_LANES-1];
   reg signed [INNER_BITS-1:0] inner_sum [0:OUTPUT_LANES-1];
   reg signed [REQUANT_BITS-1:0] total_sum [0:OUTPUT_LANES-1];
   wire signed [ACCUMULATOR_BITS-1:0] dot_sum [0:OUTPUT_LANES-1];
@@ -112,17 +124,17 @@ module integer_convolution #(
     always @(posedge clk) if (state == RQ)
       byte_operand[output_lane] <=
         {selected_byte[7] && accumulator_byte == BYTE_BITS'(ACCUMULATOR_BYTES-1), selected_byte};
-    for (reduction_lane = 0; reduction_lane < LANES; reduction_lane = reduction_lane + 1) begin: multiply
-      localparam integer INDEX = output_lane*LANES + reduction_lane;
+    for (reduction_lane = 0; reduction_lane < REDUCTION_LANES; reduction_lane = reduction_lane + 1) begin: multiply
+      localparam integer INDEX = output_lane*REDUCTION_LANES + reduction_lane;
       wire [7:0] coefficient_byte =
-        coefficient[(32'(multiplier_group)*LANES+reduction_lane)*8 +: 8];
+        coefficient[(32'(multiplier_group)*REDUCTION_LANES+reduction_lane)*8 +: 8];
       wire signed [8:0] data_operand = operand_rq ? byte_operand[output_lane] :
         $signed({INPUT_SIGNED != 0 && input_word[reduction_lane*8+7], input_word[reduction_lane*8 +: 8]});
       wire signed [8:0] weight_operand = operand_rq ? coefficient_operand[INDEX] :
         $signed({weight_word[INDEX*8+7], weight_word[INDEX*8 +: 8]});
       always @(posedge clk)
         if (state == RQ) coefficient_operand[INDEX] <=
-          {MULTIPLIER_SIGNED != 0 && 32'(multiplier_group)*LANES+reduction_lane == MULTIPLIER_BYTES-1 &&
+          {MULTIPLIER_SIGNED != 0 && 32'(multiplier_group)*REDUCTION_LANES+reduction_lane == MULTIPLIER_BYTES-1 &&
            coefficient_byte[7], coefficient_byte};
       if (PRODUCT_MASK[INDEX]) begin: used
         reg signed [17:0] value;
@@ -138,16 +150,16 @@ module integer_convolution #(
     always @* begin
       dot = 0;
       group_value = 0;
-      for (lane = 0; lane < LANES; lane = lane + 1) begin
-        dot = dot + ACCUMULATOR_BITS'($signed(product[output_lane*LANES+lane]));
+      for (lane = 0; lane < REDUCTION_LANES; lane = lane + 1) begin
+        dot = dot + ACCUMULATOR_BITS'($signed(product[output_lane*REDUCTION_LANES+lane]));
         group_value = group_value +
-          (INNER_BITS'($signed(product[output_lane*LANES+lane])) << (8*lane));
+          (INNER_BITS'($signed(product[output_lane*REDUCTION_LANES+lane])) << (8*lane));
       end
     end
     assign dot_sum[output_lane] = dot;
     assign group_sum[output_lane] = group_value;
     assign next_inner[output_lane] = group_sum[output_lane] +
-      (product_first_group ? INNER_BITS'(0) : inner_sum[output_lane] << (8*LANES));
+      (product_first_group ? INNER_BITS'(0) : inner_sum[output_lane] << (8*REDUCTION_LANES));
     assign next_total[output_lane] = (total_sum[output_lane] << 8) + REQUANT_BITS'($signed(next_inner[output_lane]));
     assign shifted[output_lane] = 64'($signed(total_sum[output_lane])) >>> SHIFT;
     assign quantized[output_lane] = shifted[output_lane] < $signed(LOW) ? LOW[7:0] :
@@ -194,7 +206,7 @@ module integer_convolution #(
       product_last_group <= operand_last_group;
       product_last_byte <= operand_last_byte;
       if (state == DOT) begin
-        input_word <= window_data;
+        input_word <= window_data[32'(subword)*REDUCTION_LANES*8 +: REDUCTION_LANES*8];
         weight_address <= weight_address + 1'b1;
       end
 

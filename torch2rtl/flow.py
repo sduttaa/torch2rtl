@@ -20,7 +20,10 @@ def synthesize(rtl, directory, target):
     if family and not re.fullmatch(r"[A-Za-z0-9_]+", family):
         raise ValueError("Invalid synthesis family identifier")
     family_arg = f" -family {family}" if family else ""
-    script = f"read_verilog -sv inference.sv\n{command} -top inference{family_arg} -json netlist.json\n"
+    # Recent Yosys may retain alias buffers after family mapping. They are
+    # connections, not physical cells; remove them before costing or routing.
+    script = (f"read_verilog -sv inference.sv\n{command} -top inference{family_arg}\n"
+              "bufnorm -conn\nclean\nwrite_json netlist.json\n")
     (directory / "synth.ys").write_text(script)
     with (directory / "synthesis.log").open("w") as log:
         subprocess.run(["yosys", "-Q", "-T", "-s", "synth.ys"], cwd=directory,

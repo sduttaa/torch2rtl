@@ -18,13 +18,22 @@ def edges(graph):
             for port, source in enumerate(references(value.args))]
 
 
-def actor_rtl(value, lanes, output_lanes=None):
+def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=None):
+    memories = memories or {}
+    allowed = {"weight", "line", "line_layout"} if value.operation == "quantized_convolution" else {"storage"}
+    if not memories.keys() <= allowed:
+        raise ValueError(f"Unknown memory mapping for {value.operation}")
     if value.operation == "quantized_convolution":
-        return convolution.emit(value, lanes, output_lanes)
+        return convolution.emit(value, lanes, output_lanes, memories.get("weight", "auto"),
+                                memories.get("line", "auto"), memories.get("line_layout", "parallel"), reduction_lanes)
+    if reduction_lanes is not None:
+        raise ValueError(f"No reduction parallelism for {value.operation}")
     if value.operation == "max_pool2d":
-        return spatial.emit_pool(value, lanes)
+        return spatial.emit_pool(value, lanes, memories.get("storage", "auto"))
     if value.operation == "__interpolate.size_list_scale_list":
-        return spatial.emit_resize(value, lanes)
+        return spatial.emit_resize(value, lanes, memories.get("storage", "auto"))
+    if memories:
+        raise ValueError(f"No memory mapping choices for {value.operation}")
     if value.operation == "quantized_concat":
         return concatenate.emit(value, lanes)
     if value.operation == "byte_lookup":
@@ -34,7 +43,13 @@ def actor_rtl(value, lanes, output_lanes=None):
     raise ValueError(f"No RTL actor for {value.operation}")
 
 
-def emit(graph, lanes, output_lanes, depths):
+def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None):
+    memories = memories or {}
+    reduction_lanes = reduction_lanes or {}
+    if not reduction_lanes.keys() <= {value.name for value in graph.values if value.operation == "quantized_convolution"}:
+        raise ValueError("Reduction parallelism refers to an unknown convolution")
+    if not memories.keys() <= {value.name for value in graph.values if value is not graph.input}:
+        raise ValueError("Memory mapping refers to an unknown actor")
     if lanes < 1 or any(value.tensor.bits != 8 or len(value.tensor.shape) != 4 or value.tensor.shape[0] != 1
                         for value in graph.values):
         raise ValueError("The spatial network requires batch-one byte NCHW streams")
@@ -71,7 +86,7 @@ def emit(graph, lanes, output_lanes, depths):
     for value, index in indices.items():
         if value is graph.input:
             continue
-        rtl = actor_rtl(value, lanes, output_lanes.get(value.name))
+        rtl = actor_rtl(value, lanes, output_lanes.get(value.name), memories.get(value.name), reduction_lanes.get(value.name))
         rtl = rtl.replace("module inference (", f"module actor_{index} (", 1)
         # All sources here are compiler-owned templates, with ordinary module
         # declarations. Keep each shared template definition exactly once.

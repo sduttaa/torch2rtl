@@ -46,6 +46,10 @@ def emit_pool(actor, lanes, memory="auto"):
                   "DILATION_H": dilation[0], "DILATION_W": dilation[1], "PAD_H": padding[0], "PAD_W": padding[1],
                   "LANES": lanes, "BITS": data.tensor.bits, "SIGNED": int(data.tensor.signed)}
     parameters["MEMORY_STYLE"] = f'"{memory}"'
+    if tuple(kernel) == tuple(stride) and tuple(padding) == (0, 0) and tuple(dilation) == (1, 1):
+        for key in ("STRIDE_H", "STRIDE_W", "DILATION_H", "DILATION_W", "PAD_H", "PAD_W"):
+            parameters.pop(key)
+        return wrapped("integer_block_pool", parameters, lanes*data.tensor.bits, ("block_pool.sv",))
     return wrapped("integer_max_pool", parameters, lanes*data.tensor.bits, ("pool.sv", "window.sv"))
 
 

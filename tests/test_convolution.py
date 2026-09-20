@@ -9,6 +9,8 @@ from rtl_check import pack, simulate
 
 
 @pytest.mark.parametrize("stalls", [False, True])
+@pytest.mark.parametrize("line_layout", ["parallel", "packed"])
+@pytest.mark.parametrize("reduction_lanes", [None, 1])
 @pytest.mark.parametrize("shape,channels,kernel,stride,padding,dilation,groups,lanes,outputs,signed,overflow", [
     ((3, 5, 3), 5, (3, 3), (1, 1), (1, 1), (1, 1), 1, 2, 3, False, False),
     ((4, 7, 2), 4, (2, 3), (2, 2), (0, 1), (1, 1), 1, 1, 2, True, False),
@@ -20,7 +22,7 @@ from rtl_check import pack, simulate
     ((2, 3, 2), 3, (1, 1), (1, 1), (0, 0), (1, 1), 1, 4, 3, False, True),
 ])
 def test_folded_convolution(tmp_path, shape, channels, kernel, stride, padding, dilation,
-                            groups, lanes, outputs, signed, overflow, stalls):
+                            groups, lanes, outputs, signed, overflow, stalls, line_layout, reduction_lanes):
     generator = np.random.default_rng(23)
     height, width, inputs = shape
     weight = generator.integers(-128, 128, (channels, inputs // groups, *kernel), dtype=np.int32)
@@ -49,7 +51,9 @@ def test_folded_convolution(tmp_path, shape, channels, kernel, stride, padding, 
                            for word in pack(pixel, 8, lanes))
         expected_words.extend(word for pixel in expected.transpose(0, 2, 3, 1).reshape(-1, channels)
                               for word in pack(pixel, 8, lanes))
-    simulate(tmp_path, emit(actor, lanes, outputs), lanes*8, lanes*8, input_words, expected_words, stalls)
+    simulate(tmp_path, emit(actor, lanes, outputs, line_layout=line_layout, reduction_lanes=reduction_lanes),
+             lanes*8, lanes*8, input_words, expected_words, stalls,
+             max_cycles=100 + 200*(len(input_words) + len(expected_words)))
 
 
 def test_rejects_group_boundaries_inside_vectors():
@@ -60,6 +64,12 @@ def test_rejects_group_boundaries_inside_vectors():
                   Tensor((1, 4, 3, 3), 8, False))
     with pytest.raises(ValueError, match="boundaries"):
         configuration(actor, 2, 1)
+
+
+@pytest.mark.parametrize("line_layout", ["parallel", "packed"])
+def test_half_vector_reduction_with_incomplete_last_vector(tmp_path, line_layout):
+    test_folded_convolution(tmp_path, (3, 5, 6), 5, (3, 3), (1, 1), (1, 1),
+                            (1, 1), 1, 4, 3, True, True, True, line_layout, 2)
 
 
 def test_range_narrowing_preserves_offset_cancellation(tmp_path):

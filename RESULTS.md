@@ -10,7 +10,7 @@ and bitstream packing. **The requested full-model 30-FPS result is not achieved.
 | Full supplied INT8 model → torch-mlir | Imports, lowers and verifies successfully |
 | Joint schedule/FIFO/resource solver | Implemented behind a plain-data interface |
 | Integer pointwise fusion and sum actors | Compile and simulate correctly |
-| Tests | 149 passing, including spatial RTL, overflow, backpressure and integer training/export |
+| Tests | 223 passing, including spatial RTL, overflow, backpressure and integer training/export |
 | Generated integer integration kernel | Synthesizes, routes at 27 MHz, and packs |
 | Full supplied model at 30 FPS | Not achieved; storage/semantic issues documented |
 | Physical-board inference measurement | Not performed |
@@ -23,11 +23,11 @@ two-lane simulation with oversized verification FIFOs. That interval would requi
 No full-model routed clock or feasible buffer allocation has been established.
 See [the spatial backend and reproduction](docs/spatial-backend.md).
 
-The newest verified INT8 candidate reaches **0.663747 Dice**, with **27,576 bytes**
+The newest verified INT8 candidate reaches **0.667115 Dice**, with **27,576 bytes**
 of constants and **240,583,680 MACs** per inference. It remains below the required
-0.676843. The latest four-lane actor-only synthesis totals 23,968 LUT equivalents,
-7,337 FFs, 98 byte-multiplier slots and 62 BRAM blocks, before graph FIFOs. This
-configuration exceeds the supplied LUT, DSP and BRAM budgets and is not deployable.
+0.676843. The latest four-lane actor-only synthesis totals 22,169 LUT equivalents,
+7,614 FFs, 81 byte-multiplier slots and 60 BRAM blocks, before graph FIFOs. This
+configuration exceeds the supplied LUT and BRAM budgets and is not deployable.
 
 The user authorized retraining while keeping weights and activations in fabric
 memory. The compact verified replacement reaches **0.659503 validation Dice**,

@@ -5,7 +5,9 @@ import subprocess
 
 
 def simulate(directory: Path, rtl: str, input_bits: int, output_bits: int,
-             input_words: list[int], expected_words: list[int], stalls: bool):
+             input_words: list[int], expected_words: list[int], stalls: bool, max_cycles: int | None = None):
+    if max_cycles is None:
+        max_cycles = 100 + (len(input_words) + len(expected_words)) * 30
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "inference.sv").write_text(rtl)
     (directory / "input.hex").write_text("\n".join(f"{x:x}" for x in input_words) + "\n")
@@ -70,7 +72,7 @@ module tb;
           $finish;
         end
       end
-      if (cycle > {100 + (len(input_words) + len(expected_words)) * 30})
+      if (cycle > {max_cycles})
         $fatal(1,"Deadlock or missing outputs");
     end
   end

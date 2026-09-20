@@ -17,7 +17,7 @@ The requested replacement must satisfy three separate checks:
 3. A routed implementation sustains at least 30 inferences/second, including
    backpressure. MAC counts and hypothetical clock rates are not measured FPS.
 
-The latest verified integer result has Dice **0.663747**, 27,576 bytes of constants
+The latest verified integer result has Dice **0.667115**, 27,576 bytes of constants
 and 240,583,680 MACs per inference. Its full graph passes numerical RTL simulation
 with oversized verification buffers, but it has not met the accuracy or hardware
 deployment checks. The compact verified integer result has Dice **0.659503**, 26,988 bytes of
@@ -30,6 +30,17 @@ has been successfully trained or implemented.
 ## Reproducibility
 
 From the project root after sourcing `env.sh`:
+
+The latest integer candidate can be reproduced from its preserved floating-point
+checkpoint with:
+
+```sh
+python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
+  --output build/training/reproduced --epochs 40 --learning-rate 0.00003 --shift 16
+```
+
+The checkpoint contains its architecture and preprocessing configuration. Other
+training experiments use explicit JSON descriptions, for example:
 
 ```sh
 python training/train.py --config training/experiments/scratches-encoder.json \
@@ -137,3 +148,8 @@ and FIFO choices. Full-model simulation matches its integer reference on three
 validation images, including random stalls. There is no full-model routed design,
 complete physical memory-fit proof, or measured 30-FPS result. The verification
 buffers exceed fabric memory. See [the spatial backend](../docs/spatial-backend.md).
+
+Graph experiments may supply `initial_checkpoint` to restore the unfactored graph
+before `input_rank` factorization. All architecture, rank and checkpoint choices
+remain experiment inputs. `augmentation_after_crop` applies spatial flips after
+aligned cropping; this matters when the original image has an odd dimension.
