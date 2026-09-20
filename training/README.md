@@ -55,6 +55,14 @@ python training/quantize.py --checkpoint build/training/wide-stem/best.pt \
 or `batch` (one Dice ratio across all batch pixels). This is an explicit training
 choice; it does not change deployment arithmetic or the reported validation metric.
 
+`loss.focal_gamma` optionally multiplies each supervised BCE pixel by
+`(1 - p_t)**gamma`, where `p_t` is the probability of its target class. It retains
+the configured positive-class weight; the focusing factor uses the unweighted
+probability. A finite nonnegative gamma is required, and zero (the default)
+retains ordinary BCE. Dice and teacher losses are unchanged. This follows the
+[focal-loss formulation](https://arxiv.org/abs/1708.02002); it is a training option,
+not a change to inference arithmetic.
+
 `quantize.py --resume PATH_TO_QAT` continues saved QAT weights and calibrated
 scales with a fresh AdamW optimizer and learning-rate schedule. The original
 floating checkpoint is still supplied through `--checkpoint` to construct the

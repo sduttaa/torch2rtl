@@ -56,6 +56,21 @@ Dice checkpoint also selects **zero**, leaving validation Dice unchanged at
 0.667590. All exact checks pass; there is no newly improved model to adopt.
 [Threshold experiment](../build/training/batch-threshold-integer/report.json).
 
+An 80-epoch continuation with focal BCE (`gamma=2`) also retains the starting
+checkpoint at **0.667590 Dice**. It keeps the batch-Dice/teacher mixture,
+positive-class weight, quantizers and fixed zero prediction threshold. The
+focusing factor uses unweighted target-class probabilities, so positive-class
+weighting is not accidentally included twice. All 246 QAT/integer and 49
+saved-export comparisons pass, and torch-mlir verifies the export. This is a
+negative training result; no improved replacement is adopted. The new generic
+loss option defaults to ordinary BCE and has numerical, gradient and extreme-
+logit regression checks.
+
+- [Focal experiment input](../training/experiments/scratches-focal.json)
+- [History](../build/training/focal-integer/history.json)
+- [Integer verification](../build/training/focal-integer/report.json)
+- [MLIR inspection](../build/training/focal-integer/inspection/analysis.json)
+
 ## Lower-operation architecture experiments
 
 Two 300-epoch floating-point runs replace selected dense convolutions with

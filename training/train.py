@@ -355,8 +355,15 @@ def load_teacher(config):
 
 def loss_function(logits, target, teacher, config):
     positive_weight = logits.new_tensor(config["positive_weight"])
-    bce = F.binary_cross_entropy_with_logits(logits, target, pos_weight=positive_weight)
     probability = logits.sigmoid()
+    gamma = config.get("focal_gamma", 0)
+    if type(gamma) not in (int, float) or not math.isfinite(gamma) or gamma < 0:
+        raise ValueError("Focal gamma must be finite and nonnegative")
+    bce = F.binary_cross_entropy_with_logits(logits, target, pos_weight=positive_weight,
+                                            reduction="none" if gamma else "mean")
+    if gamma:
+        correct_probability = probability * target + (1 - probability) * (1 - target)
+        bce = ((1 - correct_probability).pow(gamma) * bce).mean()
     reduction = config.get("dice_reduction", "sample")
     if reduction not in ("sample", "batch"):
         raise ValueError("Dice reduction must be sample or batch")

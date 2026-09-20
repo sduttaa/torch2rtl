@@ -4,6 +4,43 @@ import pytest
 from training.train import make_model, loss_function, factor_convolutions
 
 
+def test_focal_bce_weights_hard_pixels_without_changing_positive_weight():
+    # These logits give probabilities 3/4 and 1/4, in easy/hard pairs.
+    logits = torch.tensor(
+        [[[[1.0986122886681098, -1.0986122886681098, 1.0986122886681098, -1.0986122886681098]]]],
+        dtype=torch.float64, requires_grad=True)
+    target = torch.tensor([[[[1., 1., 0., 0.]]]], dtype=torch.float64)
+    config = {"positive_weight": 3, "bce": 1, "dice": 0, "distillation": 0}
+    expected_bce = torch.nn.functional.binary_cross_entropy_with_logits(
+        logits, target, pos_weight=logits.new_tensor(3), reduction="none")
+    ordinary = loss_function(logits, target, logits.detach(), config)
+    torch.testing.assert_close(ordinary, expected_bce.mean(), rtol=0, atol=0)
+    focal = loss_function(logits, target, logits.detach(), {**config, "focal_gamma": 2})
+    torch.testing.assert_close(focal, (expected_bce * logits.new_tensor([1/16, 9/16, 9/16, 1/16])).mean())
+    focal.backward()
+    assert torch.isfinite(logits.grad).all()
+    assert (logits.grad[target.bool()] < 0).all() and (logits.grad[~target.bool()] > 0).all()
+    assert logits.grad[0, 0, 0, 1].abs() > logits.grad[0, 0, 0, 0].abs()
+
+
+def test_focal_bce_is_finite_for_extreme_logits():
+    logits = torch.tensor([[[[-1000., 1000., -1000., 1000.]]]], requires_grad=True)
+    target = torch.tensor([[[[1., 0., 0., 1.]]]])
+    config = {"positive_weight": 3, "bce": 1, "dice": 0, "distillation": 0, "focal_gamma": 2}
+    loss = loss_function(logits, target, logits.detach(), config)
+    torch.testing.assert_close(loss, torch.tensor(1000.))
+    loss.backward()
+    assert torch.isfinite(logits.grad).all()
+
+
+@pytest.mark.parametrize("gamma", [-1, float("nan"), float("inf"), "2", True])
+def test_invalid_focal_gamma(gamma):
+    logits = torch.zeros(1, 1, 1, 1)
+    config = {"positive_weight": 1, "bce": 1, "dice": 0, "distillation": 0, "focal_gamma": gamma}
+    with pytest.raises(ValueError, match="Focal gamma"):
+        loss_function(logits, logits, logits, config)
+
+
 def test_factorization_starts_from_supplied_checkpoint(tmp_path):
     config = {"image_channels": [0, 1, 2], "graph_output": "output", "graph": [
         {"name": "output", "op": "conv", "inputs": ["image"], "channels": 4, "kernel": 3, "padding": 1}]}
