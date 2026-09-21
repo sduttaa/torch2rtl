@@ -30,7 +30,8 @@ def check_schedule(directory, graph, lanes, actor_options, fifo_depths=(1, 2, 8)
     memories.update({value.name: {"extra_rows": choices[value.name].extra_rows} for value in graph.values
                      if value.operation == "quantized_view_convolution"})
     depths = {name: fifo_options[name][solution.selected["fifo:"+name]].depth for name in fifo_options}
-    rtl = emit(graph, lanes, outputs, depths, memories, reductions)
+    rtl = emit(graph, lanes, outputs, depths, memories, reductions,
+               requantizations={name:config.requantization for name,config in choices.items() if name in outputs})
     torch.manual_seed(81)
     input_words, expected_words = [], []
     input_cycles, output_cycles = [], []

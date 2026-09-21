@@ -1,0 +1,118 @@
+{
+  "passed": true,
+  "distinct_modules": 22,
+  "instances": 34,
+  "proofs": {
+    "0b3d4d94c89d762b3d716715fc9b5637dfaf154ddc0b94d8a1a75813750c314b": {
+      "module": "actor_1",
+      "multipliers": 12,
+      "proofs": "build/bram-reduction/startup/proofs/actor_1"
+    },
+    "fc5d2736d0efa2cc9833231bcf007c0d6cba957984aa79de31e71ca2216fe3d5": {
+      "module": "actor_2",
+      "multipliers": 12,
+      "proofs": "build/bram-reduction/startup/proofs/actor_2"
+    },
+    "c41c9d9d0d5b75c9a30caba1d9bd98f742074802419ec54f7c64a46b51b7ed84": {
+      "module": "actor_3",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/actor_3"
+    },
+    "8b9006ffa04501a6ec689be021e007be7bdf151b77a5bcdd974c0ee094f5b2c7": {
+      "module": "actor_4",
+      "multipliers": 8,
+      "proofs": "build/bram-reduction/startup/proofs/actor_4"
+    },
+    "0848509d3f1611ecdd37aab1bf7b653e855b29142617d41b21ae2bd42a711eaa": {
+      "module": "actor_5",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/actor_5"
+    },
+    "13b38996efab02d75b5d5a1106bd3ec958f65121e9e4c99e6bba8402162faae2": {
+      "module": "actor_6",
+      "multipliers": 4,
+      "proofs": "build/bram-reduction/startup/proofs/actor_6"
+    },
+    "21c735f5cdc59f7d2b3ed475fc28d102efda963856d236bcb1d3c5d91b9702d1": {
+      "module": "actor_7",
+      "multipliers": 4,
+      "proofs": "build/bram-reduction/startup/proofs/actor_7"
+    },
+    "90e3fb03b5168cad76ba32abc00ad171fe302e8cd769245c4f5b9255ba20ea3f": {
+      "module": "actor_8",
+      "multipliers": 4,
+      "proofs": "build/bram-reduction/startup/proofs/actor_8"
+    },
+    "e439b371b2dd58ea6f94169e4a5c663c2f81f0df789a59d4b3cf764bf59651b3": {
+      "module": "actor_9",
+      "multipliers": 1,
+      "proofs": "build/bram-reduction/startup/proofs/actor_9"
+    },
+    "2004ca79edd1b954fd221febba2c4cf34efc3fc46cb856986e6c953e5312d40a": {
+      "module": "actor_10",
+      "multipliers": 12,
+      "proofs": "build/bram-reduction/startup/proofs/actor_10"
+    },
+    "a9b20ac0455641edf12c145e7cd7a23ed2cbb0032970d027add1ab0abf032f23": {
+      "module": "actor_11",
+      "multipliers": 8,
+      "proofs": "build/bram-reduction/startup/proofs/actor_11"
+    },
+    "41328dbadc11e7a62319625fa6a396e61053ceba86833e78888a8f34ac50abf1": {
+      "module": "actor_12",
+      "multipliers": 1,
+      "proofs": "build/bram-reduction/startup/proofs/actor_12"
+    },
+    "cbfb273bc7e99f1d18dd74b69f07be2c330348c26318473714ef5499debf1846": {
+      "module": "actor_13",
+      "multipliers": 16,
+      "proofs": "build/bram-reduction/startup/proofs/actor_13"
+    },
+    "90f9dbdf6ac6f1d2a2acfebd6a2775cd68dd4f24a89ee2b6254a1efd1945b098": {
+      "module": "actor_14",
+      "multipliers": 8,
+      "proofs": "build/bram-reduction/startup/proofs/actor_14"
+    },
+    "ab9924f57772ec4d7bba1eb30dda37136cd183a64c60eb044c2947b1f7680951": {
+      "module": "actor_15",
+      "multipliers": 1,
+      "proofs": "build/bram-reduction/startup/proofs/actor_15"
+    },
+    "9db2c8cd50d39053ad28deeff8af2e2f16f7f6fbfd5a25184a23284ca50cd78a": {
+      "module": "actor_16",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/actor_16"
+    },
+    "8be1aabc6e30212b9d6f57f191749c2b726a8b16358aaafb9fdadea53af14c4e": {
+      "module": "fifo_actor_0",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/fifo_actor_0"
+    },
+    "d1e72f4bc235805c582f8f15fcf743d8b08164e0ed9adb13a5c6b96e71a7f8d4": {
+      "module": "fifo_actor_1",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/fifo_actor_1"
+    },
+    "a4d4d4165fb86b2611548a91dcf63f1fc52e227d67ccadef463533cab9ca3810": {
+      "module": "fifo_actor_2",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/fifo_actor_2"
+    },
+    "a00cda674a0b8f91f6e64f5926ba6c7fc48b79f86674250a0bedd4dfac5a4bb3": {
+      "module": "fifo_actor_3",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/fifo_actor_3"
+    },
+    "3a13769337246f09618355332d881eff9b43f8d9c9239735886fc9c034d71645": {
+      "module": "fifo_actor_5",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/fifo_actor_5"
+    },
+    "00c4913237b61dcee99bd0fe7aa7f2810b06db08076e77e74334bcdd46c66df3": {
+      "module": "fifo_actor_14",
+      "multipliers": 0,
+      "proofs": "build/bram-reduction/startup/proofs/fifo_actor_14"
+    }
+  },
+  "scope": "Functional equivalence of mapped actors; linking and timing have separate checks."
+}

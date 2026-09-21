@@ -7,16 +7,18 @@ weights and working storage on chip. The first board is the Tang Nano 20K.
 Lattice support follows through the same actor and optimization interfaces.
 
 **Status: the accepted integer model has a routed, fabric-only implementation
-with 44 BRAMs and 30.22 scheduled FPS at 108 MHz.** Its validation Dice is
+with 35 BRAMs and 30.70 scheduled FPS at 114.75 MHz.** Its validation Dice is
 0.6500655. This is a compiler/simulation/timing result, not a physical-board FPS
 measurement. Reproducible evidence is in
-[the compiler optimization result](results/compiler-optimization/README.md).
-The previous 46-BRAM result is preserved in
-[the baseline artifacts](results/on-chip-inference/README.md).
+[the 35-BRAM result](results/bram-reduction/README.md).
+The previous [44-BRAM](results/compiler-optimization/README.md) and
+[46-BRAM](results/on-chip-inference/README.md) results are preserved.
 Generic architecture search, physical-memory costing, compact
 resize/concat/convolution fusion, and joint scheduling are documented in
 [compiler improvements](docs/compiler-improvements.md).
-The 35-BRAM / 50-FPS stretch objective remains unmet.
+The 35-BRAM requirement is met; the 50-FPS stretch objective remains unmet.
+Exact threshold quantization, source-buffer reuse and the final timing changes
+are documented in [BRAM reduction](docs/bram-reduction.md).
 The [workload findings](docs/workload-feasibility.md) concern the original,
 larger export. Training is documented in [the training directory](training/README.md).
 
@@ -71,7 +73,7 @@ actor/FIFO configurations. It supports branched raster networks and preserves
 integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
 full-model schedule passes RTL deadline checks with finite fabric-only FIFOs.
-The accepted implementation has a verified period of 3,573,484 cycles and uses
+The accepted implementation has a verified period of 3,737,193 cycles and uses
 an explicitly corrected nextpnr database with configuration-specific DSP timing
 guards. Earlier timing-coverage failures and results remain documented in
 [the measured evidence](RESULTS.md).

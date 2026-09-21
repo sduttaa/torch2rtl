@@ -22,7 +22,8 @@ class ActorConfig:
     line_layout: str = "parallel"
     resources: dict[str, int] = field(default_factory=dict)
     row_buffers: int = 1
-    extra_rows: int = 0
+    extra_rows: int | tuple[int, ...] = 0
+    requantization: str = "auto"
 
 
 @dataclass(frozen=True)
@@ -158,7 +159,7 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
     if view_value is not None:
         from .fusion import materialized
         value = materialized(value)
-    parameters = configuration(value, lanes, config.output_lanes, config.reduction_lanes)
+    parameters = configuration(value, lanes, config.output_lanes, config.reduction_lanes, config.requantization)
     pixels = prod(value.tensor.shape[2:])
     output_words = ceil(value.tensor.shape[1] / lanes)
     blocks = parameters["GROUPS"] * ceil((parameters["OUTPUT_CHANNELS"] // parameters["GROUPS"]) / parameters["OUTPUT_LANES"])
@@ -167,7 +168,8 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
     requant = parameters["ACCUMULATOR_BYTES"]*ceil(parameters["MULTIPLIER_BYTES"] / parameters["REDUCTION_LANES"])
     pool = (parameters["POOL_H"], parameters["POOL_W"])
     reduction_stage = int(parameters["REDUCTION_LANES"] > 1)
-    tile_cycles = prod(pool)*(dot+2+reduction_stage) + requant + 3 + int(prod(pool) > 1)
+    quantizer_cycles = parameters["THRESHOLD_BITS"]+1 if parameters.get("THRESHOLD_BITS") else requant+3
+    tile_cycles = prod(pool)*(dot+2+reduction_stage) + quantizer_cycles + int(prod(pool) > 1)
     release_delay = prod(pool)*(dot+2) + (prod(pool)-1)*reduction_stage - 2
     starts = events.series(prefix+".start", pixels)
     posts = events.series(prefix+".post", pixels)
@@ -225,20 +227,28 @@ def view_window(events, prefix, value, inputs, starts, releases, lanes, extra_ro
     for stream, g in zip(inputs, geometry(value, lanes, extra_rows)):
         events.order(stream)
         events.link(stream[-1], advance, 1)
-        events.link(advance, stream[0], 1, 1)
+        if not g["rolling"]:
+            events.link(advance, stream[0], 3, 1)
+        elif g["limits"][0] > g["depth"]:
+            frame,word=divmod(g["depth"],len(stream))
+            events.link(advance,stream[word],4,frame+1)
         for row,base in enumerate(g["required_rows"]):
             for column,end in enumerate(g["required_columns"]):
                 if g["valid_rows"][row] and g["valid_columns"][column]:
                     events.link(stream[base+end-1],starts[row*width+column],1)
-        # Ordered writes need only one dependency at each changed row limit.
-        for row in range(1, height):
-            previous, following = g["limits"][row-1:row+1]
+        # Ordered writes need one dependency at each changed live-word limit.
+        # A word retires only after the last window that may read its old row.
+        for pixel in range(1, height*width):
+            previous, following = g["limits"][pixel-1:pixel+1]
             if following > previous:
-                before, delay = releases[row*width-1]
-                events.link(before, stream[previous], delay+2)
-        if g["limits"][-1] < len(stream):
+                before, delay = releases[pixel-1]
+                frame,word=divmod(previous,len(stream))
+                events.link(before, stream[word], delay+3,frame)
+        final_limit=len(stream)+g["depth"] if g["rolling"] else len(stream)
+        if g["limits"][-1] < final_limit:
             before, delay = releases[-1]
-            events.link(before, stream[g["limits"][-1]], delay+1)
+            frame,word=divmod(g["limits"][-1],len(stream))
+            events.link(before, stream[word], delay+(3 if g["rolling"] else 1),frame)
 
 
 def pool(events, prefix, value, inputs, outputs, lanes):

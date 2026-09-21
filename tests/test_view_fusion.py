@@ -93,13 +93,34 @@ def test_hybrid_weight_rom_preserves_the_read_pipeline(tmp_path):
     simulate(tmp_path,rtl,16,16,source_words,result_words,True,max_cycles=50000)
 
 
-@pytest.mark.parametrize("extra_rows",[0,1])
+@pytest.mark.parametrize("extra_rows",[0,1,(0,5),(3,0)])
 def test_fused_view_periodic_deadlines(tmp_path,extra_rows):
     graph=fuse(network(shape=(4,6)),2)
     options={value.name:{"selected":ActorConfig(2,2,extra_rows=extra_rows)
              if value is graph.output else ActorConfig()}
              for value in graph.values if value is not graph.input}
     check_schedule(tmp_path,graph,2,options,(1,3,32,128),frames=4)
+
+
+def test_rolling_source_buffers_overlap_frames_without_external_branch_storage(tmp_path):
+    graph=fuse(network(shape=(8,10)),2)
+    extra=(0,1)
+    assert all(g["rolling"] for g in geometry(graph.output,2,extra))
+    options={value.name:{"selected":ActorConfig(2,2,extra_rows=extra)
+             if value is graph.output else ActorConfig()}
+             for value in graph.values if value is not graph.input}
+    solution=check_schedule(tmp_path,graph,2,options,(1,3,8),frames=5)
+    advance=solution.offsets["result.actor.advance.0"]
+    assert any(solution.offsets[f"result.in{port}.0"]+solution.period<advance
+               for port in range(2))
+
+
+def test_nondivisible_row_buffers_keep_the_per_frame_contract():
+    graph=fuse(network(shape=(7,11)),2)
+    for g in geometry(graph.output,2):
+        assert g["rolling"] == (g["words"] % g["depth"] == 0)
+        if not g["rolling"]:
+            assert max(g["limits"])<=g["words"]
 
 
 def test_ragged_vector_boundary_retains_original_actors():
@@ -149,3 +170,26 @@ def test_fused_view_has_explicit_verilator_widths(tmp_path):
     (tmp_path/"inference.sv").write_text(rtl)
     subprocess.run(["verilator","--lint-only","--top-module","inference","inference.sv"],
                    cwd=tmp_path,check=True,capture_output=True,text=True)
+
+
+@pytest.mark.parametrize('shape,kernel,dilation',[((7,11),(3,3),(1,1)),((4,8),(1,1),(1,1)),
+                                                 ((9,13),(3,3),(2,2))])
+def test_word_release_never_overwrites_a_future_window(shape,kernel,dilation):
+    graph=fuse(network(shape=shape,kernel=kernel,dilation=dilation),2)
+    value=graph.output
+    height,width=value.tensor.shape[2:]
+    for g in geometry(value,2):
+        accessed=[]
+        for y in range(height):
+            for x in range(width):
+                accessed.append([row*g['row_words']+column*2+channel
+                    for row in g['row_map'][y*kernel[0]:(y+1)*kernel[0]]
+                    for column in g['column_map'][x*kernel[1]:(x+1)*kernel[1]]
+                    for channel in range(2) if row>=0 and column>=0])
+        first=g['words']
+        for pixel in reversed(range(len(accessed))):
+            first=min([first,*accessed[pixel]])
+            assert g['limits'][pixel] <= first+g['depth']
+        assert g['limits']==sorted(g['limits'])
+    assert any(limit>g['row_limits'][pixel//width]
+               for g in geometry(value,2) for pixel,limit in enumerate(g['limits']))

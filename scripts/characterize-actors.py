@@ -44,8 +44,9 @@ def measure(job):
         directory /= label
     record = {"name": value.name, "operation": value.operation, "output_shape": value.tensor.shape,
               "lanes": config["lanes"], "option": label, "output_lanes": spec.get("output_lanes"),
-              "memories": spec.get("memories", {}), "reduction_lanes": spec.get("reduction_lanes")}
-    rtl = actor_rtl(value, config["lanes"], record["output_lanes"], record["memories"], record["reduction_lanes"])
+              "memories": spec.get("memories", {}), "reduction_lanes": spec.get("reduction_lanes"),
+              "requantization":spec.get("requantization","auto")}
+    rtl = actor_rtl(value, config["lanes"], record["output_lanes"], record["memories"], record["reduction_lanes"],record["requantization"])
     record.update(rtl_sha256=hashlib.sha256(rtl.encode()).hexdigest(),
                   output_range=bounds(value), output_storage_bits=storage_bits(value))
     try:
@@ -69,6 +70,7 @@ if args.options:
 else:
     jobs = [(value, None, {"output_lanes": config["output_lanes"].get(name),
               "reduction_lanes": config.get("reduction_lanes", {}).get(name),
+              "requantization":config.get("requantizations",{}).get(name,"auto"),
               "memories": config.get("memories", {}).get(name, {})}) for name, value in values.items()]
 with ThreadPoolExecutor(max_workers=args.workers) as executor:
     records = list(executor.map(measure, jobs))

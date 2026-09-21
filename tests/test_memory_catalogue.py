@@ -62,7 +62,10 @@ def test_characterization_cache_invalidates_changed_mapping_and_rtl(tmp_path,mon
         return {"lut":7}
     monkeypatch.setattr("torch2rtl.flow.synthesize",synthesize)
     spec={"synthesis":{"command":"synth_ice40"},"cell_costs":{"LUT4":{"lut":1}}}
+    assert characterize("first",spec,tmp_path,cached_only=True) is None
+    assert not calls
     assert not characterize("first",spec,tmp_path)["cache_hit"]
+    assert characterize("first",spec,tmp_path,cached_only=True)["cache_hit"]
     assert characterize("first",spec,tmp_path)["cache_hit"]
     assert not characterize("second",spec,tmp_path)["cache_hit"]
     changed={**spec,"synthesis":{"command":"synth_ice40","flags":["-abc2"]}}
@@ -94,3 +97,44 @@ def test_fifo_pruning_preserves_latency_and_resource_tradeoffs():
     catalogue={"fifo_options":{"edge":options},"screen":{}}
     prune_fifos(catalogue)
     assert set(catalogue["fifo_options"]["edge"]) == {"register","larger","block"}
+
+
+def test_input_buffer_absorption_uses_source_geometry_and_preserves_the_seed():
+    from torch2rtl.catalogue import absorb_input_buffers
+    from torch2rtl.fusion import geometry
+    from torch2rtl.network import edges
+    graph=fuse(network(shape=(16,10)),2)
+    search={"lanes":2,"output_lanes":[2],"reduction_lanes":[2],
+            "line_layouts":["packed"],"weight_memories":["block"],
+            "extra_rows":[0,1],"fifo_max_words":256,"fifo_small_depths":[1,8],
+            "fifo_memories":["block","distributed"],"max_actor_options":4,
+            "period_limit":100000,"offset_limit":200000}
+    catalogue=prepare(graph,Path("user.pt2"),"hash",target(),search)
+    edge=next(name for name,_,destination,port in edges(graph) if destination is graph.output and port==1)
+    seed={"model_sha256":"hash","fifo_depths":{name:8 for name,*_ in edges(graph)}}
+    seed["fifo_depths"][edge]=160
+    hint=absorb_input_buffers(graph,catalogue,seed,target())
+    assert seed["fifo_depths"][edge]==160 and "memories" not in seed
+    assert hint["fifo_depths"][edge]<=8
+    assert hint["memories"][graph.output.name]["extra_rows"]==[0,5]
+    for spec in catalogue["actor_options"][graph.output.name].values():
+        assert geometry(graph.output,2,spec["memories"]["extra_rows"])[1]["depth"]==160
+    assert all(spec["depth"]<=8 for spec in catalogue["fifo_options"][edge].values())
+    fresh=prepare(graph,Path("user.pt2"),"hash",target(),search)
+    repeated=absorb_input_buffers(graph,fresh,hint,target())
+    assert repeated["memories"][graph.output.name]["extra_rows"]==[0,5]
+    with pytest.raises(ValueError,match="different model"):
+        absorb_input_buffers(graph,catalogue,{**seed,"model_sha256":"other"},target())
+
+
+def test_retention_preserves_the_seed_and_exact_quantizer_alternatives():
+    from types import SimpleNamespace
+    from torch2rtl.catalogue import retain
+    options={name:{"output_lanes":2,"reduction_lanes":2,"period_bound":100,
+                   "requantization":name,"memories":{"weight":"block"},
+                   "resources":{"bram":2,"lut":lut}}
+             for name,lut in (("multiply",10),("threshold",8),("auto",9))}
+    catalogue={"actor_options":{"operator":options},"screen":{}}
+    retain(catalogue,SimpleNamespace(period=100,selected={"actor:operator":"multiply"}),2)
+    assert "multiply" in catalogue["actor_options"]["operator"]
+    assert len(catalogue["actor_options"]["operator"])==2

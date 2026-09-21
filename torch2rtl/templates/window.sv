@@ -11,7 +11,7 @@ module raster_window #(
   parameter integer LANES = 1, BITS = 8,
   parameter [BITS-1:0] PADDING_VALUE = 0,
   parameter MEMORY_STYLE = "auto",
-  parameter integer PACKED_LINES = 0, PIPELINED_READ = 0, ALTERNATE_READ = 0,
+  parameter integer PACKED_LINES = 0, PIPELINED_READ = 0, ALTERNATE_READ = 0, STARTUP_READ = 0,
   localparam integer CHANNEL_WORDS = (CHANNELS + LANES - 1) / LANES,
   localparam integer WORD_BITS = LANES * BITS,
   localparam integer EFFECTIVE_H = (KERNEL_H - 1) * DILATION_H + 1,
@@ -35,6 +35,7 @@ module raster_window #(
   output reg window_available, input wire release_window,
   input wire [WINDOW_BITS-1:0] window_address,
   input wire [WINDOW_BITS-1:0] alternate_address, input wire select_alternate,
+  input wire [WINDOW_BITS-1:0] first_address, input wire select_first,
   output wire [WORD_BITS-1:0] window_data
 );
   reg [X_BITS-1:0] column;
@@ -135,11 +136,30 @@ module raster_window #(
     reg [HORIZONTAL_BITS-1:0] requested_offset, active_address;
     reg [ROW_BITS-1:0] requested_row, active_row;
     wire [ROW_BITS-1:0] next_row;
+    wire [HORIZONTAL_BITS-1:0] main_offset;
+    wire [ROW_BITS-1:0] main_row;
     always @(posedge clk) begin
       requested_offset <= selected_offsets[window_address];
       requested_row <= selected_rows[window_address];
       active_address <= wrapped_address;
       active_row <= next_row;
+    end
+    if (STARTUP_READ != 0) begin: startup
+      reg [HORIZONTAL_BITS-1:0] first_offset;
+      reg [ROW_BITS-1:0] first_row;
+      reg selected;
+      always @(posedge clk) begin
+        first_offset <= selected_offsets[first_address];
+        first_row <= selected_rows[first_address];
+        selected <= select_first;
+      end
+      // Decode both coordinates before selecting startup. This keeps actor
+      // state off the pooled/grouped address decoder without adding latency.
+      assign main_offset = selected ? first_offset : requested_offset;
+      assign main_row = selected ? first_row : requested_row;
+    end else begin: continuous
+      assign main_offset = requested_offset;
+      assign main_row = requested_row;
     end
     if (ALTERNATE_READ != 0) begin: alternate
       reg [HORIZONTAL_BITS-1:0] alternate_offset;
@@ -150,11 +170,11 @@ module raster_window #(
         alternate_row <= selected_rows[alternate_address];
         selected <= select_alternate;
       end
-      assign offset = selected ? alternate_offset : requested_offset;
-      assign next_row = selected ? alternate_row : requested_row;
+      assign offset = selected ? alternate_offset : main_offset;
+      assign next_row = selected ? alternate_row : main_row;
     end else begin: single
-      assign offset = requested_offset;
-      assign next_row = requested_row;
+      assign offset = main_offset;
+      assign next_row = main_row;
     end
     assign read_address = active_address;
     assign read_row = active_row;

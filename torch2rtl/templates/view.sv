@@ -10,13 +10,15 @@ module view_rows #(
   localparam integer CHANNEL_WORDS=(CHANNELS+LANES-1)/LANES,
   localparam integer STORED_LANES=CHANNELS < LANES ? CHANNELS : LANES,
   localparam integer ADDRESS_BITS=DEPTH <= 1 ? 1 : $clog2(DEPTH),
-  localparam integer COUNT_BITS=$clog2(WORDS+1),
+  parameter integer CROSS_FRAME=0,
+  localparam integer COUNT_BITS=$clog2(WORDS+(CROSS_FRAME != 0 ? DEPTH : 0)+1),
   localparam integer CHANNEL_BITS=CHANNEL_WORDS <= 1 ? 1 : $clog2(CHANNEL_WORDS),
   localparam integer Y_BITS=OUTPUT_HEIGHT <= 1 ? 1 : $clog2(OUTPUT_HEIGHT),
   localparam integer X_BITS=OUTPUT_WIDTH <= 1 ? 1 : $clog2(OUTPUT_WIDTH),
   localparam integer WINDOW_WORDS=KERNEL_H*KERNEL_W*TOTAL_CHANNEL_WORDS,
   localparam integer WINDOW_BITS=WINDOW_WORDS <= 1 ? 1 : $clog2(WINDOW_WORDS),
   parameter integer TABLE_COUNT=1,
+  parameter integer ROW_WORDS=1, LAST_USED_COLUMN=OUTPUT_WIDTH-1, FIRST_COLUMN=0,
   localparam integer TABLE_BITS=TABLE_COUNT <= 1 ? 1 : $clog2(TABLE_COUNT),
   localparam integer TABLE_INDEX_BITS=$clog2(TABLE_COUNT*256),
   parameter [OUTPUT_HEIGHT*KERNEL_H*ADDRESS_BITS-1:0] ROW_ADDRESSES=0,
@@ -28,6 +30,7 @@ module view_rows #(
   parameter [OUTPUT_HEIGHT*KERNEL_H-1:0] ROW_VALID=0,
   parameter [OUTPUT_WIDTH*KERNEL_W-1:0] COLUMN_VALID=0,
   parameter [OUTPUT_HEIGHT*COUNT_BITS-1:0] REQUIRED_ROWS=0, LIMITS=0,
+  parameter [OUTPUT_HEIGHT-1:0] RELEASE_COLUMNS=0,
   parameter [OUTPUT_HEIGHT-1:0] VALID_ROWS=0,
   parameter [CHANNELS*TABLE_BITS-1:0] CHANNEL_TABLES=0,
   parameter [TABLE_COUNT*256*OUTPUT_BITS-1:0] TABLES=0
@@ -49,31 +52,41 @@ module view_rows #(
   wire [KERNEL_H-1:0] row_included;
   // Control tables must remain combinational logic. Inferring block ROMs here
   // consumes data-storage blocks without increasing the actor's bandwidth.
-  (* rom_style="logic" *) reg [2*COUNT_BITS-1:0] row_contract [0:OUTPUT_HEIGHT-1];
+  (* rom_style="logic" *) reg [2*COUNT_BITS:0] row_contract [0:OUTPUT_HEIGHT-1];
   integer position;
   initial begin
     for (position=0; position<OUTPUT_HEIGHT; position=position+1)
-      row_contract[position]={LIMITS[position*COUNT_BITS +: COUNT_BITS],REQUIRED_ROWS[position*COUNT_BITS +: COUNT_BITS]};
+      row_contract[position]={RELEASE_COLUMNS[position],LIMITS[position*COUNT_BITS +: COUNT_BITS],REQUIRED_ROWS[position*COUNT_BITS +: COUNT_BITS]};
   end
-  reg [2*COUNT_BITS-1:0] row_state;
-  // Reset the lookup address, not its output. This permits a synchronous ROM
-  // read while retaining the output-row register before the lookup logic.
-  wire [Y_BITS-1:0] row_address=rst || advance_frame ? Y_BITS'(0) : output_row;
+  reg [2*COUNT_BITS:0] row_state;
+  // The output-row register resets at frame advance. The existing validity
+  // pipeline masks the old row while this ROM settles, keeping frame-complete
+  // comparisons and cross-input advance control off the lookup address path.
   reg [ADDRESS_BITS-1:0] last_column;
   reg [COUNT_BITS-1:0] required_words;
   reg source_needed;
   reg [1:0] coordinates_valid;
-  wire [COUNT_BITS-1:0] allowed_words=row_state[COUNT_BITS +: COUNT_BITS];
+  reg [1:0] frame_valid;
+  reg [COUNT_BITS:0] allowed_words;
+  reg [COUNT_BITS-1:0] first_column;
   assign ready=coordinates_valid[1] && (!source_needed || written >= required_words);
   always @(posedge clk) begin
-    row_state <= row_contract[row_address];
+    row_state <= row_contract[output_row];
     required_words <= row_state[0 +: COUNT_BITS]+COUNT_BITS'(last_column)+COUNT_BITS'(CHANNEL_WORDS);
     source_needed <= (|row_included) && (|column_included);
+    if (CROSS_FRAME != 0 && (rst || advance_frame)) allowed_words <= (COUNT_BITS+1)'(DEPTH);
+    else if (CROSS_FRAME != 0 && done) allowed_words <= (COUNT_BITS+1)'(WORDS+DEPTH);
+    else if (CROSS_FRAME == 0 || frame_valid[1])
+      allowed_words <= {1'b0,row_state[COUNT_BITS +: COUNT_BITS]}+
+                       (row_state[2*COUNT_BITS] ? {1'b0,first_column} : (COUNT_BITS+1)'(0));
+    if (rst || advance_frame) frame_valid <= 0;
+    else frame_valid <= {frame_valid[0],1'b1};
     if (rst || advance_frame || release_window) coordinates_valid <= 0;
     else coordinates_valid <= {coordinates_valid[0],1'b1};
   end
-  assign finished=written == COUNT_BITS'(WORDS);
-  assign in_ready=!rst && !finished && (done || written < allowed_words);
+  assign finished=written >= COUNT_BITS'(WORDS);
+  assign in_ready=!rst && (CROSS_FRAME != 0 ? {1'b0,written} < allowed_words :
+                          frame_valid[1] && !finished && (done || {1'b0,written} < allowed_words));
   wire capture=in_valid && in_ready;
   (* rom_style="logic" *) reg [OUTPUT_BITS-1:0] lookup [0:TABLE_COUNT*256-1];
   wire [TABLE_BITS-1:0] channel_tables [0:CHANNELS-1];
@@ -105,6 +118,12 @@ module view_rows #(
     last_column=0;
     for (tap=0; tap<KERNEL_W; tap=tap+1)
       if (column_included[tap]) last_column=column_taps[tap];
+  end
+  integer first_tap;
+  always @* begin
+    first_column=32'(output_column) > LAST_USED_COLUMN ? COUNT_BITS'(ROW_WORDS) : COUNT_BITS'(FIRST_COLUMN);
+    for (first_tap=KERNEL_W-1; first_tap>=0; first_tap=first_tap-1)
+      if (column_included[first_tap]) first_column=COUNT_BITS'(column_taps[first_tap]);
   end
   localparam integer COORD_BITS=2*ADDRESS_BITS+CHANNEL_BITS+1;
   wire [COORD_BITS-1:0] coordinates [0:WINDOW_WORDS-1];
@@ -193,14 +212,21 @@ module view_rows #(
     end else assign window_data[output_lane*OUTPUT_BITS +: OUTPUT_BITS]=0;
   end endgenerate
   always @(posedge clk) begin
-    if (rst || advance_frame) begin
+    if (rst) begin
       written <= 0;
       write_address <= 0;
       write_channel <= 0;
-    end else if (capture) begin
-      written <= written+1'b1;
-      write_address <= write_address == ADDRESS_BITS'(DEPTH-1) ? ADDRESS_BITS'(0) : write_address+1'b1;
-      write_channel <= write_channel == CHANNEL_BITS'(CHANNEL_WORDS-1) ? CHANNEL_BITS'(0) : write_channel+1'b1;
+    end else begin
+      if (advance_frame)
+        written <= CROSS_FRAME != 0 ? written-COUNT_BITS'(WORDS)+COUNT_BITS'(capture) : COUNT_BITS'(0);
+      else if (capture) written <= written+1'b1;
+      if (advance_frame && CROSS_FRAME == 0) begin
+        write_address <= 0;
+        write_channel <= 0;
+      end else if (capture) begin
+        write_address <= write_address == ADDRESS_BITS'(DEPTH-1) ? ADDRESS_BITS'(0) : write_address+1'b1;
+        write_channel <= write_channel == CHANNEL_BITS'(CHANNEL_WORDS-1) ? CHANNEL_BITS'(0) : write_channel+1'b1;
+      end
     end
   end
 endmodule

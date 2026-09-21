@@ -122,9 +122,10 @@ def branch_tables(value,port):
 
 def geometry(value, lanes, extra_rows=0):
     """Storage and exact row lifetimes shared by RTL, costs, and scheduling."""
-    if type(extra_rows) is not int or extra_rows < 0:
-        raise ValueError("Extra source rows must be a nonnegative integer")
     sources, view = value.args[:2]
+    extras=(extra_rows,)*len(sources) if type(extra_rows) is int else extra_rows
+    if not isinstance(extras,(tuple,list)) or len(extras)!=len(sources) or any(type(count) is not int or count<0 for count in extras):
+        raise ValueError("Extra source rows must be nonnegative integers, one per input or shared")
     conv = materialized(value)
     _, weight, _, stride, padding, dilation, *_ = conv.args
     oh, ow = value.tensor.shape[2:]
@@ -151,23 +152,40 @@ def geometry(value, lanes, extra_rows=0):
             required_rows.append(max(used)*row_words if used else 0)
             valid_rows.append(bool(used))
             spans.append(max(used)-min(used)+1 if used else 1)
-        count = min(source.tensor.shape[2], max(spans)+extra_rows)
+        count = min(source.tensor.shape[2], max(spans)+extras[port])
+        depth=count*row_words
+        words=source.tensor.shape[2]*row_words
+        rolling=words%depth==0
         output_bits=branch_tables(value,port)[0]
         bits=min(output_bits,storage_bits(source))
         required_columns=[]
         valid_columns=[]
+        first_columns=[]
         for x in range(ow):
             used=[column for column in column_map[x*kw:(x+1)*kw] if column >= 0]
             required_columns.append((max(used)+1)*channel_words if used else 0)
             valid_columns.append(bool(used))
+            remaining=[column for column in column_map[x*kw:] if column >= 0]
+            first_columns.append(min(remaining)*channel_words if remaining else row_words)
+        # During the last output row that uses a source row, retire its words
+        # as the horizontal window passes them. Earlier output rows must retain
+        # the whole row for a later vertical reuse (including nearest repeats).
+        release_columns=[first[y] < (first[y+1] if y+1 < oh else source.tensor.shape[2])
+                         and valid_rows[y] for y in range(oh)]
+        capacity=words+depth if rolling else words
+        row_limits=[min(capacity,(row+count)*row_words) for row in first]
+        limits=[min(capacity,base+(column if release_columns[y] else 0))
+                for y,base in enumerate(row_limits) for column in first_columns]
         result.append({"rows": count, "row_words": row_words,"bits":bits,
             "output_bits":output_bits,"quantize_on_read":bits < output_bits,
             "width": min(lanes, source.tensor.shape[1])*bits,
-            "depth": count*row_words, "words": source.tensor.shape[2]*row_words,
+            "depth":depth,"words":words,"rolling":rolling,"count_bits":max(1,capacity.bit_length()),
             "row_map": row_map, "column_map": column_map, "first": first,
             "required_rows":required_rows,"required_columns":required_columns,
             "valid_rows":valid_rows,"valid_columns":valid_columns,
-            "limits": [min(source.tensor.shape[2], row+count)*row_words for row in first]})
+            "row_limits":row_limits,"release_columns":release_columns,"first_columns":first_columns,
+            "last_used_column":max((x for x,valid in enumerate(valid_columns) if valid),default=-1),
+            "limits":limits})
     return result
 
 
@@ -194,13 +212,13 @@ def affine_table(values,valid):
     return None
 
 
-def emit(value, lanes, outputs, memories, reduction_lanes):
+def emit(value, lanes, outputs, memories, reduction_lanes, requantization="auto"):
     from .convolution import configuration, packed
     sources, view = value.args[:2]
     if memories.get("weight","auto") not in ("auto","block","distributed","logic") or memories.get("line","auto") not in ("auto","block","distributed"):
         raise ValueError("Unknown fused memory mapping option")
     conv = materialized(value)
-    parameters = configuration(conv, lanes, outputs, reduction_lanes)
+    parameters = configuration(conv, lanes, outputs, reduction_lanes, requantization)
     parameters["EXTERNAL_WINDOW"] = 1
     parameters["WEIGHT_MEMORY"] = '"'+memories.get("weight", "auto")+'"'
     if "weight_block_depth" in memories:
@@ -268,6 +286,9 @@ wire [{ports*bits-1}:0] branch_data;
             "SOURCE_SIGNED":int(source.tensor.signed),
             "CHANNELS": channels, "TOTAL_CHANNEL_WORDS": ceil(view.tensor.shape[1]/lanes),
             "WORD_OFFSET": word_offset, "WORDS": g["words"], "DEPTH": g["depth"],
+            "CROSS_FRAME":int(g["rolling"]),
+            "ROW_WORDS":g["row_words"],"LAST_USED_COLUMN":g["last_used_column"],
+            "FIRST_COLUMN":g["first_columns"][0],
             "MEMORY_STYLE": '"'+memories.get("line", "auto")+'"',
             "ROW_ADDRESSES": packed(row_addresses, max(1,(g["depth"]-1).bit_length())),
             "COLUMN_ADDRESSES": packed(column_addresses, max(1,(g["depth"]-1).bit_length())),
@@ -278,9 +299,10 @@ wire [{ports*bits-1}:0] branch_data;
                                    ((list(item[2])+[0]*16)[:16] if item else [0]*16)],address_bits),
             "ROW_VALID": packed([row >= 0 for row in g["row_map"]],1),
             "COLUMN_VALID": packed([column >= 0 for column in g["column_map"]],1),
-            "REQUIRED_ROWS": packed(g["required_rows"],max(1,g["words"].bit_length())),
+            "REQUIRED_ROWS": packed(g["required_rows"],g["count_bits"]),
             "VALID_ROWS": packed(g["valid_rows"],1),
-            "LIMITS": packed(g["limits"],max(1,g["words"].bit_length())),
+            "LIMITS": packed(g["row_limits"],g["count_bits"]),
+            "RELEASE_COLUMNS":packed(g["release_columns"],1),
             "TABLE_COUNT":len(tables),"CHANNEL_TABLES":packed(table_indices,max(1,(len(tables)-1).bit_length())),
             "TABLES": packed([item for table in tables for item in table], branch_bits)}
         assignments = ', '.join(f'.{key}({item})' for key,item in params.items())

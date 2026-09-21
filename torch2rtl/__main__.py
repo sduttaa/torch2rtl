@@ -78,7 +78,8 @@ def main():
         _, module = load(model_path)
         graph = actors(read(module), config.get("fusions", ()), config["lanes"])
         rtl = emit(graph, config["lanes"], config["output_lanes"], config["fifo_depths"],
-                   config.get("memories"), config.get("reduction_lanes"), config.get("fifo_memories"))
+                   config.get("memories"), config.get("reduction_lanes"), config.get("fifo_memories"),
+                   requantizations=config.get("requantizations"))
         args.output.mkdir(parents=True, exist_ok=True)
         (args.output / "inference.sv").write_text(rtl)
         (args.output / "model.mlir").write_text(str(module))

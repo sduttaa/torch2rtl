@@ -20,7 +20,38 @@ def packed(values, bits):
     return f"{width}'h{result:x}"
 
 
-def configuration(actor, lanes, outputs, reduction_lanes=None):
+def threshold_table(coefficients, offset, shift, low, high, accumulator_bits):
+    """Exact inverse thresholds for a small monotone integer quantizer.
+
+    Bounds include every INT32 value, so intermediate overflow cannot turn a
+    monotone threshold into a different wrapped multiply/add result.
+    """
+    if not (0 <= shift < 64 and 0 <= high-low < 16):
+        return None
+    if any(int(coefficient) < 0 or
+           not -(1 << 63) <= -(1 << 31)*int(coefficient)+int(offset) <=
+           ((1 << 31)-1)*int(coefficient)+int(offset) < 1 << 63
+           for coefficient in coefficients):
+        return None
+    bits=max(1,(high-low).bit_length())
+    minimum=-(1 << (accumulator_bits-1))
+    maximum=(1 << (accumulator_bits-1))-1
+    result=[]
+    for coefficient in coefficients:
+        coefficient=int(coefficient)
+        for index in range(1 << bits):
+            if index > high-low:
+                threshold=maximum+1
+            elif coefficient == 0:
+                threshold=minimum if (offset >> shift) >= low+index else maximum+1
+            else:
+                numerator=((low+index) << shift)-offset
+                threshold=-((-numerator)//coefficient)
+            result.append(min(maximum+1,max(minimum,threshold)))
+    return bits,result
+
+
+def configuration(actor, lanes, outputs, reduction_lanes=None, requantization="auto"):
     reduction_lanes = lanes if reduction_lanes is None else reduction_lanes
     if actor.operation not in ("quantized_convolution", "quantized_convolution_pool"):
         raise ValueError("A fused quantized convolution is required")
@@ -87,13 +118,24 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
     padded_multiplier_bits = ceil(multiplier_bytes / reduction_lanes) * reduction_lanes * 8
     encoded_multipliers = [value & ((1 << (multiplier_bytes*8))-1) for value in multipliers]
     active_products = np.any(np.array(weights).reshape(-1, outputs, reduction_lanes) != 0, axis=0)
+    thresholds=threshold_table(multipliers,offset,shift,low,high,accumulator_bits)
+    if requantization not in ("auto","multiply","threshold"):
+        raise ValueError("Unknown requantization implementation")
+    if requantization == "threshold" and thresholds is None:
+        raise ValueError("Threshold requantization requires a small monotone integer output range")
+    if requantization == "multiply" or (requantization == "auto" and thresholds is not None and
+            thresholds[0]+1 > accumulator_bytes*ceil(multiplier_bytes/reduction_lanes)+3):
+        thresholds=None
     # A dot-product lane needs a requantizer mux only if some coefficient uses it.
     requant_products = np.zeros_like(active_products)
     for index, coefficient in enumerate(encoded_multipliers):
         for byte in range(multiplier_bytes):
             if (coefficient >> (byte*8)) & 255:
                 requant_products[index % outputs, byte % reduction_lanes] = True
-    active_products |= requant_products
+    if thresholds is None:
+        active_products |= requant_products
+    else:
+        requant_products[:]=False
     # Bound the final mathematical result before narrowing. If INT32 may wrap,
     # use its full range; if INT64 may wrap, retain all 64 bits. Intermediate
     # Horner additions may use modular arithmetic at the selected result width.
@@ -123,15 +165,18 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
                   "MULTIPLIERS": packed(encoded_multipliers, padded_multiplier_bits),
                   "PRODUCT_MASK": packed(active_products.flatten().tolist(), 1),
                   "REQUANT_MASK": packed(requant_products.flatten().tolist(), 1)}
+    if thresholds is not None:
+        bits,table=thresholds
+        parameters.update(THRESHOLD_BITS=bits,THRESHOLDS=packed(table,accumulator_bits+2))
     return parameters
 
 
-def emit(actor, lanes, outputs, weight_memory="auto", line_memory="auto", line_layout="parallel", reduction_lanes=None, weight_block_depth=None):
+def emit(actor, lanes, outputs, weight_memory="auto", line_memory="auto", line_layout="parallel", reduction_lanes=None, weight_block_depth=None, requantization="auto"):
     if weight_memory not in ("auto", "block", "distributed", "logic") or line_memory not in ("auto", "block", "distributed"):
         raise ValueError("Unknown memory mapping option")
     if line_layout not in ("parallel", "packed"):
         raise ValueError("Unknown line memory layout")
-    parameters = configuration(actor, lanes, outputs, reduction_lanes)
+    parameters = configuration(actor, lanes, outputs, reduction_lanes, requantization)
     if weight_block_depth is not None:
         if weight_memory not in ("auto","block"):
             raise ValueError("A block ROM prefix requires block weight memory")

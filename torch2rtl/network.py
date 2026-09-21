@@ -24,7 +24,7 @@ def fifo_width(source, lanes):
     return min(lanes, source.tensor.shape[1]) * storage_bits(source)
 
 
-def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=None):
+def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=None, requantization="auto"):
     memories = memories or {}
     convolution_actor = value.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_view_convolution")
     allowed = {"weight", "line", "line_layout", "weight_block_depth"} if convolution_actor else {"storage"}
@@ -36,11 +36,11 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
         raise ValueError(f"Unknown memory mapping for {value.operation}")
     if value.operation == "quantized_view_convolution":
         from .fusion import emit as emit_fused
-        return emit_fused(value, lanes, output_lanes, memories, reduction_lanes)
+        return emit_fused(value, lanes, output_lanes, memories, reduction_lanes, requantization)
     if convolution_actor:
         return convolution.emit(value, lanes, output_lanes, memories.get("weight", "auto"),
                                 memories.get("line", "auto"), memories.get("line_layout", "parallel"), reduction_lanes,
-                                memories.get("weight_block_depth"))
+                                memories.get("weight_block_depth"),requantization)
     if reduction_lanes is not None:
         raise ValueError(f"No reduction parallelism for {value.operation}")
     if value.operation == "max_pool2d":
@@ -59,13 +59,16 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
 
 
 def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None, fifo_memories=None,
-         external_modules=False):
+         external_modules=False, requantizations=None):
     memories = memories or {}
     reduction_lanes = reduction_lanes or {}
     fifo_memories = fifo_memories or {}
+    requantizations = requantizations or {}
     convolutions = {value.name for value in graph.values if value.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_view_convolution")}
     if not reduction_lanes.keys() <= convolutions:
         raise ValueError("Reduction parallelism refers to an unknown convolution")
+    if not requantizations.keys() <= convolutions:
+        raise ValueError("Requantization implementation refers to an unknown convolution")
     if not memories.keys() <= {value.name for value in graph.values if value is not graph.input}:
         raise ValueError("Memory mapping refers to an unknown actor")
     if lanes < 1 or any(value.tensor.bits != 8 or len(value.tensor.shape) != 4 or value.tensor.shape[0] != 1
@@ -117,7 +120,8 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
     for value, index in indices.items():
         if value is graph.input:
             continue
-        rtl = "" if external_modules else actor_rtl(value, lanes, output_lanes.get(value.name), memories.get(value.name), reduction_lanes.get(value.name))
+        rtl = "" if external_modules else actor_rtl(value, lanes, output_lanes.get(value.name), memories.get(value.name),
+            reduction_lanes.get(value.name),requantizations.get(value.name,"auto"))
         rtl = rtl.replace("module inference (", f"module actor_{index} (", 1)
         # All sources here are compiler-owned templates, with ordinary module
         # declarations. Keep each shared template definition exactly once.

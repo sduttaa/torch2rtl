@@ -62,5 +62,9 @@
     "lut": 128,
     "ff": 128,
     "lut_sites": 128
-  }
+  },
+  "requantizations": [
+    "multiply",
+    "threshold"
+  ]
 }

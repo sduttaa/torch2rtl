@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from .catalogue import prepare, retain
+from .catalogue import absorb_input_buffers, prepare, retain
 from .cp_sat import solve
 from .flow import characterize
 from .frontend import load
@@ -35,7 +35,7 @@ def measure(graph,catalogue,target,cache,progress=print):
     for name,options in catalogue["actor_options"].items():
         for label,spec in list(options.items()):
             rtl=actor_rtl(values[name],catalogue["lanes"],spec.get("output_lanes"),
-                          spec.get("memories"),spec.get("reduction_lanes"))
+                          spec.get("memories"),spec.get("reduction_lanes"),spec.get("requantization","auto"))
             try:
                 evidence=characterize(rtl,target,cache)
             except (ValueError,subprocess.CalledProcessError) as error:
@@ -99,11 +99,19 @@ def configuration_hints(catalogue,configuration):
             selected=spec.get("memories",{})
             keys=("weight","line","storage","line_layout","extra_rows","weight_block_depth")
             defaults={"weight":"block","line":"block","storage":"block","line_layout":"parallel","extra_rows":0}
-            memory_mismatches=sum(selected.get(key,defaults.get(key)) != memories.get(key,defaults.get(key)) for key in keys
+            def differs(key):
+                left,right=selected.get(key,defaults.get(key)),memories.get(key,defaults.get(key))
+                if key=="extra_rows" and (isinstance(left,(tuple,list)) or isinstance(right,(tuple,list))):
+                    if type(left)is int:left=(left,)*len(right)
+                    if type(right)is int:right=(right,)*len(left)
+                    return tuple(left)!=tuple(right)
+                return left!=right
+            memory_mismatches=sum(differs(key) for key in keys
                                   if not (key == "line_layout" and "extra_rows" in selected)
                                   and not (key == "extra_rows" and key not in memories))
+            extra=selected.get("extra_rows",0)
             return (mismatches,memory_mismatches,spec["resources"].get("bram",0),
-                    -selected.get("extra_rows",0),spec["resources"].get("lut_sites",spec["resources"].get("lut",0)),name)
+                    -(extra if type(extra) is int else sum(extra)),spec["resources"].get("lut_sites",spec["resources"].get("lut",0)),name)
         preferred["actor:"+actor]=min(options.items(),key=score)[0]
     depths=configuration.get("fifo_depths",{})
     for edge,options in catalogue["fifo_options"].items():
@@ -120,6 +128,28 @@ def configuration_hints(catalogue,configuration):
     return preferred
 
 
+def reuse_measured_costs(graph,catalogue,target,cache):
+    """Use exact cache hits before heuristic pruning; never synthesize here."""
+    hits=0
+    if not all(key in target for key in ("synthesis","cell_costs")):
+        catalogue["screen"]["cached_actor_costs"]=0
+        return
+    values={value.name:value for value in graph.values}
+    for name,options in catalogue["actor_options"].items():
+        for spec in options.values():
+            rtl=actor_rtl(values[name],catalogue["lanes"],spec.get("output_lanes"),
+                          spec.get("memories"),spec.get("reduction_lanes"),spec.get("requantization","auto"))
+            evidence=characterize(rtl,target,cache,cached_only=True)
+            if evidence is not None:
+                spec["estimated_resources"]=spec["resources"]
+                spec["resources"]=evidence["resources"]
+                spec["measurement"]={key:value for key,value in evidence.items() if key!="resources"}
+                hits+=1
+    catalogue["screen"]["cached_actor_costs"]=hits
+    if hits:
+        catalogue["resource_provenance"]="Exact cached actor costs where available, geometry estimates elsewhere; whole-design verification required"
+
+
 def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule",progress=print):
     directory=Path(directory)
     directory.mkdir(parents=True,exist_ok=True)
@@ -128,6 +158,12 @@ def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule
     _,module=load(model)
     graph=actors(read(module),search.get("fusions",()),search["lanes"])
     catalogue=prepare(graph,model,digest,target,search)
+    initial=json.loads(Path(search["initial_configuration"]).read_text()) if search.get("initial_configuration") else None
+    if search.get("absorb_input_fifos"):
+        if initial is None:
+            raise ValueError("Input-buffer absorption requires an initial_configuration seed")
+        initial=absorb_input_buffers(graph,catalogue,initial,target,search.get("absorbed_fifo_max_words",8))
+    reuse_measured_costs(graph,catalogue,target,cache)
     (directory/"model.mlir").write_text(str(module))
     (directory/"search.json").write_text(json.dumps(search,indent=2)+"\n")
     (directory/"target.json").write_text(json.dumps(target,indent=2)+"\n")
@@ -147,9 +183,8 @@ def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule
     progress("Screen passed; characterize retained implementations with exact cache keys")
     measure(graph,catalogue,target,cache,progress)
     prune_fifos(catalogue)
-    if search.get("initial_configuration"):
-        configuration=json.loads(Path(search["initial_configuration"]).read_text())
-        catalogue["preferred_options"]=configuration_hints(catalogue,configuration)
+    if initial is not None:
+        catalogue["preferred_options"]=configuration_hints(catalogue,initial)
     if search.get("initial_schedule"):
         catalogue["initial_schedule"]=search["initial_schedule"]
     save()

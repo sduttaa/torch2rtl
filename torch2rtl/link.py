@@ -63,7 +63,8 @@ def prepare(graph,configuration,target,cache,directory):
         if value is graph.input:
             continue
         add(f"actor_{index}",actor_rtl(value,lanes,configuration["output_lanes"].get(value.name),
-            configuration.get("memories",{}).get(value.name),configuration.get("reduction_lanes",{}).get(value.name)))
+            configuration.get("memories",{}).get(value.name),configuration.get("reduction_lanes",{}).get(value.name),
+            configuration.get("requantizations",{}).get(value.name,"auto")))
     for index,(name,source,*_) in enumerate(edges(graph)):
         width=fifo_width(source,lanes)
         parameters={"WIDTH":width,"DEPTH":configuration["fifo_depths"][name],

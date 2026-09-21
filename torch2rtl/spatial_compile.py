@@ -27,7 +27,8 @@ def compile_network(graph, catalogue, target, directory, limits=Limits(), valida
         raise ValueError("Supply a FIFO option catalogue for every edge")
     actors = {actor: {name: ActorConfig(spec.get("output_lanes"), spec.get("reduction_lanes"),
                     spec.get("memories", {}).get("line_layout", "parallel"), spec["resources"],
-                    spec.get("memories", {}).get("row_buffers", 1), spec.get("memories", {}).get("extra_rows", 0))
+                    spec.get("memories", {}).get("row_buffers", 1), spec.get("memories", {}).get("extra_rows", 0),
+                    spec.get("requantization","auto"))
                     for name, spec in options.items()} for actor, options in catalogue["actor_options"].items()}
     fifos = {edge: {name: FifoConfig(spec["depth"], spec["resources"]) for name, spec in options.items()}
              for edge, options in catalogue["fifo_options"].items()}
@@ -145,12 +146,14 @@ def compile_network(graph, catalogue, target, directory, limits=Limits(), valida
                 "lanes": catalogue["lanes"],
                 "output_lanes": {name: spec["output_lanes"] for name, spec in selected.items() if spec.get("output_lanes") is not None},
                 "reduction_lanes": {name: spec["reduction_lanes"] for name, spec in selected.items() if spec.get("reduction_lanes") is not None},
+                "requantizations": {name: spec.get("requantization","auto") for name,spec in selected.items() if spec.get("output_lanes") is not None},
                 "memories": {name: spec["memories"] for name, spec in selected.items() if "memories" in spec},
                 "fifo_depths": {edge: fifos[edge][solution.selected["fifo:"+edge]].depth for edge in fifos}}
             configuration["fifo_memories"] = {edge: spec["memory"] for edge, spec in selected_fifos.items()
                                                if spec.get("memory", "auto") != "auto"}
             rtl = emit(graph, configuration["lanes"], configuration["output_lanes"], configuration["fifo_depths"],
-                       configuration["memories"], configuration["reduction_lanes"], configuration["fifo_memories"])
+                       configuration["memories"], configuration["reduction_lanes"], configuration["fifo_memories"],
+                       requantizations=configuration["requantizations"])
             (directory / "inference.sv").write_text(rtl)
             (directory / "configuration.json").write_text(json.dumps(configuration, indent=2)+"\n")
             with gzip.open(directory / "offsets.jsonl.gz", "wt") as stream:

@@ -1,15 +1,19 @@
 # Current result
 
-The current fabric-only integer implementation uses **44 BRAMs** and sustains
-**30.2226 scheduled inferences/s at 108 MHz**, with validation Dice
+The current fabric-only integer implementation uses **35 BRAMs** and sustains
+**30.7049 scheduled inferences/s at 114.75 MHz**, with validation Dice
 **0.6500655308**. Three complete RTL frames meet their CP-SAT transfer deadlines;
 the corrected timing flow passes and produces a bitstream. This is a
 compiler/simulation/timing result, not a physical-board FPS measurement.
-Nextpnr reports a 109.218-MHz setup limit. The 35-BRAM / 50-FPS stretch goal
-remains unmet. See [the current artifacts](results/compiler-optimization/README.md).
+Nextpnr reports a 115.674-MHz setup limit. The hard 35-BRAM / 30-FPS requirement
+is met; the 50-FPS stretch goal remains unmet. See
+[the current artifacts](results/bram-reduction/README.md).
 
-The previous 46-BRAM / 30.1131-FPS implementation remains preserved in
-[the baseline artifacts](results/on-chip-inference/README.md).
+The previous [44-BRAM / 30.2226-FPS](results/compiler-optimization/README.md) and
+[46-BRAM / 30.1131-FPS](results/on-chip-inference/README.md) implementations remain
+preserved. The model is unchanged; these gains come from generic compiler and
+template changes. The final change passes 128 focused tests and 22 distinct
+mapped-module equivalence checks. [Reduction mathematics and timing findings](docs/bram-reduction.md).
 The generic compiler changes and their resource/timing evidence are documented
 in [compiler improvements](docs/compiler-improvements.md).
 

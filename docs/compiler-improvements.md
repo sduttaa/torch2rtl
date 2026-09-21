@@ -23,13 +23,16 @@ identity. Cheap geometry, period bounds and joint schedule checks precede new
 synthesis. Full-network simulation and routing are reserved for candidates with
 a demonstrated reason to improve resource use or throughput.
 
-The final timing-checked selection uses **44 BRAMs** at **30.2226 scheduled
-inferences/s**, with a 3,573,484-cycle period at 108 MHz. Nextpnr reports a
-109.218-MHz setup limit and the bitstream packs successfully. The unchanged
-model retains validation Dice 0.6500655308. This saves two BRAMs over the prior
-46-BRAM / 30.1131-FPS result; the stretch goal remains unmet. No physical-board
-FPS measurement was performed. See [the saved result and scope](../results/compiler-optimization/README.md).
-The previous accepted artifacts remain under `results/on-chip-inference`.
+The latest timing-checked selection uses **35 BRAMs** at **30.7049 scheduled
+inferences/s**, with a 3,737,193-cycle period at 114.75 MHz. Nextpnr reports a
+115.674-MHz setup limit and the bitstream packs successfully. The unchanged
+model retains validation Dice 0.6500655308. This saves nine BRAMs over the prior
+44-BRAM result while preserving the required 30 FPS. The 50-FPS stretch goal
+remains unmet. No physical-board FPS measurement was performed. See
+[the saved result and scope](../results/bram-reduction/README.md) and
+[the additional storage and timing changes](bram-reduction.md).
+The previous accepted artifacts remain under `results/compiler-optimization`
+and `results/on-chip-inference`.
 
 ## Compiler entry point
 
@@ -45,7 +48,8 @@ python -m torch2rtl optimize-network results/on-chip-inference/model.pt2 \
   --output build/compiler-optimization/screen
 ```
 
-`screen` performs geometry and actor-period analysis only. `measure` additionally
+`screen` performs geometry and actor-period analysis and reuses exact existing
+actor-cost cache hits; it never synthesizes a cache miss. `measure` additionally
 synthesizes retained actor/FIFO options, keyed by exact RTL, tool identity and
 target mapping settings. `schedule` also solves the complete joint event problem
 and emits its selected configuration and RTL. Every option remains subject to

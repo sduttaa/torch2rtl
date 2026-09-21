@@ -1,0 +1,193 @@
+{
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "validation_dice": 0.6500655307994757,
+  "accuracy_scope": "Inherited from unchanged exported model; validation split was used for checkpoint selection, not an independent test set.",
+  "period_cycles": 3737193,
+  "configured_clock_hz": 114750000,
+  "scheduled_fps": 30.704863248967875,
+  "required_clock_hz_for_thirty_fps": 112115790,
+  "reported_fmax": {
+    "clock_source.clock_out": {
+      "achieved": 115.67378997802734,
+      "constraint": 114.75786590576172
+    }
+  },
+  "bram_blocks": 35,
+  "signed_nine_bit_multiplier_slots": 91,
+  "mandatory_logic_sites": 19349,
+  "physical_board_measured": false,
+  "compiled_result_passes": true,
+  "gates": {
+    "unchanged_model_identity": true,
+    "accuracy_inherited_from_unchanged_model": true,
+    "solver_verified": true,
+    "rtl_identity": true,
+    "bit_exact_three_frames": true,
+    "all_scheduled_transfers": true,
+    "steady_frame_interval": true,
+    "mapping_equivalence": true,
+    "capacity_preflight": true,
+    "dsp_configuration_guard": true,
+    "used_pin_structural_coverage": true,
+    "route_timing": true,
+    "bitstream_packed": true,
+    "bram_requirement": true,
+    "scheduled_thirty_fps": true
+  },
+  "timing_scope": "Corrected nextpnr database with exact DSP configuration guard and structural used-pin audit; not independent timing signoff or a board measurement.",
+  "harness_scope": "Counter-source/checksum toolflow harness; no host or camera transport, no board programming.",
+  "optimization_scope": "A bounded CP-SAT resource/period search selected the architecture. Whole periodic scheduling includes source-buffer reuse and FIFO occupancy. The final template timing improvement was recharacterized and the saved schedule independently validated against every current constraint. No globally optimal architecture claim.",
+  "stretch_goal": {
+    "bram_blocks": 35,
+    "scheduled_fps": 50,
+    "achieved": false
+  },
+  "baseline_comparison": {
+    "bram_blocks": 44,
+    "scheduled_fps": 30.222606285630494,
+    "bram_reduction_percent": 20.45454545454546,
+    "fps_increase_percent": 1.5956829096062108
+  },
+  "evidence": {
+    "baseline": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/results/compiler-optimization/result.json",
+      "sha256": "407ad803d1188b7d6a274f542f89c2c15458337936b3d61ef543da64359c3448"
+    },
+    "model": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/model.pt2",
+      "sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d"
+    },
+    "schedule_offsets": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/schedule/offsets.jsonl.gz",
+      "sha256": "4a714500b7a645c608bbd051dee964d445a423fbedb97e77dd7417cec9dccc37"
+    },
+    "input_transfer_cycles": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/schedule/input_cycles.hex",
+      "sha256": "6324c7d387553882d913c261df722650e574eb38ceb6b4cf3082f5f93086664f"
+    },
+    "output_transfer_cycles": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/schedule/output_cycles.hex",
+      "sha256": "bc688ea9e6ebdf03e1bc9cf74088efaad728cff6ef9def491614109befd787a0"
+    },
+    "reference": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/reference.json",
+      "sha256": "33ca42768980ea629372ded08b8792012499d2082ef54e59163026c70607d0b4"
+    },
+    "reference_input": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/input.hex",
+      "sha256": "4b7cd3b2fd786dd69fa8beaa69a37fb0aae2cd2464249afdbdfa738cd435977c"
+    },
+    "reference_output": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/expected.hex",
+      "sha256": "4b8b25fd2394680ab56aae8239c3836f6762ee5f58a273a5350b6ca956a246d4"
+    },
+    "mapped_modules": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/linked/mapped/modules.json",
+      "sha256": "5756d1108e14b6db1a295fec083b1ebeb279ee9d94d326908493e42e2dceb577"
+    },
+    "mapped_structure": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/linked/mapped/structure.sv",
+      "sha256": "8c29e90bbfb231f5c591ff16dca7d1a64a98fbadf7dfb5e5b27c5205c1de5e71"
+    },
+    "linked_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/route/linked-flat.json",
+      "sha256": "00fe95eeecd33e978599a00a1030fe630c27a14a3f8918ca96adadb008affd28"
+    },
+    "packed_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/route/packed.json",
+      "sha256": "28fbc5978d0abbf59ea5baa59585c0ac1753e948ef5273e6703f89848965f527"
+    },
+    "routed_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/route/routed.json",
+      "sha256": "d1efd10c34270e9661408406d19f77ca499bb79fa2f6faebadfb05575f73dbeb"
+    },
+    "place_route_log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup/route/place-route.log",
+      "sha256": "7f3b78d77e75b8d999a7f0403ce210a0cb3178ee8a947e8eab60cf4d409323fd"
+    },
+    "chip_database": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin",
+      "sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+    },
+    "scoped_multiplier_timing": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/verification/vendor-timing/multiplier-timing.json",
+      "sha256": "6e5a5bf02051ecea8e486b9460daf80d834a2be5a90a7fd128e5075a719b0626"
+    },
+    "architecture_seed_candidates": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/absorbed/catalogue.json",
+      "sha256": "2dbce4708a72bd428ed3005d5821eeae25a542dc3febc0b7a8b88c63d499c354"
+    },
+    "architecture_seed_selection": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/absorbed/minimum-sites-bound.json",
+      "sha256": "09256991637294c3f7f8a71c67824acea7a74a23aee90a8a46bdedab7a680049"
+    },
+    "failed_threshold_route": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/rolling/route/place-route.log",
+      "sha256": "a0de0ed50c61358b75b60830edca06f5467b430f5e7ab58435cd5854c303ff4f"
+    },
+    "failed_weight_rom_route": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/lookahead/route/place-route.log",
+      "sha256": "a7f1a4aa2ef539e199a0b4d89de0d5a3c2d6d941fb82d8b77767c7ff62210f6c"
+    },
+    "failed_frame_control_route": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/banked/route/place-route.log",
+      "sha256": "33310d8acff6655d86eafe37d1c074800efbc6d07d14599b0f5bdcf376aff222"
+    },
+    "failed_merged_threshold_route": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/row-control/route/place-route.log",
+      "sha256": "a37f3ae37fc42db43a55f5571bb9920e923492456334866bf51e4e99407424c8"
+    },
+    "failed_placement": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/threshold-tree/route/place-route.log",
+      "sha256": "a490b2433bb5c246da753af65863f6c3888db7833ee6397ba68a422cd355d683"
+    },
+    "failed_startup_control_route": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/headroom/route/place-route.log",
+      "sha256": "9548531a8e11dff32dc86d075d1b952706f25467c5ee95e8546af41102470c31"
+    },
+    "smaller_architecture_selection": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/headroom/small-bound.json",
+      "sha256": "87e62ee78705eed70d91e73c1c469ea4e19f498cf118a64df982259d688c6778"
+    },
+    "spare_multiplier_schedule_checks": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/headroom/spare-dsp.log",
+      "sha256": "3a1b0196be2a64332f4ad8ba48e693fc90ab574f4e7ca0ee4d608e2f282e0265"
+    },
+    "oversized_threshold_candidate": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/registered-threshold/catalogue.json",
+      "sha256": "cc1aee8bf234c741722e63ca17cfc21fbef9a98679b46c48b60bd18afbcde0b4"
+    },
+    "threshold-tree-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/threshold-tree-tests.log",
+      "sha256": "f68c6f4982c0f7722cd4c08361fa98c5c54fff3bd3a52c3c76963db8c0699620"
+    },
+    "threshold-tree-boundaries.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/threshold-tree-boundaries.log",
+      "sha256": "1ec06c685873a6a3a10d6f177f830bbf4381265a07224648e174032298405207"
+    },
+    "actor-regressions.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/actor-regressions.log",
+      "sha256": "1bd731d1e33212c005a7d0c55a3f2851f244145cd0b18dfe3c8983482e8a408a"
+    },
+    "catalogue-regressions.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/catalogue-regressions.log",
+      "sha256": "563739d297da085d8a153d2728be4a9dfadeea946108d3c5de9a375c999f3d57"
+    },
+    "banked-weight-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/banked-weight-tests.log",
+      "sha256": "e1ad657ad4dbf5264915d5b298b6cea3a09d5f3819227417996e4adf330d900c"
+    },
+    "row-control-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/row-control-tests.log",
+      "sha256": "4d7c82fb27db9472c643d63048c3fe70b22f990c00c00ca8d280efaad7ee1ed3"
+    },
+    "startup-read-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup-read-tests.log",
+      "sha256": "ddb7ea594c9adaf62e70d4f3944c39659f965f5c3079666fe79a8827a05b2c78"
+    },
+    "startup-pool-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/bram-reduction/startup-pool-tests.log",
+      "sha256": "26fc1dd5f575c789151d104f63b1e0bd6cd74e091f3d7320e5fc317063894a39"
+    }
+  }
+}

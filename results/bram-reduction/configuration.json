@@ -1,0 +1,173 @@
+{
+  "model": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/model.pt2",
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "fusions": [
+    "convolution_pool",
+    "resize_concat_convolution"
+  ],
+  "lanes": 4,
+  "output_lanes": {
+    "value_84": 4,
+    "value_100": 3,
+    "value_137": 2,
+    "value_174": 1,
+    "value_190": 1,
+    "value_221": 1,
+    "value_153": 1,
+    "value_249": 3,
+    "value_265": 2,
+    "value_116": 1,
+    "value_293": 8,
+    "value_309": 2,
+    "value_322": 1
+  },
+  "reduction_lanes": {
+    "value_84": 4,
+    "value_100": 4,
+    "value_137": 4,
+    "value_174": 4,
+    "value_190": 4,
+    "value_221": 4,
+    "value_153": 1,
+    "value_249": 4,
+    "value_265": 4,
+    "value_116": 1,
+    "value_293": 2,
+    "value_309": 4,
+    "value_322": 1
+  },
+  "requantizations": {
+    "value_84": "auto",
+    "value_100": "auto",
+    "value_137": "multiply",
+    "value_174": "multiply",
+    "value_190": "multiply",
+    "value_221": "multiply",
+    "value_153": "auto",
+    "value_249": "auto",
+    "value_265": "multiply",
+    "value_116": "auto",
+    "value_293": "auto",
+    "value_309": "auto",
+    "value_322": "auto"
+  },
+  "memories": {
+    "value_84": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "parallel"
+    },
+    "value_100": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_121": {
+      "storage": "block"
+    },
+    "value_137": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_158": {
+      "storage": "block"
+    },
+    "value_174": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_190": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_221": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_153": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "parallel"
+    },
+    "value_249": {
+      "weight": "block",
+      "line": "block",
+      "extra_rows": [
+        0,
+        13
+      ]
+    },
+    "value_265": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_116": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "parallel"
+    },
+    "value_293": {
+      "weight": "logic",
+      "line": "block",
+      "extra_rows": [
+        0,
+        29
+      ]
+    },
+    "value_309": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_322": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "packed"
+    }
+  },
+  "fifo_depths": {
+    "input->value_84:0": 8,
+    "value_84->value_100:0": 8,
+    "value_100->value_121:0": 1,
+    "value_121->value_137:0": 256,
+    "value_137->value_158:0": 1,
+    "value_158->value_174:0": 128,
+    "value_174->value_190:0": 1,
+    "value_190->value_221:0": 1,
+    "value_137->value_153:0": 1,
+    "value_221->value_249:0": 1,
+    "value_153->value_249:1": 1,
+    "value_249->value_265:0": 1,
+    "value_100->value_116:0": 1,
+    "value_265->value_293:0": 1,
+    "value_116->value_293:1": 1,
+    "value_293->value_309:0": 1,
+    "value_309->value_322:0": 1,
+    "value_322->value_324:0": 1
+  },
+  "fifo_memories": {
+    "input->value_84:0": "distributed",
+    "value_84->value_100:0": "distributed",
+    "value_100->value_121:0": "block",
+    "value_121->value_137:0": "block",
+    "value_137->value_158:0": "block",
+    "value_158->value_174:0": "distributed",
+    "value_174->value_190:0": "block",
+    "value_190->value_221:0": "block",
+    "value_137->value_153:0": "block",
+    "value_221->value_249:0": "block",
+    "value_153->value_249:1": "distributed",
+    "value_249->value_265:0": "block",
+    "value_100->value_116:0": "block",
+    "value_265->value_293:0": "block",
+    "value_116->value_293:1": "distributed",
+    "value_293->value_309:0": "block",
+    "value_309->value_322:0": "block",
+    "value_322->value_324:0": "block"
+  }
+}

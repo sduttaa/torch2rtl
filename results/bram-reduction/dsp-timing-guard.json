@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "cells": 91,
+  "part": "GW2AR-LV18QN88C8/I7",
+  "speed": "C8/I7",
+  "scope": "Exact supplied primitive configuration only; other cell timing is not audited by this guard.",
+  "inputs": {
+    "build/bram-reduction/startup/route/linked-flat.json": "00fe95eeecd33e978599a00a1030fe630c27a14a3f8918ca96adadb008affd28",
+    "build/bram-reduction/startup/target.json": "93b4cdc2956877ea5270863065dd4403d9aba2846dc8959ec0de911d6ee64099",
+    "build/verification/vendor-timing/multiplier-timing.json": "6e5a5bf02051ecea8e486b9460daf80d834a2be5a90a7fd128e5075a719b0626"
+  }
+}

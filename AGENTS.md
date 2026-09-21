@@ -23,3 +23,4 @@
 
 - Current user acceptance threshold is validation Dice >= 0.65. Prior baseline-matching accuracy requirements are superseded. Prioritize the still-required 30 sustained FPS with fabric-only weights and activations.
 - Batch expensive tests, synthesis and routing after substantive changes. Use cached resource data, schedule analysis and focused checks between builds; do not repeat full validation for minor edits. The current priority is a credible 30-FPS result within hours.
+- The current hard resource requirement is at most 35 BRAM blocks while retaining at least 30 sustained scheduled FPS and validation Dice >= 0.65. The prior 44-BRAM result is a baseline, not completion of this requirement.

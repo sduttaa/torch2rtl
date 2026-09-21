@@ -1,6 +1,8 @@
 """Build bounded, generic actor/FIFO catalogues before expensive tool runs."""
 
 from collections import Counter
+from copy import deepcopy
+import json
 from functools import lru_cache
 from itertools import product
 from math import ceil, prod
@@ -49,7 +51,7 @@ def profile(value,lanes,spec,target):
         if value.operation == "quantized_view_convolution":
             from .fusion import materialized
             value=materialized(value)
-        p=configuration(value,lanes,spec["output_lanes"],spec.get("reduction_lanes",lanes))
+        p=configuration(value,lanes,spec["output_lanes"],spec.get("reduction_lanes",lanes),spec.get("requantization","auto"))
         mask=p["PRODUCT_MASK"].split("'h")[1]
         multiply=[mode for mode in target["multiplier_modes"]
                   if mode["input_bits"] >= 9 and mode.get("signed",False)]
@@ -62,7 +64,8 @@ def profile(value,lanes,spec,target):
         dot=p["KERNEL_H"]*p["KERNEL_W"]*ceil((p["INPUT_CHANNELS"]//p["GROUPS"])/p["REDUCTION_LANES"])
         pool=p["POOL_H"]*p["POOL_W"]
         extra=int(p["REDUCTION_LANES"]>1)
-        tile=pool*(dot+2+extra)+p["ACCUMULATOR_BYTES"]*ceil(p["MULTIPLIER_BYTES"]/p["REDUCTION_LANES"])+3+int(pool>1)
+        quantizer=p["THRESHOLD_BITS"]+1 if p.get("THRESHOLD_BITS") else p["ACCUMULATOR_BYTES"]*ceil(p["MULTIPLIER_BYTES"]/p["REDUCTION_LANES"])+3
+        tile=pool*(dot+2+extra)+quantizer+int(pool>1)
         release=pool*(dot+2)+(pool-1)*extra-2
         if original.operation == "quantized_view_convolution":
             period=prod(value.tensor.shape[2:])*(blocks*tile+1)
@@ -106,12 +109,24 @@ def candidates(value,lanes,search):
         reductions=[n for n in search["reduction_lanes"] if n > 0 and lanes%n==0]
         layouts=("shared",) if value.operation == "quantized_view_convolution" else search["line_layouts"]
         extra_rows=search.get("extra_rows",[0]) if layouts == ("shared",) else [0]
-        for output,reduction,layout,weight,line,extra in product(outputs,reductions,layouts,
-                search["weight_memories"],search.get("line_memories",["block"]),extra_rows):
+        if layouts == ("shared",) and search.get("source_buffer_depths"):
+            from .fusion import geometry
+            per_input=[]
+            for g in geometry(value,lanes):
+                sizes=set(extra_rows)
+                sizes.update(max(0,depth//g["row_words"]-g["rows"]) for depth in search["source_buffer_depths"])
+                per_input.append(sorted(sizes))
+            extra_rows=list(product(*per_input))
+        for output,reduction,layout,weight,line,extra,requantization in product(outputs,reductions,layouts,
+                search["weight_memories"],search.get("line_memories",["block"]),extra_rows,
+                search.get("requantizations",["auto"])):
             memories={"weight":weight,"line":line}
             memories.update({"extra_rows":extra} if layout == "shared" else {"line_layout":layout})
-            yield f"out{output}_reduce{reduction}_{layout}_{weight}_{line}_rows{extra}",{
-                "output_lanes":output,"reduction_lanes":reduction,"memories":memories}
+            suffix="" if requantization=="auto" else "_"+requantization
+            row_name=str(extra) if type(extra) is int else "-".join(map(str,extra))
+            yield f"out{output}_reduce{reduction}_{layout}_{weight}_{line}_rows{row_name}"+suffix,{
+                "output_lanes":output,"reduction_lanes":reduction,"memories":memories,
+                "requantization":requantization}
     elif value.operation == "__interpolate.size_list_scale_list":
         for rows,style in product(search["row_buffers"],search.get("storage_memories",["block"])):
             yield f"rows{rows}_{style}",{"memories":{"row_buffers":rows,"storage":style}}
@@ -197,6 +212,69 @@ def prepare(graph,model,model_hash,target,search):
                   "scope":"Heuristic catalogue screen; joint CP-SAT optimality applies only to retained options"}}
 
 
+def absorb_input_buffers(graph,catalogue,configuration,target,maximum_fifo_depth=8):
+    """Offer a bounded storage-retiming candidate derived from an input seed.
+
+    A view already stores a random-access source window. Move a large incoming
+    queue into that storage, rounding its capacity down to whole source rows.
+    This is a search restriction, never a feasibility claim: CP-SAT must check
+    the resulting lifetimes, frame boundaries, and remaining small FIFOs.
+    """
+    from .fusion import geometry
+    if configuration.get("model_sha256") != catalogue["model_sha256"]:
+        raise ValueError("Storage-retiming seed belongs to different model contents")
+    if type(maximum_fifo_depth) is not int or maximum_fifo_depth<1:
+        raise ValueError("Retimed FIFO depth limit must be positive")
+    hint=deepcopy(configuration)
+    channels=edges(graph)
+    absorbed={}
+    for value in graph.values:
+        if value.operation != "quantized_view_convolution":
+            continue
+        base=geometry(value,catalogue["lanes"])
+        existing=geometry(value,catalogue["lanes"],
+                          configuration.get("memories",{}).get(value.name,{}).get("extra_rows",0))
+        inputs={}
+        for edge,source,destination,port in channels:
+            if destination is not value:
+                continue
+            old=edge if edge in configuration["fifo_depths"] else None
+            if old is None:
+                matches=[name for name in configuration["fifo_depths"] if name.split("->")[0]==source.name]
+                if len(matches)==1:old=matches[0]
+            depth=configuration["fifo_depths"].get(old,1)
+            capacity=max(depth,existing[port]["depth"])
+            queued=depth>base[port]["depth"] and depth>=2*base[port]["row_words"]
+            retained=existing[port]["rows"]>=2*base[port]["rows"]
+            if queued or retained:
+                inputs[port]=capacity//base[port]["row_words"]-base[port]["rows"]
+                absorbed[edge]={"source_rows":base[port]["rows"]+inputs[port],"previous_fifo_depth":depth}
+        if not inputs:
+            continue
+        def rows(extra):
+            result=[extra]*len(base) if type(extra)is int else list(extra)
+            for port,count in inputs.items():result[port]=count
+            return result
+        variants={}
+        for label,old in catalogue["actor_options"][value.name].items():
+            spec={key:deepcopy(old[key]) for key in ("output_lanes","reduction_lanes","memories","requantization") if key in old}
+            spec["memories"]["extra_rows"]=rows(spec["memories"].get("extra_rows",0))
+            signature=json.dumps(spec,sort_keys=True)
+            if signature not in variants:
+                variants[signature]=(label+"_buffered",{**spec,**profile(value,catalogue["lanes"],spec,target)})
+        catalogue["actor_options"][value.name]=dict(variants.values())
+        memories=hint.setdefault("memories",{}).setdefault(value.name,{})
+        memories["extra_rows"]=rows(memories.get("extra_rows",0))
+    for edge in absorbed:
+        options={name:spec for name,spec in catalogue["fifo_options"][edge].items() if spec["depth"]<=maximum_fifo_depth}
+        if not options:
+            raise ValueError("Include small FIFO depths when requesting input-buffer absorption")
+        catalogue["fifo_options"][edge]=options
+        hint["fifo_depths"][edge]=max(spec["depth"] for spec in options.values())
+    catalogue["storage_retiming"]={"absorbed_edges":absorbed,"scope":"Candidate only; complete schedule verification required"}
+    return hint
+
+
 def retain(catalogue,solution,limit,period_slack=1.25):
     """Keep a globally resource-balanced seed plus neighboring implementations."""
     for actor,options in catalogue["actor_options"].items():
@@ -210,8 +288,9 @@ def retain(catalogue,solution,limit,period_slack=1.25):
             return (spec.get("output_lanes",0),spec.get("reduction_lanes",0))
         def memory_key(name):
             spec=options[name]
+            extra=spec.get("memories",{}).get("extra_rows",0)
             return (spec["resources"].get("bram",0),spec["resources"].get("lut",0),
-                    -spec.get("memories",{}).get("extra_rows",0),
+                    -(extra if type(extra) is int else sum(extra)),
                     -spec.get("memories",{}).get("row_buffers",1),
                     spec["period_bound"],name)
         eligible=[name for name,spec in options.items()
@@ -227,7 +306,7 @@ def retain(catalogue,solution,limit,period_slack=1.25):
                 shape=compute(options[min(eligible,key=order)])
                 if shape not in shapes:
                     shapes.append(shape)
-        keys=[]
+        keys=[selected]
         for shape in shapes:
             matched=[name for name in eligible if compute(options[name]) == shape]
             # Cross each compute choice with storage choices. A logic-only
@@ -236,9 +315,9 @@ def retain(catalogue,solution,limit,period_slack=1.25):
                 group=[name for name in matched if options[name].get("memories",{}).get("weight") == style
                        and "weight_block_depth" not in options[name].get("memories",{})]
                 if group:
-                    keys.append(min(group,key=memory_key))
-        if selected not in keys:
-            keys.append(selected)
+                    for quantizer in sorted({options[name].get("requantization","auto") for name in group}):
+                        candidate=min((name for name in group if options[name].get("requantization","auto")==quantizer),key=memory_key)
+                        if candidate not in keys:keys.append(candidate)
         hybrids=[name for name,spec in options.items() if name not in keys and compute(spec) in shapes
                  and spec.get("base_option") in options and
                  spec["resources"].get("bram",0) < options[spec["base_option"]]["resources"].get("bram",0)]
