@@ -418,11 +418,16 @@ def pooled_convolutions(graph):
     return replace(graph, replacements)
 
 
-def actors(graph, fusions=()):
-    if set(fusions) - {"convolution_pool"}:
+def actors(graph, fusions=(), lanes=1):
+    if set(fusions) - {"convolution_pool", "resize_concat_convolution"}:
         raise ValueError("Unknown optional fusion")
     result = byte_comparisons(quantized_concatenations(quantized_convolutions(window_convolutions(graph))))
-    return pooled_convolutions(result) if "convolution_pool" in fusions else result
+    if "convolution_pool" in fusions:
+        result = pooled_convolutions(result)
+    if "resize_concat_convolution" in fusions:
+        from .fusion import fuse
+        result = fuse(result, lanes)
+    return result
 
 
 def byte_comparisons(graph):
@@ -453,7 +458,13 @@ def evaluate(graph, image, trace=None):
         if value is graph.input:
             continue
         args = constant_argument(mapped(value.args, lambda parent: values[parent]))
-        if value.operation in ("quantized_convolution", "quantized_convolution_pool"):
+        if value.operation == "quantized_view_convolution":
+            from .fusion import evaluate_view
+            inputs, view, weight, bias, stride, padding, dilation, groups, multiplier, offset, shift, low, high = args
+            data = evaluate_view(inputs, view)
+            accumulator = integer_convolution(data.to(torch.int32), weight, bias, stride, padding, dilation, groups)
+            result = ((accumulator.to(torch.int64)*multiplier[None, :, None, None]+offset) >> shift).clamp(low, high).to(dtype(value.tensor))
+        elif value.operation in ("quantized_convolution", "quantized_convolution_pool"):
             data, weight, bias, stride, padding, dilation, groups, multiplier, offset, shift, low, high = args[:12]
             accumulator = integer_convolution(data.to(torch.int32), weight, bias, stride, padding, dilation, groups)
             result = ((accumulator.to(torch.int64) * multiplier[None, :, None, None] + offset) >> shift).clamp(low, high).to(dtype(value.tensor))

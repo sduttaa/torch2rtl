@@ -7,13 +7,21 @@ from dataclasses import dataclass, field
 class Option:
     name: str
     resources: dict[str, int] = field(default_factory=dict)
+    penalty: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class ChoiceDelay:
+    """An edge's delay, present only for the listed options of one choice."""
+    choice: str
+    values: tuple[tuple[str, int], ...]
 
 
 @dataclass(frozen=True, slots=True)
 class Dependency:
     before: str
     after: str
-    delay: int = 0
+    delay: int | ChoiceDelay = 0
     frames: int = 0
     when: tuple[tuple[str, str], ...] = ()
 
@@ -46,6 +54,9 @@ class Problem:
     anchor: str
     fixed_resources: dict[str, int] = field(default_factory=dict)
     resource_weights: dict[str, int] = field(default_factory=dict)
+    preferred_options: dict[str, str] = field(default_factory=dict)
+    preferred_period: int | None = None
+    preferred_offsets: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -71,14 +82,24 @@ class Solution:
 
 def validate(problem):
     names = set(problem.events)
+    option_names = {choice: {option.name for option in options} for choice,options in problem.choices.items()}
+    validated_delays=set()
     if len(names) != len(problem.events) or problem.anchor not in names:
         raise ValueError("Events must be unique and contain the anchor")
     if problem.period_limit < 1 or problem.offset_limit < 0:
         raise ValueError("Invalid schedule bounds")
+    if problem.preferred_period is not None and (type(problem.preferred_period) is not int or
+                                                not 1 <= problem.preferred_period <= problem.period_limit):
+        raise ValueError("Preferred period must lie within the search bounds")
+    if not problem.preferred_offsets.keys() <= names or any(type(value) is not int or not 0 <= value <= problem.offset_limit
+                                                           for value in problem.preferred_offsets.values()):
+        raise ValueError("Preferred event offsets must lie within the search bounds")
     for choice, options in problem.choices.items():
         if not options or len({o.name for o in options}) != len(options):
             raise ValueError(f"Empty or duplicate options: {choice}")
         for option in options:
+            if type(option.penalty) is not int or option.penalty < 0:
+                raise ValueError("Option penalties must be nonnegative integers")
             if any(type(v) is not int or v < 0 for v in option.resources.values()):
                 raise ValueError("Resource costs must be nonnegative integers")
             if not option.resources.keys() <= problem.budgets.keys():
@@ -93,14 +114,27 @@ def validate(problem):
 
     def guard(when):
         for choice, option in when:
-            if choice not in problem.choices or option not in {o.name for o in problem.choices[choice]}:
+            if choice not in option_names or option not in option_names[choice]:
                 raise ValueError(f"Unknown option guard: {choice}/{option}")
+
+    guard(tuple(problem.preferred_options.items()))
 
     for dependency in problem.dependencies:
         if dependency.before not in names or dependency.after not in names:
             raise ValueError("Dependency references an unknown event")
-        if dependency.delay < 0 or dependency.frames < 0:
+        if dependency.frames < 0:
             raise ValueError("Monotone contracts require nonnegative delays and frame advances")
+        if isinstance(dependency.delay,ChoiceDelay):
+            value=dependency.delay
+            if value not in validated_delays:
+                if not value.values or len(dict(value.values)) != len(value.values):
+                    raise ValueError("Choice delays must have distinct, nonempty options")
+                if any(type(delay) is not int or delay < 0 for _,delay in value.values):
+                    raise ValueError("Monotone contracts require nonnegative delays")
+                guard(tuple((value.choice,option) for option,_ in value.values))
+                validated_delays.add(value)
+        elif type(dependency.delay) is not int or dependency.delay < 0:
+            raise ValueError("Monotone contracts require nonnegative delays")
         guard(dependency.when)
     for fifo in problem.fifos:
         if type(fifo.order_transfers) is not bool:
@@ -123,6 +157,20 @@ def validate(problem):
         guard(fifo.when)
 
 
+def resource_totals(problem, selected):
+    """Recompute costs from the current catalogue, including reused schedules."""
+    if set(selected) != set(problem.choices):
+        raise ValueError("Solver returned missing choices")
+    usage = dict(problem.fixed_resources)
+    for name, options in problem.choices.items():
+        matches = [option for option in options if option.name == selected[name]]
+        if len(matches) != 1:
+            raise ValueError("Solver returned an unknown choice")
+        for resource, count in matches[0].resources.items():
+            usage[resource] = usage.get(resource, 0)+count
+    return {resource: usage.get(resource, 0) for resource in problem.budgets}
+
+
 def validate_solution(problem, solution):
     """Check a complete schedule against the original solver-independent model."""
     if type(solution.period) is not int or not 1 <= solution.period <= problem.period_limit:
@@ -132,18 +180,10 @@ def validate_solution(problem, solution):
         raise ValueError("Solver returned missing events or a displaced anchor")
     if any(type(offset) is not int or not 0 <= offset <= problem.offset_limit for offset in solution.offsets.values()):
         raise ValueError("Solver returned an offset outside the search bounds")
-    if set(solution.selected) != set(problem.choices):
-        raise ValueError("Solver returned missing choices")
-    usage = dict(problem.fixed_resources)
-    for name, options in problem.choices.items():
-        selected = [option for option in options if option.name == solution.selected[name]]
-        if len(selected) != 1:
-            raise ValueError("Solver returned an unknown choice")
-        for resource, count in selected[0].resources.items():
-            usage[resource] = usage.get(resource, 0)+count
+    usage = resource_totals(problem, solution.selected)
     if any(usage.get(resource, 0) > budget for resource, budget in problem.budgets.items()):
         raise ValueError("Solver returned a resource overrun")
-    if solution.resources != {resource: usage.get(resource, 0) for resource in problem.budgets}:
+    if solution.resources != usage:
         raise ValueError("Solver resource totals disagree with selected choices")
 
     def active(when):
@@ -155,7 +195,12 @@ def validate_solution(problem, solution):
 
     for edge in problem.dependencies:
         if active(edge.when):
-            check(edge.before, edge.after, edge.delay, edge.frames)
+            delay=edge.delay
+            if isinstance(delay,ChoiceDelay):
+                delay=dict(delay.values).get(solution.selected[delay.choice])
+                if delay is None:
+                    continue
+            check(edge.before, edge.after, delay, edge.frames)
     for fifo in problem.fifos:
         if not active(fifo.when):
             continue
@@ -171,3 +216,35 @@ def validate_solution(problem, solution):
             check(write, read, delay)
             frame, word = divmod(index-depth, count)
             check(fifo.reads[word], write, fifo.replacement_delay, -frame)
+
+
+def fifo_occupancy(problem,solution):
+    """Periodic payload occupancy, including values carried across inferences.
+
+    Ordered slot-reuse constraints still govern registered replacement timing;
+    this report explains storage use and does not replace those constraints.
+    """
+    result={}
+    period=solution.period
+    for fifo in problem.fifos:
+        if any(solution.selected[group] != option for group,option in fifo.when):
+            continue
+        deltas={}
+        live=0
+        lifetime=0
+        for write,read in zip(fifo.writes,fifo.reads):
+            first,last=solution.offsets[write],solution.offsets[read]
+            live+=last//period-first//period
+            lifetime+=last-first
+            deltas[first%period]=deltas.get(first%period,0)+1
+            deltas[last%period]=deltas.get(last%period,0)-1
+        peak=live
+        for cycle,change in sorted(deltas.items()):
+            live+=change
+            peak=max(peak,live)
+        depth=fifo.depths[solution.selected[fifo.choice]]
+        if peak>depth:
+            raise ValueError("Periodic FIFO occupancy exceeds selected storage")
+        result[fifo.choice]={"depth":depth,"peak_live_words":peak,
+                             "mean_live_words":lifetime/period}
+    return result

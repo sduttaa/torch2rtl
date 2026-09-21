@@ -26,12 +26,30 @@ def main():
     network_parser = sub.add_parser("emit-network", help="Emit spatial RTL from explicit actor/FIFO choices; does not optimize or prove fit")
     network_parser.add_argument("--configuration", type=Path, required=True)
     network_parser.add_argument("--output", type=Path, required=True)
+    network_parser.add_argument("--mapped-target", type=Path, help="Also link exactly characterized physical actors")
+    network_parser.add_argument("--cache", type=Path)
     schedule_parser = sub.add_parser("schedule-network", help="Jointly select spatial actors and FIFOs from an explicit cost catalogue")
     schedule_parser.add_argument("--catalogue", type=Path, required=True)
     schedule_parser.add_argument("--target", type=Path, required=True)
     schedule_parser.add_argument("--seconds", type=float, default=30)
+    schedule_parser.add_argument("--validate-only", action="store_true", help="Recheck the catalogue's initial_schedule against current costs and contracts without a new event search")
     schedule_parser.add_argument("--output", type=Path, required=True)
+    optimize_parser = sub.add_parser("optimize-network", help="Generate, characterize and jointly select generic spatial implementations")
+    optimize_parser.add_argument("model", type=Path)
+    optimize_parser.add_argument("--target", type=Path, required=True)
+    optimize_parser.add_argument("--search", type=Path, required=True)
+    optimize_parser.add_argument("--cache", type=Path, required=True)
+    optimize_parser.add_argument("--stage", choices=("screen","measure","schedule"), default="schedule")
+    optimize_parser.add_argument("--seconds", type=float, default=30)
+    optimize_parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.command == "optimize-network":
+        from .optimize import optimize
+        from .schedule import Limits
+        report = optimize(args.model,json.loads(args.target.read_text()),json.loads(args.search.read_text()),
+                          args.output,args.cache,Limits(seconds=args.seconds),args.stage)
+        print(json.dumps(report,indent=2))
+        return
     if args.command == "schedule-network":
         from .graph import actors, read
         from .schedule import Limits
@@ -43,8 +61,8 @@ def main():
             raise ValueError("Catalogue refers to different model contents")
         catalogue["model_sha256"] = model_hash
         _, module = load(model_path)
-        report = compile_network(actors(read(module), catalogue.get("fusions", ())), catalogue, json.loads(args.target.read_text()), args.output,
-                                 Limits(seconds=args.seconds))
+        report = compile_network(actors(read(module), catalogue.get("fusions", ()), catalogue["lanes"]), catalogue, json.loads(args.target.read_text()), args.output,
+                                 Limits(seconds=args.seconds), validate_only=args.validate_only)
         (args.output / "model.mlir").write_text(str(module))
         print(json.dumps(report, indent=2))
         return
@@ -58,7 +76,7 @@ def main():
         if "model_sha256" in config and config["model_sha256"] != model_hash:
             raise ValueError("Configuration refers to different model contents")
         _, module = load(model_path)
-        graph = actors(read(module), config.get("fusions", ()))
+        graph = actors(read(module), config.get("fusions", ()), config["lanes"])
         rtl = emit(graph, config["lanes"], config["output_lanes"], config["fifo_depths"],
                    config.get("memories"), config.get("reduction_lanes"), config.get("fifo_memories"))
         args.output.mkdir(parents=True, exist_ok=True)
@@ -73,6 +91,11 @@ def main():
                             for name, source, *_ in edges(graph)],
                   "solver_verified": False, "hardware_fit_verified": False, "timing_verified": False}
         (args.output / "emission.json").write_text(json.dumps(report, indent=2) + "\n")
+        if args.mapped_target:
+            if args.cache is None:
+                raise ValueError("Mapped emission requires an explicit characterization cache")
+            from .link import prepare
+            prepare(graph,config,json.loads(args.mapped_target.read_text()),args.cache,args.output/"mapped")
         print(f"Explicit-configuration RTL emitted to {args.output.resolve()}; scheduling, fit and timing remain to be checked")
         return
     target = json.loads(args.target.read_text())

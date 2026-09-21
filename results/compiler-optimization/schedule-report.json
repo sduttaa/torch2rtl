@@ -1,0 +1,209 @@
+{
+  "resource_preflight": {
+    "status": "OPTIMAL",
+    "period": 1,
+    "selected": {
+      "actor:value_84": "out8_reduce2_parallel_logic_block_rows0",
+      "actor:value_100": "out3_reduce4_packed_logic_block_rows0",
+      "actor:value_121": "block",
+      "actor:value_137": "out2_reduce4_packed_block_block_rows0",
+      "actor:value_158": "block",
+      "actor:value_174": "out1_reduce4_packed_block_block_rows0",
+      "actor:value_190": "out1_reduce4_packed_block_block_rows0",
+      "actor:value_221": "out1_reduce4_packed_block_block_rows0",
+      "actor:value_153": "out1_reduce1_parallel_logic_block_rows0",
+      "actor:value_249": "out3_reduce4_shared_block_block_rows1",
+      "actor:value_265": "out2_reduce4_packed_block_block_rows0",
+      "actor:value_116": "out1_reduce1_parallel_logic_block_rows0",
+      "actor:value_293": "out4_reduce4_shared_block_block_rows1",
+      "actor:value_309": "out2_reduce4_packed_logic_block_rows0",
+      "actor:value_322": "out1_reduce1_packed_logic_block_rows0",
+      "actor:value_324": "stream",
+      "fifo:input->value_84:0": "depth8_distributed",
+      "fifo:value_84->value_100:0": "depth8_distributed",
+      "fifo:value_100->value_121:0": "depth1_block",
+      "fifo:value_121->value_137:0": "depth256_block",
+      "fifo:value_137->value_158:0": "depth1_block",
+      "fifo:value_158->value_174:0": "depth128_distributed",
+      "fifo:value_174->value_190:0": "depth1_block",
+      "fifo:value_190->value_221:0": "depth1_block",
+      "fifo:value_137->value_153:0": "depth1_block",
+      "fifo:value_221->value_249:0": "depth1_block",
+      "fifo:value_153->value_249:1": "depth2048_block",
+      "fifo:value_249->value_265:0": "depth1_block",
+      "fifo:value_100->value_116:0": "depth1_block",
+      "fifo:value_265->value_293:0": "depth1_block",
+      "fifo:value_116->value_293:1": "depth8192_block",
+      "fifo:value_293->value_309:0": "depth1_block",
+      "fifo:value_309->value_322:0": "depth1_block",
+      "fifo:value_322->value_324:0": "depth1_block"
+    },
+    "resources": {
+      "lut": 17270,
+      "ff": 7839,
+      "bram": 44,
+      "dsp": 95,
+      "lutram_bits": 14464,
+      "lut_sites": 18851
+    },
+    "period_bound": 1.0,
+    "seconds": 0.0022840830497443676,
+    "period_limit": 1,
+    "offset_limit": 0,
+    "resource_optimal": true
+  },
+  "solver_verified": true,
+  "hardware_fit_verified": false,
+  "timing_verified": false,
+  "resource_evidence": "Input catalogue costs; whole-design synthesis and routing remain required",
+  "status": "OPTIMAL",
+  "stage": "joint_schedule",
+  "event_count": 1985277,
+  "actor_dependency_count": 2969528,
+  "construction_seconds": 3.2943902499973774,
+  "solution": {
+    "status": "OPTIMAL",
+    "period": 3573484,
+    "selected": {
+      "actor:value_84": "out8_reduce2_parallel_logic_block_rows0",
+      "actor:value_100": "out3_reduce4_packed_logic_block_rows0",
+      "actor:value_121": "block",
+      "actor:value_137": "out2_reduce4_packed_block_block_rows0",
+      "actor:value_158": "block",
+      "actor:value_174": "out1_reduce4_packed_block_block_rows0",
+      "actor:value_190": "out1_reduce4_packed_block_block_rows0",
+      "actor:value_221": "out1_reduce4_packed_block_block_rows0",
+      "actor:value_153": "out1_reduce1_parallel_logic_block_rows0",
+      "actor:value_249": "out3_reduce4_shared_block_block_rows1",
+      "actor:value_265": "out2_reduce4_packed_block_block_rows0",
+      "actor:value_116": "out1_reduce1_parallel_logic_block_rows0",
+      "actor:value_293": "out4_reduce4_shared_block_block_rows1",
+      "actor:value_309": "out2_reduce4_packed_logic_block_rows0",
+      "actor:value_322": "out1_reduce1_packed_logic_block_rows0",
+      "actor:value_324": "stream",
+      "fifo:input->value_84:0": "depth8_distributed",
+      "fifo:value_84->value_100:0": "depth8_distributed",
+      "fifo:value_100->value_121:0": "depth1_block",
+      "fifo:value_121->value_137:0": "depth256_block",
+      "fifo:value_137->value_158:0": "depth1_block",
+      "fifo:value_158->value_174:0": "depth128_distributed",
+      "fifo:value_174->value_190:0": "depth1_block",
+      "fifo:value_190->value_221:0": "depth1_block",
+      "fifo:value_137->value_153:0": "depth1_block",
+      "fifo:value_221->value_249:0": "depth1_block",
+      "fifo:value_153->value_249:1": "depth2048_block",
+      "fifo:value_249->value_265:0": "depth1_block",
+      "fifo:value_100->value_116:0": "depth1_block",
+      "fifo:value_265->value_293:0": "depth1_block",
+      "fifo:value_116->value_293:1": "depth8192_block",
+      "fifo:value_293->value_309:0": "depth1_block",
+      "fifo:value_309->value_322:0": "depth1_block",
+      "fifo:value_322->value_324:0": "depth1_block"
+    },
+    "resources": {
+      "lut": 17270,
+      "ff": 7839,
+      "bram": 44,
+      "dsp": 95,
+      "lutram_bits": 14464,
+      "lut_sites": 18851
+    },
+    "period_bound": 3573484.0,
+    "seconds": 28.399548083078116,
+    "period_limit": 6000000,
+    "offset_limit": 20000000,
+    "resource_optimal": true
+  },
+  "fifo_occupancy": {
+    "fifo:input->value_84:0": {
+      "depth": 8,
+      "peak_live_words": 8,
+      "mean_live_words": 7.485839589599394
+    },
+    "fifo:value_84->value_100:0": {
+      "depth": 8,
+      "peak_live_words": 8,
+      "mean_live_words": 7.13046203648876
+    },
+    "fifo:value_100->value_121:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.027085611688760884
+    },
+    "fifo:value_121->value_137:0": {
+      "depth": 256,
+      "peak_live_words": 256,
+      "mean_live_words": 33.92819612456639
+    },
+    "fifo:value_137->value_158:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.10033961254618742
+    },
+    "fifo:value_158->value_174:0": {
+      "depth": 128,
+      "peak_live_words": 128,
+      "mean_live_words": 61.02542560705463
+    },
+    "fifo:value_174->value_190:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.27235185605980045
+    },
+    "fifo:value_190->value_221:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.05463827458021359
+    },
+    "fifo:value_137->value_153:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.009026485077308308
+    },
+    "fifo:value_221->value_249:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.01412738940484972
+    },
+    "fifo:value_153->value_249:1": {
+      "depth": 2048,
+      "peak_live_words": 1326,
+      "mean_live_words": 1089.5717901633252
+    },
+    "fifo:value_249->value_265:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.026876292156338185
+    },
+    "fifo:value_100->value_116:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.027079455231924923
+    },
+    "fifo:value_265->value_293:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.009026485077308308
+    },
+    "fifo:value_116->value_293:1": {
+      "depth": 8192,
+      "peak_live_words": 7323,
+      "mean_live_words": 6623.01290337385
+    },
+    "fifo:value_293->value_309:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.033109984541696565
+    },
+    "fifo:value_309->value_322:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.027234486008612325
+    },
+    "fifo:value_322->value_324:0": {
+      "depth": 1,
+      "peak_live_words": 1,
+      "mean_live_words": 0.009026485077308308
+    }
+  }
+}

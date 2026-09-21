@@ -27,6 +27,8 @@ def check_schedule(directory, graph, lanes, actor_options, fifo_depths=(1, 2, 8)
     memories = {name: {"line_layout": config.line_layout} for name, config in choices.items() if config.output_lanes is not None}
     memories.update({value.name: {"row_buffers": choices[value.name].row_buffers} for value in graph.values
                      if value.operation == "__interpolate.size_list_scale_list"})
+    memories.update({value.name: {"extra_rows": choices[value.name].extra_rows} for value in graph.values
+                     if value.operation == "quantized_view_convolution"})
     depths = {name: fifo_options[name][solution.selected["fifo:"+name]].depth for name in fifo_options}
     rtl = emit(graph, lanes, outputs, depths, memories, reductions)
     torch.manual_seed(81)

@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "cells": 95,
+  "part": "GW2AR-LV18QN88C8/I7",
+  "speed": "C8/I7",
+  "scope": "Exact supplied primitive configuration only; other cell timing is not audited by this guard.",
+  "inputs": {
+    "build/compiler-optimization/rate-headroom-route/linked-flat.json": "2b3bab57a16755917b60ed9c1996f15e180719fece2f26b0fab0d5945014f07e",
+    "build/compiler-optimization/rate-catalogue/headroom-target.json": "0c9ec30ba91067908881839aa05b27762a9aa67aeff0fddcf4b909b845dbb3da",
+    "build/verification/vendor-timing/multiplier-timing.json": "6e5a5bf02051ecea8e486b9460daf80d834a2be5a90a7fd128e5075a719b0626"
+  }
+}

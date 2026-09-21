@@ -6,36 +6,15 @@ omit those LUTs. This is a necessary lower bound, not a placement guarantee.
 """
 
 import argparse
-from collections import Counter
 import hashlib
 import json
 from pathlib import Path
+import sys
+
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from torch2rtl.packing import additional_luts
 
 
-def additional_luts(design):
-    unpaired = Counter()
-    duplicates = 0
-    for module in design["modules"].values():
-        cells = module.get("cells", {})
-        drivers = {}
-        for name, cell in cells.items():
-            for port, bits in cell["connections"].items():
-                if cell["port_directions"].get(port) == "output":
-                    for bit in bits:
-                        drivers[bit] = (name, port, cell["type"])
-        shared = Counter()
-        for cell in cells.values():
-            if not cell["type"].startswith("DFF"):
-                continue
-            bit = cell["connections"]["D"][0]
-            name, port, kind = drivers.get(bit, (None, None, "undriven_or_constant"))
-            if (kind in {"LUT1", "LUT2", "LUT3", "LUT4"} and port == "F") or (kind == "ALU" and port == "SUM"):
-                shared[name, port] += 1
-            else:
-                unpaired[kind] += 1
-        # One physical LUT/ALU output can share its site with only one FF.
-        duplicates += sum(max(0, count - 1) for count in shared.values())
-    return dict(unpaired), duplicates
 
 
 if __name__ == "__main__":

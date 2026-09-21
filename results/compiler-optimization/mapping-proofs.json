@@ -1,0 +1,128 @@
+{
+  "passed": true,
+  "distinct_modules": 24,
+  "instances": 34,
+  "proofs": {
+    "497e6468a64e8040285c67e301cdf1fdb05ffbf8427298dd2c2d3495531f1e8e": {
+      "module": "actor_1",
+      "multipliers": 16,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_1"
+    },
+    "f4bfbb832f42ced1b33dd7c9b4aeb7f02913084d561ffd918a50fe7c1682d554": {
+      "module": "actor_2",
+      "multipliers": 12,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_2"
+    },
+    "c41c9d9d0d5b75c9a30caba1d9bd98f742074802419ec54f7c64a46b51b7ed84": {
+      "module": "actor_3",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_3"
+    },
+    "b6353e5a0da2f4faf86597d1b616b248a3e68c68dd0041af20c52b216cee876d": {
+      "module": "actor_4",
+      "multipliers": 8,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_4"
+    },
+    "0848509d3f1611ecdd37aab1bf7b653e855b29142617d41b21ae2bd42a711eaa": {
+      "module": "actor_5",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_5"
+    },
+    "ed4d12c7247a1bd4edfa30e912ff47f34e305746822fbe4e30531dab6bafaef2": {
+      "module": "actor_6",
+      "multipliers": 4,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_6"
+    },
+    "694589e82c23ebcebb0a588c7fc23a5323a184cc3b7e1b8e4d0f96a0a44c879e": {
+      "module": "actor_7",
+      "multipliers": 4,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_7"
+    },
+    "47dfcde5d71fa5a4ff4c63cb9bffc446c3f4a5b3f006c409957efd81fb907f7b": {
+      "module": "actor_8",
+      "multipliers": 4,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_8"
+    },
+    "61bf9b020dfc72b6975cc9af91c063949a8d0355ff65411f38b6f297eb2ae75f": {
+      "module": "actor_9",
+      "multipliers": 1,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_9"
+    },
+    "55f2a99d1d98fb0ca2b18fa3351f38b83bbfa24c647720abb90f984e484b71ca": {
+      "module": "actor_10",
+      "multipliers": 12,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_10"
+    },
+    "ac8beb62d57a9f1fb3d8195b05c164241a5d49b0d08ec1482bdef19bd9e8950c": {
+      "module": "actor_11",
+      "multipliers": 8,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_11"
+    },
+    "e11edaf1a6a5439eefb50f32232cd32a35e142d7cdbe22194fa43877c9cda708": {
+      "module": "actor_12",
+      "multipliers": 1,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_12"
+    },
+    "eea7c9f634b30f400fe047dbb229adf6e6eb34afb7f1fa7614472ac04afb81f9": {
+      "module": "actor_13",
+      "multipliers": 16,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_13"
+    },
+    "81b5abed1ef12e4c53f5372dfe8b3d7a21eea535425136473d3b1eb32a6fe9c6": {
+      "module": "actor_14",
+      "multipliers": 8,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_14"
+    },
+    "ed53756c014fcd571b1e233eb0fc108ef3272df38378f6008c03e0744abd8e63": {
+      "module": "actor_15",
+      "multipliers": 1,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_15"
+    },
+    "9db2c8cd50d39053ad28deeff8af2e2f16f7f6fbfd5a25184a23284ca50cd78a": {
+      "module": "actor_16",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/actor_16"
+    },
+    "8be1aabc6e30212b9d6f57f191749c2b726a8b16358aaafb9fdadea53af14c4e": {
+      "module": "fifo_actor_0",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_0"
+    },
+    "d1e72f4bc235805c582f8f15fcf743d8b08164e0ed9adb13a5c6b96e71a7f8d4": {
+      "module": "fifo_actor_1",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_1"
+    },
+    "a4d4d4165fb86b2611548a91dcf63f1fc52e227d67ccadef463533cab9ca3810": {
+      "module": "fifo_actor_2",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_2"
+    },
+    "a00cda674a0b8f91f6e64f5926ba6c7fc48b79f86674250a0bedd4dfac5a4bb3": {
+      "module": "fifo_actor_3",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_3"
+    },
+    "3a13769337246f09618355332d881eff9b43f8d9c9239735886fc9c034d71645": {
+      "module": "fifo_actor_5",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_5"
+    },
+    "4f973b69af3882c080037c78394437ac7b99f96427cfe55c1821d3140ca11414": {
+      "module": "fifo_actor_10",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_10"
+    },
+    "e334ccb5d32a4a618656ef3e88d410f4df3c82108a1853a3ac326569c5a1ace7": {
+      "module": "fifo_actor_14",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_14"
+    },
+    "00c4913237b61dcee99bd0fe7aa7f2810b06db08076e77e74334bcdd46c66df3": {
+      "module": "fifo_actor_17",
+      "multipliers": 0,
+      "proofs": "build/compiler-optimization/rate-headroom-proofs/fifo_actor_17"
+    }
+  },
+  "scope": "Functional equivalence of mapped actors; linking and timing have separate checks."
+}

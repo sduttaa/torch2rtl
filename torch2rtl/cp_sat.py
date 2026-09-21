@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from ortools.sat.python import cp_model
 
-from .schedule import Limits, Problem, Solution, validate, validate_solution
+from .schedule import ChoiceDelay, Limits, Problem, Solution, validate, validate_solution
 from .precedence import domains
 
 
@@ -29,6 +29,14 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
               for group, options in problem.choices.items() for option in options}
     for group, options in problem.choices.items():
         model.add_exactly_one(chosen[group, option.name] for option in options)
+    # First seek an incumbent at the supplied upper bound. Hints are not
+    # constraints; the full joint search may replace every suggested option.
+    model.add_hint(period,problem.preferred_period or problem.period_limit)
+    for name,value in problem.preferred_offsets.items():
+        model.add_hint(offsets[name],value)
+    for group,preferred in problem.preferred_options.items():
+        for option in problem.choices[group]:
+            model.add_hint(chosen[group,option.name],int(option.name == preferred))
     # Once period and options are fixed, every remaining constraint is a
     # difference inequality. Its propagated lower bounds form a valid event
     # assignment; branching on those offsets cannot improve the objective.
@@ -38,14 +46,30 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
     model.add_decision_strategy([period, *chosen.values()], cp_model.CHOOSE_FIRST, cp_model.SELECT_LOWER_HALF)
     varying = {group for group, options in problem.choices.items() if len(options) > 1}
 
-    def add(before, after, delay=0, frames=0, when=()):
+    def add(before, after, delay=0, frames=0, when=(), extra_guards=()):
         constraint = model.add(offsets[after] + frames * period >= offsets[before] + delay)
-        guards = [chosen[pair] for pair in when if pair[0] in varying]
+        guards = [chosen[pair] for pair in when if pair[0] in varying] + list(extra_guards)
         if guards:
             constraint.only_enforce_if(guards)
 
+    delays={}
     for dependency in problem.dependencies:
-        add(dependency.before, dependency.after, dependency.delay, dependency.frames, dependency.when)
+        delay=dependency.delay
+        guards=()
+        if isinstance(delay,ChoiceDelay):
+            if delay not in delays:
+                complete=len(delay.values) == len(problem.choices[delay.choice])
+                values=[value for _,value in delay.values]
+                lower=min(values) if complete else 0
+                variable=model.new_int_var(lower,max(values),f"delay{len(delays)}")
+                model.add(variable == sum(value*chosen[delay.choice,option] for option,value in delay.values))
+                if not complete:
+                    enabled=model.new_bool_var(f"edge_enabled{len(delays)}")
+                    model.add(enabled == sum(chosen[delay.choice,option] for option,_ in delay.values))
+                    guards=(enabled,)
+                delays[delay]=(variable,guards)
+            delay,guards=delays[delay]
+        add(dependency.before, dependency.after, delay, dependency.frames, dependency.when,guards)
     for fifo in problem.fifos:
         count = len(fifo.writes)
         if fifo.order_transfers:
@@ -65,13 +89,23 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
         # choices share a latency. Choices fix the auxiliary delay exactly.
         for write, read in zip(fifo.writes, fifo.reads):
             add(write, read, forward_delay, when=fifo.when)
+        depth_options = {}
         for option, depth in fifo.depths.items():
-            active = fifo.when + ((fifo.choice, option),)
+            depth_options.setdefault(depth, []).append(option)
+        for depth, options in depth_options.items():
+            if len(options) == len(fifo.depths):
+                guards = ()
+            elif len(options) == 1:
+                guards = (chosen[fifo.choice, options[0]],)
+            else:
+                selected_depth = model.new_bool_var(f"{fifo.choice}/depth{depth}")
+                model.add(selected_depth == sum(chosen[fifo.choice, option] for option in options))
+                guards = (selected_depth,)
             for index, write in enumerate(fifo.writes):
                 frame, word = divmod(index - depth, count)
                 # write_j >= read_h + frame*T + replacement_delay.
                 # frame may be negative, or zero within a large frame.
-                add(fifo.reads[word], write, fifo.replacement_delay, -frame, active)
+                add(fifo.reads[word], write, fifo.replacement_delay, -frame, fifo.when, guards)
 
     resource_expressions = {}
     for resource, budget in problem.budgets.items():
@@ -111,10 +145,13 @@ def solve(problem: Problem, limits: Limits = Limits()) -> Solution:
         period_limit=problem.period_limit, offset_limit=problem.offset_limit,
     )
     remaining = limits.seconds - (monotonic() - start)
-    if status == cp_model.OPTIMAL and any(problem.resource_weights.values()) and remaining > 0:
+    option_penalties=sum(option.penalty*chosen[group,option.name]
+                         for group,options in problem.choices.items() for option in options)
+    has_penalties=any(option.penalty for options in problem.choices.values() for option in options)
+    if status == cp_model.OPTIMAL and (any(problem.resource_weights.values()) or has_penalties) and remaining > 0:
         model.add(period == result.period)
-        model.minimize(sum(weight * resource_expressions[resource]
-                           for resource, weight in problem.resource_weights.items()))
+        model.minimize(option_penalties+sum(weight * resource_expressions[resource]
+                                           for resource, weight in problem.resource_weights.items()))
         solver.parameters.max_time_in_seconds = remaining
         tie_status = solver.solve(model)
         if tie_status in (cp_model.OPTIMAL, cp_model.FEASIBLE):

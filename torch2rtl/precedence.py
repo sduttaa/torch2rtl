@@ -6,6 +6,7 @@ Cycles are left to the solver; acyclic paths need one forward/backward pass.
 """
 
 from array import array
+from .schedule import ChoiceDelay
 
 
 def mandatory_edges(problem):
@@ -16,7 +17,12 @@ def mandatory_edges(problem):
 
     for edge in problem.dependencies:
         if edge.frames == 0 and unconditional(edge.when):
-            yield edge.before, edge.after, edge.delay
+            delay=edge.delay
+            if isinstance(delay,ChoiceDelay):
+                if len(delay.values) != len(problem.choices[delay.choice]):
+                    continue
+                delay=min(value for _,value in delay.values)
+            yield edge.before, edge.after, delay
     for fifo in problem.fifos:
         if not unconditional(fifo.when):
             continue

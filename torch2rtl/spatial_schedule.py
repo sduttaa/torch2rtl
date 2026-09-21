@@ -12,7 +12,7 @@ import torch
 from .convolution import configuration
 from .graph import references
 from .network import edges
-from .schedule import Dependency, Fifo, Option, Problem
+from .schedule import ChoiceDelay, Dependency, Fifo, Option, Problem
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,7 @@ class ActorConfig:
     line_layout: str = "parallel"
     resources: dict[str, int] = field(default_factory=dict)
     row_buffers: int = 1
+    extra_rows: int = 0
 
 
 @dataclass(frozen=True)
@@ -39,14 +40,51 @@ class Events:
         self.names = []
         self.dependencies = []
         self.when = ()
+        self.series_cache = {}
+        self.alternatives = None
 
     def series(self, prefix, count):
+        if prefix in self.series_cache:
+            result = self.series_cache[prefix]
+            if len(result) != count:
+                raise ValueError("Alternative actor contracts disagree on event count")
+            return result
         result = tuple(f"{prefix}.{index}" for index in range(count))
         self.names.extend(result)
+        self.series_cache[prefix] = result
         return result
 
     def link(self, before, after, delay=0, frames=0):
+        if self.alternatives is not None:
+            key=(before,after,delay,frames)
+            self.shared[key]=self.shared.get(key,0) | (1 << self.alternatives[self.when[0][1]])
+            return
         self.dependencies.append(Dependency(before, after, delay, frames, self.when))
+
+    def begin_options(self,choice,names):
+        self.choice=choice
+        self.alternatives={name:index for index,name in enumerate(names)}
+        self.shared={}
+
+    def end_options(self):
+        complete=(1 << len(self.alternatives))-1
+        grouped={}
+        for (before,after,delay,frames),mask in self.shared.items():
+            if mask == complete:
+                self.dependencies.append(Dependency(before,after,delay,frames))
+            else:
+                values=grouped.setdefault((before,after,frames),{})
+                for name,index in self.alternatives.items():
+                    if mask & (1 << index):
+                        values[name]=max(values.get(name,0),delay)
+        delays={}
+        for (before,after,frames),values in grouped.items():
+            key=tuple(sorted(values.items()))
+            selected_delay=delays.setdefault(key,ChoiceDelay(self.choice,key))
+            self.dependencies.append(Dependency(before,after,selected_delay,frames))
+        self.alternatives=None
+        self.shared={}
+        self.when=()
 
     def order(self, events, delay=1):
         for before, after in zip(events, events[1:]):
@@ -116,6 +154,10 @@ def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilati
 
 
 def convolution(events, prefix, value, inputs, outputs, lanes, config):
+    view_value = value if value.operation == "quantized_view_convolution" else None
+    if view_value is not None:
+        from .fusion import materialized
+        value = materialized(value)
     parameters = configuration(value, lanes, config.output_lanes, config.reduction_lanes)
     pixels = prod(value.tensor.shape[2:])
     output_words = ceil(value.tensor.shape[1] / lanes)
@@ -140,8 +182,13 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
         kernel = tuple((size-1)*dil+1+(extent-1)*step for size, dil, extent, step in zip(kernel, dilation, pool, stride))
         stride = tuple(step*extent for step, extent in zip(stride, pool))
         dilation = (1, 1)
-    ready, gaps = window(events, prefix, inputs, data.tensor.shape, lanes, kernel,
-                   stride, padding, dilation, releases, config.line_layout)
+    if view_value is not None:
+        view_window(events, prefix, view_value, inputs, starts, releases, lanes, config.extra_rows)
+        events.period_bound(starts[0], pixels*(blocks*tile_cycles+1))
+        ready, gaps = [], []
+    else:
+        ready, gaps = window(events, prefix, inputs, data.tensor.shape, lanes, kernel,
+                       stride, padding, dilation, releases, config.line_layout)
     # Combine each compute path with the corresponding window-refill path.
     # Summing the longer implied path for every pixel gives a stronger cycle
     # bound than summing compute and window traffic separately.
@@ -150,17 +197,48 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
     else:
         cycle_bound = sum(tile_cycles + max((blocks-1)*tile_cycles+1,
                           (blocks-2)*tile_cycles+release_delay+gap) for gap in gaps)
-    events.period_bound(starts[0], cycle_bound)
+    if gaps:
+        events.period_bound(starts[0], cycle_bound)
     for pixel in range(pixels):
-        release, delay = releases[pixel-1]
-        events.implied(release, starts[pixel], delay+gaps[pixel], int(pixel == 0))
-        events.link(ready[pixel][0], starts[pixel], ready[pixel][1])
+        if gaps:
+            release, delay = releases[pixel-1]
+            events.implied(release, starts[pixel], delay+gaps[pixel], int(pixel == 0))
+            events.link(ready[pixel][0], starts[pixel], ready[pixel][1])
         events.link(starts[pixel], posts[pixel], tile_cycles)
         events.link(outputs[(pixel*output_words-1) % len(outputs)], posts[pixel], frames=int(pixel == 0))
         events.link(posts[pixel], starts[(pixel+1) % pixels], (blocks-1)*tile_cycles+1, int(pixel == pixels-1))
         events.link(posts[pixel], outputs[pixel*output_words], (blocks-1)*tile_cycles+1)
         for word in range(pixel*output_words+1, (pixel+1)*output_words):
             events.link(outputs[word-1], outputs[word], 1)
+
+
+def view_window(events, prefix, value, inputs, starts, releases, lanes, extra_rows):
+    from .fusion import geometry
+    height, width = value.tensor.shape[2:]
+    advance = events.series(prefix+".advance", 1)[0]
+    last, delay = releases[-1]
+    events.link(last, advance, delay+1)
+    events.link(advance, starts[0], 3, 1)
+    for pixel in range(1, len(starts)):
+        before, delay = releases[pixel-1]
+        events.link(before, starts[pixel], delay+3)
+    for stream, g in zip(inputs, geometry(value, lanes, extra_rows)):
+        events.order(stream)
+        events.link(stream[-1], advance, 1)
+        events.link(advance, stream[0], 1, 1)
+        for row,base in enumerate(g["required_rows"]):
+            for column,end in enumerate(g["required_columns"]):
+                if g["valid_rows"][row] and g["valid_columns"][column]:
+                    events.link(stream[base+end-1],starts[row*width+column],1)
+        # Ordered writes need only one dependency at each changed row limit.
+        for row in range(1, height):
+            previous, following = g["limits"][row-1:row+1]
+            if following > previous:
+                before, delay = releases[row*width-1]
+                events.link(before, stream[previous], delay+2)
+        if g["limits"][-1] < len(stream):
+            before, delay = releases[-1]
+            events.link(before, stream[g["limits"][-1]], delay+1)
 
 
 def pool(events, prefix, value, inputs, outputs, lanes):
@@ -274,13 +352,18 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
             continue
         choice = "actor:"+value.name
         choices[choice] = tuple(Option(name, config.resources) for name, config in actor_options[value.name].items())
+        events.begin_options(choice,actor_options[value.name])
         for name, config in actor_options[value.name].items():
             if config.line_layout not in ("parallel", "packed"):
                 raise ValueError("Unknown line memory layout")
             events.when = ((choice, name),)
-            prefix = f"{value.name}.{name}"
+            # Exactly one alternative is active. Reuse its internal event
+            # variables instead of multiplying event count by option count.
+            prefix = f"{value.name}.actor"
             inputs, outputs = incoming[value], outgoing[value]
-            if value.operation in ("quantized_convolution", "quantized_convolution_pool"):
+            if value.operation == "quantized_view_convolution":
+                convolution(events, prefix, value, inputs, outputs, lanes, config)
+            elif value.operation in ("quantized_convolution", "quantized_convolution_pool"):
                 convolution(events, prefix, value, inputs[0], outputs, lanes, config)
             elif value.operation == "max_pool2d":
                 pool(events, prefix, value, inputs[0], outputs, lanes)
@@ -295,7 +378,7 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
                     events.link(outputs[index-1], before, frames=int(index == 0))
             else:
                 raise ValueError(f"No spatial event contract for {value.operation}")
-        events.when = ()
+        events.end_options()
     for name, source, destination, port in channels:
         choice = "fifo:"+name
         options = fifo_options[name]

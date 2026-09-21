@@ -22,7 +22,7 @@ def bounds(value):
             return cache[node]
         full = integer_range(node.tensor)
         result = full
-        if node.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_concat"):
+        if node.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_view_convolution", "quantized_concat"):
             low, high = node.args[-3:-1] if node.operation == "quantized_convolution_pool" else node.args[-2:]
             # The fused cast follows the clamp. Out-of-container bounds may
             # wrap, so retaining the entire destination range is necessary.

@@ -126,12 +126,19 @@ def configuration(actor, lanes, outputs, reduction_lanes=None):
     return parameters
 
 
-def emit(actor, lanes, outputs, weight_memory="auto", line_memory="auto", line_layout="parallel", reduction_lanes=None):
+def emit(actor, lanes, outputs, weight_memory="auto", line_memory="auto", line_layout="parallel", reduction_lanes=None, weight_block_depth=None):
     if weight_memory not in ("auto", "block", "distributed", "logic") or line_memory not in ("auto", "block", "distributed"):
         raise ValueError("Unknown memory mapping option")
     if line_layout not in ("parallel", "packed"):
         raise ValueError("Unknown line memory layout")
     parameters = configuration(actor, lanes, outputs, reduction_lanes)
+    if weight_block_depth is not None:
+        if weight_memory not in ("auto","block"):
+            raise ValueError("A block ROM prefix requires block weight memory")
+        depth = parameters["GROUPS"]*((parameters["OUTPUT_CHANNELS"]//parameters["GROUPS"]+outputs-1)//outputs)*parameters["KERNEL_H"]*parameters["KERNEL_W"]*((parameters["INPUT_CHANNELS"]//parameters["GROUPS"]+parameters["REDUCTION_LANES"]-1)//parameters["REDUCTION_LANES"])
+        if type(weight_block_depth) is not int or not 0 < weight_block_depth <= depth:
+            raise ValueError("Weight block prefix must be within the ROM")
+        parameters["WEIGHT_BLOCK_DEPTH"] = weight_block_depth
     assignments = [f".{key}({value})" for key, value in parameters.items()]
     assignments += [f'.WEIGHT_MEMORY("{weight_memory}")', f'.LINE_MEMORY("{line_memory}")']
     assignments.append(f'.PACKED_LINES({int(line_layout == "packed")})')
@@ -141,7 +148,9 @@ module inference (
   input wire [{lanes*8-1}:0] in_data, input wire in_valid, output wire in_ready,
   output wire [{lanes*8-1}:0] out_data, output wire out_valid, input wire out_ready
 );
-  integer_convolution #({', '.join(assignments)}) actor (.*);
+  integer_convolution #({', '.join(assignments)}) actor (
+    .external_available(1'b0), .external_data({lanes*8}'(0)), .external_release(),
+    .external_address(), .external_alternate(), .external_first(), .external_select(), .external_active(), .*);
 endmodule
 """
     root = Path(__file__).parent / "templates"

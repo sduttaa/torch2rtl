@@ -6,15 +6,19 @@ The objective is a small, generic compiler for fast FPGA inference with all
 weights and working storage on chip. The first board is the Tang Nano 20K.
 Lattice support follows through the same actor and optimization interfaces.
 
-**Status: native toolchain installed; a tested integer actor compiler prototype
-works. The requested Scratches model has not been compiled to a 30-FPS design.**
-The original export exceeds the tested fabric-storage budget. The user has
-authorized retraining a smaller, genuinely integer model while retaining both
-weights and activations in fabric memory. Training and verification are in
-[the training directory](training/README.md). The complete retrained graph now
-passes RTL simulation and routes with fabric-only storage. Its 0.6561 Dice meets
-the revised >= 0.65 threshold; 30 FPS remains unmet. The
-[workload findings](docs/workload-feasibility.md) concern the original export.
+**Status: the accepted integer model has a routed, fabric-only implementation
+with 44 BRAMs and 30.22 scheduled FPS at 108 MHz.** Its validation Dice is
+0.6500655. This is a compiler/simulation/timing result, not a physical-board FPS
+measurement. Reproducible evidence is in
+[the compiler optimization result](results/compiler-optimization/README.md).
+The previous 46-BRAM result is preserved in
+[the baseline artifacts](results/on-chip-inference/README.md).
+Generic architecture search, physical-memory costing, compact
+resize/concat/convolution fusion, and joint scheduling are documented in
+[compiler improvements](docs/compiler-improvements.md).
+The 35-BRAM / 50-FPS stretch objective remains unmet.
+The [workload findings](docs/workload-feasibility.md) concern the original,
+larger export. Training is documented in [the training directory](training/README.md).
 
 - [Optimization proposal](docs/optimization-model.md)
 - [Current results](RESULTS.md)
@@ -67,13 +71,10 @@ actor/FIFO configurations. It supports branched raster networks and preserves
 integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
 full-model schedule passes RTL deadline checks with finite fabric-only FIFOs.
-A lower-accuracy retrained candidate completes placement, routing and bitstream
-packing with a generated 135 MHz clock using an explicitly corrected nextpnr
-database. Its verified fixed-choice period is 6,262,820 cycles (21.56 scheduled
-FPS if 135 MHz is safe). A subsequent [timing coverage audit](docs/timing-coverage.md)
-found missing datapath models, so the clock is not fully verified.
-Its 0.6561 Dice meets the revised accuracy threshold; the
-30-FPS result remains unmet. See [the measured evidence](RESULTS.md).
+The accepted implementation has a verified period of 3,573,484 cycles and uses
+an explicitly corrected nextpnr database with configuration-specific DSP timing
+guards. Earlier timing-coverage failures and results remain documented in
+[the measured evidence](RESULTS.md).
 Emission is not a fit certificate.
 Proven clamp and lookup bounds narrow line, pooling, resampling and FIFO storage
 while preserving byte tensor semantics. Training precision is always explicit.
@@ -85,6 +86,10 @@ Measure each placement's cost for the supplied target before solving.
 The optional `"fusions": ["convolution_pool"]` configuration entry enables an
 exact, proved convolution/max-pool fusion. See its [contract and measured
 tradeoffs](docs/convolution-pool.md); it is not enabled by default.
+The `resize_concat_convolution` fusion preserves nearest coordinate maps and
+integer requantization while storing compact source rows. `optimize-network`
+generates actor/FIFO alternatives from supplied search limits and memory modes,
+caches isolated synthesis, and passes the retained choices to joint CP-SAT.
 FP32 actors and board transport integration also remain work to do.
 Unsupported operations fail explicitly.
 Scheduled throughput is labeled as such; it is not a physical-board measurement.

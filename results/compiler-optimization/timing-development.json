@@ -1,0 +1,86 @@
+[
+  {
+    "implementation": "registered_descriptors",
+    "bram": 44,
+    "period_cycles": 3687123,
+    "routed_fmax_mhz": 86.19947052001953,
+    "clock_constraint_mhz": 114.75786590576172,
+    "timing_passed": false,
+    "evidence": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/descriptor-route/route-report.json",
+      "sha256": "635ab8934523f9a1b18cd0812f58511c59c5c8268a5e81fae1ea26be9621c967"
+    }
+  },
+  {
+    "implementation": "registered_tile_start",
+    "bram": 42,
+    "period_cycles": 3687123,
+    "routed_fmax_mhz": 88.84939575195312,
+    "clock_constraint_mhz": 114.75786590576172,
+    "timing_passed": false,
+    "evidence": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/tile-route/route-report.json",
+      "sha256": "1f55e5a63e3cc31673454965b101140e99c7185576f1ef44912862d7bb8f7393"
+    }
+  },
+  {
+    "implementation": "registered_row_lookup",
+    "bram": 42,
+    "period_cycles": 3687123,
+    "routed_fmax_mhz": 96.92739868164062,
+    "clock_constraint_mhz": 114.75786590576172,
+    "timing_passed": false,
+    "evidence": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/lookup-route/route-report.json",
+      "sha256": "879d90816d9f1517bb364eeaf87d08ecf8f647b08613f1a218cf70fdc43cd61c"
+    }
+  },
+  {
+    "implementation": "registered_bias_lookup",
+    "bram": 42,
+    "period_cycles": 3687123,
+    "routed_fmax_mhz": 106.13458251953125,
+    "clock_constraint_mhz": 114.75786590576172,
+    "timing_passed": false,
+    "evidence": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/bias-route/route-report.json",
+      "sha256": "0d2a797c9211f7d74a469644b0e4a47b3055946cc37baed310f5cef625049884"
+    }
+  },
+  {
+    "implementation": "startup_coordinate_selection",
+    "bram": 42,
+    "period_cycles": 3687123,
+    "routed_fmax_mhz": 107.94473266601562,
+    "clock_constraint_mhz": 114.75786590576172,
+    "timing_passed": false,
+    "evidence": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/startup-route/route-report.json",
+      "sha256": "6eed5d32930373c4349f87f5a88c0372dd36d2ff51348aa6b9ef3c6be938c4a5"
+    }
+  },
+  {
+    "implementation": "row_slot_encoding_reverted",
+    "bram": 42,
+    "period_cycles": 3687123,
+    "routed_fmax_mhz": 92.94544219970703,
+    "clock_constraint_mhz": 114.75786590576172,
+    "timing_passed": false,
+    "evidence": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/slot-route/route-report.json",
+      "sha256": "e5982b803895f2f696145658c78248676ba6ae6d2b22bc0049f3672ba5d2fc9f"
+    }
+  },
+  {
+    "implementation": "selected_architecture_with_placement_headroom",
+    "bram": 44,
+    "period_cycles": 3573484,
+    "routed_fmax_mhz": 109.2179946899414,
+    "clock_constraint_mhz": 108.0030288696289,
+    "timing_passed": true,
+    "evidence": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-route/route-report.json",
+      "sha256": "74584d7b7190f9bfdccdd71f0c5ed200e8e201639b4d2adcf6885ac81ba727bc"
+    }
+  }
+]

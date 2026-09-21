@@ -19,7 +19,7 @@ module integer_convolution #(
   parameter integer SHIFT = 0,
   parameter [63:0] OFFSET = 0, LOW = 0, HIGH = 255,
   parameter WEIGHT_MEMORY = "auto", LINE_MEMORY = "auto",
-  parameter integer PACKED_LINES = 0,
+  parameter integer PACKED_LINES = 0, EXTERNAL_WINDOW = 0,
   localparam integer GROUP_INPUTS = INPUT_CHANNELS / GROUPS,
   localparam integer GROUP_OUTPUTS = OUTPUT_CHANNELS / GROUPS,
   localparam integer CHANNEL_WORDS = (INPUT_CHANNELS + LANES - 1) / LANES,
@@ -32,6 +32,7 @@ module integer_convolution #(
   localparam integer DOT_STEPS = KERNEL_H * KERNEL_W * GROUP_WORDS,
   localparam integer ROM_WIDTH = OUTPUT_LANES * REDUCTION_LANES * WEIGHT_BITS,
   localparam integer ROM_DEPTH = BLOCKS * DOT_STEPS,
+  parameter integer WEIGHT_BLOCK_DEPTH = ROM_DEPTH,
   localparam integer MULTIPLIER_GROUPS = (MULTIPLIER_BYTES + REDUCTION_LANES - 1) / REDUCTION_LANES,
   localparam integer COEFFICIENT_BITS = MULTIPLIER_GROUPS * REDUCTION_LANES * 8,
   localparam integer PADDED_ACCUMULATOR_BITS = ACCUMULATOR_BYTES * 8,
@@ -55,7 +56,11 @@ module integer_convolution #(
 ) (
   input wire clk, input wire rst,
   input wire [LANES*8-1:0] in_data, input wire in_valid, output wire in_ready,
-  output reg [LANES*8-1:0] out_data, output wire out_valid, input wire out_ready
+  output reg [LANES*8-1:0] out_data, output wire out_valid, input wire out_ready,
+  input wire external_available, input wire [LANES*8-1:0] external_data,
+  output wire external_release,
+  output wire [WINDOW_BITS-1:0] external_address, external_alternate, external_first,
+  output wire external_select, external_active
 );
   localparam [2:0] IDLE = 0, DOT = 1, DOT_DRAIN = 2, RQ = 3, RQ_DRAIN = 4, POST = 5, POOL_WAIT = 6;
   reg [2:0] state;
@@ -94,14 +99,17 @@ module integer_convolution #(
       dot_last <= DOT_STEPS == 1;
       release_after_dot <= read_block == BLOCK_BITS'(BLOCKS-1) && read_pool == POOL_BITS'(POOL_ITEMS-1);
     end else if (state == DOT) dot_last <= dot_step == STEP_BITS'(DOT_STEPS-2);
-    if (state == DOT && !dot_last)
+    // Prime the counter during every non-dot phase. The decoder selects zero
+    // then, so startup does not feed the counter through window/ready/reset
+    // logic. Extra increments in the final dot cycle are unobservable.
+    if (state == DOT)
       prefetch_step <= prefetch_step == STEP_BITS'(DOT_STEPS-1) ? STEP_BITS'(0) : prefetch_step + 1'b1;
-    else prefetch_step <= starting_dot ? STEP_BITS'(DOT_STEPS > 2 ? 2 : 0) : STEP_BITS'(0);
+    else prefetch_step <= STEP_BITS'(DOT_STEPS > 2 ? 2 : 0);
   end
-  wire [STEP_BITS-1:0] read_step = prefetch_step;
+  wire [STEP_BITS-1:0] read_step = EXTERNAL_WINDOW != 0 || state == DOT ? prefetch_step : STEP_BITS'(0);
   // Select the second startup word after coordinate decoding is registered.
   localparam integer SECOND_STEP = DOT_STEPS > 1 ? 1 : 0;
-  wire [WINDOW_BITS-1:0] window_address, alternate_address;
+  wire [WINDOW_BITS-1:0] window_address, alternate_address, first_address;
   wire [SUBWORD_BITS-1:0] subword;
   generate if (POOL_ITEMS > 1) begin: pooled_window
     wire [WINDOW_BITS-1:0] addresses [0:POOL_ITEMS*DOT_STEPS-1];
@@ -121,10 +129,13 @@ module integer_convolution #(
       WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
     assign alternate_address = addresses[32'(read_pool)*DOT_STEPS+SECOND_STEP] +
       WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
+    assign first_address = addresses[32'(read_pool)*DOT_STEPS] +
+      WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
     assign subword = parts[dot_step];
   end else if (GROUPS == 1 && REDUCTION_LANES == LANES) begin: full_channel_window
     assign window_address = WINDOW_BITS'(read_step);
     assign alternate_address = WINDOW_BITS'(SECOND_STEP);
+    assign first_address = 0;
     assign subword = 0;
   end else begin: grouped_window
     wire [WINDOW_BITS-1:0] addresses [0:DOT_STEPS-1];
@@ -136,6 +147,7 @@ module integer_convolution #(
     end
     assign window_address = addresses[read_step] + WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
     assign alternate_address = addresses[SECOND_STEP] + WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
+    assign first_address = addresses[0] + WINDOW_BITS'(GROUPS == 1 ? 0 : (32'(read_block)/TILES) * (GROUP_INPUTS/LANES));
     assign subword = parts[dot_step];
   end endgenerate
   wire [LANES*8-1:0] window_data;
@@ -143,10 +155,21 @@ module integer_convolution #(
   genvar storage_lane;
   generate for (storage_lane = 0; storage_lane < LANES; storage_lane = storage_lane + 1) begin: storage_width
     assign stored_input[storage_lane*INPUT_BITS +: INPUT_BITS] = in_data[storage_lane*8 +: INPUT_BITS];
-    assign window_data[storage_lane*8 +: 8] = INPUT_SIGNED != 0 ?
+    assign window_data[storage_lane*8 +: 8] = EXTERNAL_WINDOW != 0 ? external_data[storage_lane*8 +: 8] : INPUT_SIGNED != 0 ?
       8'($signed(stored_window[storage_lane*INPUT_BITS +: INPUT_BITS])) :
       8'(stored_window[storage_lane*INPUT_BITS +: INPUT_BITS]);
   end endgenerate
+  assign external_release = release_window;
+  assign external_address = window_address;
+  assign external_alternate = alternate_address;
+  assign external_first = first_address;
+  assign external_active = state == DOT;
+  assign external_select = starting_dot && DOT_STEPS > 1;
+  generate if (EXTERNAL_WINDOW != 0) begin: shared_window
+    assign in_ready = 1'b0;
+    assign window_available = external_available;
+    assign stored_window = '0;
+  end else begin: local_window
   raster_window #(
     .HEIGHT(HEIGHT), .WIDTH(WIDTH), .CHANNELS(INPUT_CHANNELS),
     .KERNEL_H(WINDOW_H), .KERNEL_W(WINDOW_W), .STRIDE_H(STRIDE_H*POOL_H), .STRIDE_W(STRIDE_W*POOL_W),
@@ -158,13 +181,28 @@ module integer_convolution #(
     .window_address(window_address), .alternate_address(alternate_address),
     .select_alternate(starting_dot && DOT_STEPS > 1), .window_data(stored_window)
   );
+  end endgenerate
 
-  (* rom_style = WEIGHT_MEMORY *) reg [ROM_WIDTH-1:0] weight_memory [0:ROM_DEPTH-1];
   reg [ROM_WIDTH-1:0] weight_word;
-  integer address;
-  initial for (address = 0; address < ROM_DEPTH; address = address + 1)
-    weight_memory[address] = WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
-  always @(posedge clk) if (state == DOT) weight_word <= weight_memory[weight_address];
+  generate if (WEIGHT_BLOCK_DEPTH == ROM_DEPTH) begin: uniform_weights
+    (* rom_style = WEIGHT_MEMORY *) reg [ROM_WIDTH-1:0] weight_memory [0:ROM_DEPTH-1];
+    integer address;
+    initial for (address = 0; address < ROM_DEPTH; address = address + 1)
+      weight_memory[address] = WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
+    always @(posedge clk) if (state == DOT) weight_word <= weight_memory[weight_address];
+  end else begin: split_weights
+    (* rom_style = "block" *) reg [ROM_WIDTH-1:0] blocks [0:WEIGHT_BLOCK_DEPTH-1];
+    (* rom_style = "logic" *) reg [ROM_WIDTH-1:0] tail [0:ROM_DEPTH-WEIGHT_BLOCK_DEPTH-1];
+    integer address;
+    initial begin
+      for (address = 0; address < WEIGHT_BLOCK_DEPTH; address = address + 1)
+        blocks[address] = WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
+      for (address = WEIGHT_BLOCK_DEPTH; address < ROM_DEPTH; address = address + 1)
+        tail[address-WEIGHT_BLOCK_DEPTH] = WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
+    end
+    always @(posedge clk) if (state == DOT)
+      weight_word <= weight_address < WEIGHT_BLOCK_DEPTH ? blocks[weight_address] : tail[weight_address-WEIGHT_BLOCK_DEPTH];
+  end endgenerate
 
   reg [REDUCTION_LANES*8-1:0] input_word;
   reg operand_valid, operand_rq, operand_last;
@@ -190,6 +228,7 @@ module integer_convolution #(
   // The emitter proves this width covers the final result, or retains all
   // 32 bits. Modular addition permits the same narrowing at every MAC step.
   reg signed [ACCUMULATOR_BITS-1:0] accumulator [0:OUTPUT_LANES-1];
+  reg signed [ACCUMULATOR_BITS-1:0] tile_bias [0:OUTPUT_LANES-1];
   reg signed [ACCUMULATOR_BITS-1:0] pool_maximum [0:OUTPUT_LANES-1];
   wire signed [ACCUMULATOR_BITS-1:0] completed_dot [0:OUTPUT_LANES-1];
   wire signed [ACCUMULATOR_BITS-1:0] selected_maximum [0:OUTPUT_LANES-1];
@@ -206,6 +245,10 @@ module integer_convolution #(
 
   genvar output_lane, reduction_lane;
   generate for (output_lane = 0; output_lane < OUTPUT_LANES; output_lane = output_lane + 1) begin: mac
+    // A direct registered ROM read keeps block-update control before its
+    // register, rather than moving it into the bias lookup during synthesis.
+    always @(posedge clk) tile_bias[output_lane] <=
+      ACCUMULATOR_BITS'(BIASES[(32'(block)*OUTPUT_LANES+output_lane)*32 +: 32]);
     wire [COEFFICIENT_BITS-1:0] coefficient =
       MULTIPLIERS[(32'(block)*OUTPUT_LANES+output_lane)*COEFFICIENT_BITS +: COEFFICIENT_BITS];
     wire signed [PADDED_ACCUMULATOR_BITS-1:0] byte_accumulator = PADDED_ACCUMULATOR_BITS'(
@@ -290,6 +333,28 @@ module integer_convolution #(
     (state == DOT_DRAIN && dot_complete && pool_item != POOL_BITS'(POOL_ITEMS-1)) ||
     (state == POST && (!output_pending || output_finished) && block != BLOCK_BITS'(BLOCKS-1));
 
+  // Tile startup has spare operand-read cycles before the first MAC result.
+  // Register its decision while the new block's bias passes through its ROM
+  // register, keeping downstream ready and the decoder off accumulator D.
+  reg [1:0] initialize_tile;
+  always @(posedge clk) begin
+    if (rst) initialize_tile <= 0;
+    else initialize_tile <= {initialize_tile[0],(state == IDLE && window_available) ||
+      (state == POST && (!output_pending || output_finished) && block != BLOCK_BITS'(BLOCKS-1))};
+  end
+  integer accumulator_lane;
+  always @(posedge clk) begin
+    for (accumulator_lane = 0; accumulator_lane < OUTPUT_LANES; accumulator_lane = accumulator_lane + 1) begin
+      if (initialize_tile[1])
+        accumulator[accumulator_lane] <= tile_bias[accumulator_lane];
+      else if (dot_valid)
+        accumulator[accumulator_lane] <= completed_dot[accumulator_lane];
+      else if (POOL_ITEMS > 1 && pool_commit)
+        accumulator[accumulator_lane] <= pool_last ? selected_maximum[accumulator_lane] :
+          tile_bias[accumulator_lane];
+    end
+  end
+
   integer lane;
   always @* begin
     out_data = 0;
@@ -330,8 +395,6 @@ module integer_convolution #(
         if (pool_commit) begin
           for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) begin
             pool_maximum[channel] <= selected_maximum[channel];
-            accumulator[channel] <= pool_last ? selected_maximum[channel] :
-              ACCUMULATOR_BITS'(BIASES[(32'(block)*OUTPUT_LANES+channel)*32 +: 32]);
           end
         end
       end
@@ -359,10 +422,6 @@ module integer_convolution #(
         end else output_word <= output_word + 1'b1;
       end
 
-      if (dot_valid) begin
-        for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
-          accumulator[channel] <= completed_dot[channel];
-      end
       if (product_valid && product_rq) begin
         for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) begin
           inner_sum[channel] <= next_inner[channel];
@@ -393,8 +452,6 @@ module integer_convolution #(
           dot_step <= 0;
           pool_item <= 0;
           weight_address <= 0;
-          for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
-            accumulator[channel] <= ACCUMULATOR_BITS'(BIASES[channel*32 +: 32]);
           state <= DOT;
         end
         DOT: if (dot_step == STEP_BITS'(DOT_STEPS-1)) state <= DOT_DRAIN;
@@ -417,8 +474,6 @@ module integer_convolution #(
             block <= block + 1'b1;
             dot_step <= 0;
             pool_item <= 0;
-            for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
-              accumulator[channel] <= ACCUMULATOR_BITS'(BIASES[((32'(block)+1)*OUTPUT_LANES+channel)*32 +: 32]);
             state <= DOT;
           end
         end

@@ -26,15 +26,21 @@ def fifo_width(source, lanes):
 
 def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=None):
     memories = memories or {}
-    convolution_actor = value.operation in ("quantized_convolution", "quantized_convolution_pool")
-    allowed = {"weight", "line", "line_layout"} if convolution_actor else {"storage"}
+    convolution_actor = value.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_view_convolution")
+    allowed = {"weight", "line", "line_layout", "weight_block_depth"} if convolution_actor else {"storage"}
     if value.operation == "__interpolate.size_list_scale_list":
         allowed |= {"row_buffers"}
+    if value.operation == "quantized_view_convolution":
+        allowed |= {"extra_rows"}
     if not memories.keys() <= allowed:
         raise ValueError(f"Unknown memory mapping for {value.operation}")
+    if value.operation == "quantized_view_convolution":
+        from .fusion import emit as emit_fused
+        return emit_fused(value, lanes, output_lanes, memories, reduction_lanes)
     if convolution_actor:
         return convolution.emit(value, lanes, output_lanes, memories.get("weight", "auto"),
-                                memories.get("line", "auto"), memories.get("line_layout", "parallel"), reduction_lanes)
+                                memories.get("line", "auto"), memories.get("line_layout", "parallel"), reduction_lanes,
+                                memories.get("weight_block_depth"))
     if reduction_lanes is not None:
         raise ValueError(f"No reduction parallelism for {value.operation}")
     if value.operation == "max_pool2d":
@@ -52,11 +58,12 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
     raise ValueError(f"No RTL actor for {value.operation}")
 
 
-def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None, fifo_memories=None):
+def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None, fifo_memories=None,
+         external_modules=False):
     memories = memories or {}
     reduction_lanes = reduction_lanes or {}
     fifo_memories = fifo_memories or {}
-    convolutions = {value.name for value in graph.values if value.operation in ("quantized_convolution", "quantized_convolution_pool")}
+    convolutions = {value.name for value in graph.values if value.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_view_convolution")}
     if not reduction_lanes.keys() <= convolutions:
         raise ValueError("Reduction parallelism refers to an unknown convolution")
     if not memories.keys() <= {value.name for value in graph.values if value is not graph.input}:
@@ -101,7 +108,8 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
             top.append(f"assign edge_data_{edge_index}[{bits-1}:{stored_lanes*8}] = '0;")
         style = fifo_memories.get(name, "auto")
         placement = f', .MEMORY_STYLE("{style}")' if style != "auto" else ""
-        top += [f"stream_fifo #(.WIDTH({width}), .DEPTH({depths[name]}){placement}) fifo_{edge_index} (",
+        implementation=f"fifo_actor_{edge_index}" if external_modules else f"stream_fifo #(.WIDTH({width}), .DEPTH({depths[name]}){placement})"
+        top += [f"{implementation} fifo_{edge_index} (",
                 f".clk(clk), .rst(rst), .in_data(packed_input_{edge_index}), .in_valid(valid_{index} && ready_{index}), .in_ready(space_{edge_index}),",
                 f".out_data(packed_output_{edge_index}), .out_valid(edge_valid_{edge_index}), .out_ready(edge_ready_{edge_index}));"]
     for source, connections in outgoing.items():
@@ -109,7 +117,7 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
     for value, index in indices.items():
         if value is graph.input:
             continue
-        rtl = actor_rtl(value, lanes, output_lanes.get(value.name), memories.get(value.name), reduction_lanes.get(value.name))
+        rtl = "" if external_modules else actor_rtl(value, lanes, output_lanes.get(value.name), memories.get(value.name), reduction_lanes.get(value.name))
         rtl = rtl.replace("module inference (", f"module actor_{index} (", 1)
         # All sources here are compiler-owned templates, with ordinary module
         # declarations. Keep each shared template definition exactly once.
@@ -125,5 +133,7 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
                 f".in_data({port('data')}), .in_valid({port('valid')}), .in_ready({port('ready')}),",
                 f".out_data(data_{index}), .out_valid(valid_{index}), .out_ready(ready_{index}));"]
     top.append("endmodule")
+    if external_modules:
+        return "\n".join(top)+"\n"
     fifo = (Path(__file__).parent / "templates/fifo.sv").read_text()
     return "\n".join(top) + "\n" + "\n".join(modules.values()) + "\n" + fifo

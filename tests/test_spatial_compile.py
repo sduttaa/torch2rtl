@@ -29,6 +29,29 @@ def test_catalogue_compiles_and_resource_failure_removes_stale_outputs(tmp_path)
         offsets = dict(json.loads(line) for line in stream)
     assert offsets["lookup.out.0"] >= offsets["image.out.0"] + 3
     assert "stream_fifo" in (tmp_path / "inference.sv").read_text()
+    catalogue["preferred_options"]={"actor:lookup":"table","fifo:image->lookup:0":"small"}
+    guided=compile_network(graph,catalogue,target,tmp_path,Limits(seconds=5))
+    assert guided["incumbent_search"]["period"] == 12
+    assert guided["solution"]["period"] == 9
+    assert guided["solution"]["selected"]["fifo:image->lookup:0"] == "large"
+    catalogue["initial_schedule"]=str(tmp_path)
+    resumed=compile_network(graph,catalogue,target,tmp_path/"resumed",Limits(seconds=5))
+    assert resumed["solution"]["period"] == 9
+    assert "incumbent_search" not in resumed
+    catalogue["actor_options"]["lookup"]["table"]["resources"]["lut"]=9
+    refreshed=compile_network(graph,catalogue,target,tmp_path/"refreshed",Limits(seconds=5),validate_only=True)
+    assert refreshed["solution"]["resources"] == {"lut":11}
+    assert refreshed["search_skipped"] and refreshed["solution"]["seconds"] == 0
+    assert refreshed["solution"]["status"] == "FEASIBLE" and not refreshed["solution"]["resource_optimal"]
+    catalogue["actor_options"]["lookup"]["table"]["resources"]["lut"]=10
+    saved=json.loads((tmp_path/"report.json").read_text())
+    saved["solution"]["period"]=1
+    (tmp_path/"report.json").write_text(json.dumps(saved))
+    with pytest.raises(ValueError,match="violated dependency"):
+        compile_network(graph,catalogue,target,tmp_path/"invalid",Limits(seconds=5))
+    catalogue.pop("initial_schedule")
+    with pytest.raises(ValueError,match="Validation requires"):
+        compile_network(graph,catalogue,target,tmp_path/"missing-seed",validate_only=True)
     target["resources"]["lut"] = 10
     failure = compile_network(graph, catalogue, target, tmp_path, Limits(seconds=5))
     assert failure["status"] == "INFEASIBLE" and failure["stage"] == "resource_preflight"

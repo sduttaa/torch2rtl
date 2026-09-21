@@ -1,0 +1,5067 @@
+{
+  "model": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/model.pt2",
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "lanes": 4,
+  "fusions": [
+    "convolution_pool",
+    "resize_concat_convolution"
+  ],
+  "period_limit": 6000000,
+  "offset_limit": 20000000,
+  "actor_options": {
+    "value_84": {
+      "out8_reduce2_parallel_logic_block_rows0": {
+        "output_lanes": 8,
+        "reduction_lanes": 2,
+        "memories": {
+          "weight": "logic",
+          "line": "block",
+          "line_layout": "parallel"
+        },
+        "resources": {
+          "lut": 3056,
+          "ff": 1407,
+          "dsp": 16,
+          "lutram_bits": 2048,
+          "bram": 3,
+          "lut_sites": 3227
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 18,
+        "weight_width": 128,
+        "period_bound": 3032822,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "lines",
+            "width": 24,
+            "depth": 505,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 3,
+            "mode": "block_32",
+            "banks": 3,
+            "resources": {
+              "bram": 3
+            },
+            "payload_bits": 36360,
+            "allocated_bits": 49152,
+            "packing_efficiency": 0.73974609375
+          },
+          {
+            "name": "horizontal",
+            "width": 24,
+            "depth": 4,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 4,
+            "mode": "distributed_bit",
+            "banks": 96,
+            "resources": {
+              "lut": 96,
+              "lutram_bits": 1536
+            },
+            "payload_bits": 384,
+            "allocated_bits": 1536,
+            "packing_efficiency": 0.25
+          },
+          {
+            "name": "logic_weights",
+            "width": 128,
+            "depth": 18,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "logic",
+            "copies": 1,
+            "mode": "logic_rom",
+            "banks": 256,
+            "resources": {
+              "lut": 256
+            },
+            "payload_bits": 2304,
+            "allocated_bits": 4096,
+            "packing_efficiency": 0.5625
+          }
+        ],
+        "estimated_resources": {
+          "lut": 3278,
+          "ff": 1405,
+          "dsp": 16,
+          "lutram_bits": 2048,
+          "bram": 3,
+          "lut_sites": 3448
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "7616bb3412f3836df1e6306de1fcbf5fa692872a8296f59bb54f17cd1a92385f",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/271027b9bb0d05eb45117f8e34566f6e2d6a6cb7471fb20b5b79182bd0c65190/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": false,
+          "cache_path": "build/characterization-cache/eee2fc70a61db34213297d712a07d1031447ea9a28132af24781b8ad1be7e15d"
+        }
+      }
+    },
+    "value_100": {
+      "out3_reduce4_packed_logic_block_rows0": {
+        "output_lanes": 3,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "logic",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 1789,
+          "ff": 566,
+          "dsp": 12,
+          "lutram_bits": 768,
+          "bram": 1,
+          "lut_sites": 1869
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 72,
+        "weight_width": 72,
+        "period_bound": 3390816,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 1008,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 16128,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.984375
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 6,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 48,
+            "resources": {
+              "lut": 48,
+              "lutram_bits": 768
+            },
+            "payload_bits": 288,
+            "allocated_bits": 768,
+            "packing_efficiency": 0.375
+          },
+          {
+            "name": "logic_weights",
+            "width": 72,
+            "depth": 72,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "logic",
+            "copies": 1,
+            "mode": "logic_rom",
+            "banks": 360,
+            "resources": {
+              "lut": 360
+            },
+            "payload_bits": 5184,
+            "allocated_bits": 5760,
+            "packing_efficiency": 0.9
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1826,
+          "ff": 553,
+          "dsp": 12,
+          "lutram_bits": 768,
+          "bram": 1,
+          "lut_sites": 1899
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "98795d7dfd98603f2f5bc11eb7e60716759e55c69240e4a7151f3fa2b1b2fdc5",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/4d225db22fc4384f8849fc39ba6bef75fa40b755bd93db8b28a5b9bd26d62e95/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/756ca15248a344416459e25d37b61bec668ebe8a4412e643876b307a970d1320"
+        }
+      }
+    },
+    "value_121": {
+      "block": {
+        "memories": {
+          "storage": "block"
+        },
+        "resources": {
+          "lut": 189,
+          "ff": 136,
+          "bram": 1,
+          "lut_sites": 264
+        },
+        "evidence": "geometry estimate",
+        "period_bound": 96768,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "pool_row",
+            "width": 16,
+            "depth": 378,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 6048,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.369140625
+          }
+        ],
+        "estimated_resources": {
+          "lut": 189,
+          "ff": 136,
+          "bram": 1,
+          "lut_sites": 264
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "9fbe6dfe58410248eb001eb59774e843d87f11032dbab0e9334ed340a576bbc7",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/68e6efc9c0299cc9169b774f5fe183ad45b68daec0868dbdd24f3a52bfba4f41/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/bb11c44de6c1cb1b858ef6227d42ea14a2279ab9d6dddf98d09563fae7febf8e"
+        }
+      }
+    },
+    "value_137": {
+      "out2_reduce4_packed_block_block_rows0": {
+        "output_lanes": 2,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "block",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 972,
+          "ff": 474,
+          "lutram_bits": 768,
+          "bram": 3,
+          "dsp": 8,
+          "lut_sites": 1081
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 216,
+        "weight_width": 48,
+        "period_bound": 2269236,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "weights",
+            "width": 48,
+            "depth": 216,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_32",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 10368,
+            "allocated_bits": 32768,
+            "packing_efficiency": 0.31640625
+          },
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 756,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 12096,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.73828125
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 9,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 48,
+            "resources": {
+              "lut": 48,
+              "lutram_bits": 768
+            },
+            "payload_bits": 432,
+            "allocated_bits": 768,
+            "packing_efficiency": 0.5625
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1016,
+          "ff": 462,
+          "lutram_bits": 768,
+          "bram": 3,
+          "dsp": 8,
+          "lut_sites": 1118
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "33fbb9c61f98afa446eef07edd9157419522c8e60724e0245f760e33e118fd4d",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/053c0a5f0974e66fbfbde51cad53e3437f412cf99123811e8426464b67c9415a/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/bd9107cdb272f65fe84e767ca99b8a95ac9634bf60918de3d0ba7cae391045cf"
+        }
+      }
+    },
+    "value_158": {
+      "block": {
+        "memories": {
+          "storage": "block"
+        },
+        "resources": {
+          "lut": 173,
+          "ff": 128,
+          "bram": 1,
+          "lut_sites": 246
+        },
+        "evidence": "geometry estimate",
+        "period_bound": 32256,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "pool_row",
+            "width": 16,
+            "depth": 252,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 4032,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.24609375
+          }
+        ],
+        "estimated_resources": {
+          "lut": 173,
+          "ff": 128,
+          "bram": 1,
+          "lut_sites": 246
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "35fbef407fb828e388c275661e5d23716ba226672a3d29c246e004aa4d9b4cd3",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/d663f19bf750a6b7bb0c00c71f2dc452ec2aff073bc080afaa17a25d0cfa8b63/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/50c49618f15d0003f3f78fbb745e49ec4b583f397799b8de42825267cd96dd6d"
+        }
+      }
+    },
+    "value_174": {
+      "out1_reduce4_packed_block_block_rows0": {
+        "output_lanes": 1,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "block",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 863,
+          "ff": 392,
+          "dsp": 4,
+          "lutram_bits": 1280,
+          "bram": 3,
+          "lut_sites": 901
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 864,
+        "weight_width": 32,
+        "period_bound": 2185448,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "weights",
+            "width": 32,
+            "depth": 864,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 27648,
+            "allocated_bits": 32768,
+            "packing_efficiency": 0.84375
+          },
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 504,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 8064,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.4921875
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 12,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 48,
+            "resources": {
+              "lut": 48,
+              "lutram_bits": 768
+            },
+            "payload_bits": 576,
+            "allocated_bits": 768,
+            "packing_efficiency": 0.75
+          }
+        ],
+        "estimated_resources": {
+          "lut": 909,
+          "ff": 390,
+          "dsp": 4,
+          "lutram_bits": 1280,
+          "bram": 3,
+          "lut_sites": 945
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "d60dcbc8885305adaff0016c7a7c39edd123945762d2ddfb3f3d0eef0f45498a",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/68cc0d62f7a7162ded9d334cb66ae22ff3f1756b5b6a74d2bba8a1fa29c0bbc9/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/f3a661174aeb6666dd3922b74605d765de69e8a8ba65931ccb41acbc3b941975"
+        }
+      }
+    },
+    "value_190": {
+      "out1_reduce4_packed_block_block_rows0": {
+        "output_lanes": 1,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "block",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 1144,
+          "ff": 476,
+          "lutram_bits": 2048,
+          "bram": 4,
+          "dsp": 4,
+          "lut_sites": 1185
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 1296,
+        "weight_width": 32,
+        "period_bound": 3069420,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "weights",
+            "width": 32,
+            "depth": 1296,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_32",
+            "banks": 3,
+            "resources": {
+              "bram": 3
+            },
+            "payload_bits": 41472,
+            "allocated_bits": 49152,
+            "packing_efficiency": 0.84375
+          },
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 756,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 12096,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.73828125
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 18,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 96,
+            "resources": {
+              "lut": 96,
+              "lutram_bits": 1536
+            },
+            "payload_bits": 864,
+            "allocated_bits": 1536,
+            "packing_efficiency": 0.5625
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1192,
+          "ff": 474,
+          "lutram_bits": 2048,
+          "bram": 4,
+          "dsp": 4,
+          "lut_sites": 1231
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "fa705d0adfe1a54a930929e61bef931adb44a665b659ec2103c6a8f892391cad",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/581b3e27b926d5cdd927682b423965db1ca232c7a82db8f9298058ccbb89b33a/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/994cf74072a6d409c9e15009d24a57c3315deed280c6d7b27d6b7720cf32163c"
+        }
+      }
+    },
+    "value_221": {
+      "out1_reduce4_packed_block_block_rows0": {
+        "output_lanes": 1,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "block",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 1128,
+          "ff": 476,
+          "dsp": 4,
+          "lutram_bits": 2048,
+          "bram": 5,
+          "lut_sites": 1168
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 1296,
+        "weight_width": 32,
+        "period_bound": 3099816,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "weights",
+            "width": 32,
+            "depth": 1296,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_32",
+            "banks": 3,
+            "resources": {
+              "bram": 3
+            },
+            "payload_bits": 41472,
+            "allocated_bits": 49152,
+            "packing_efficiency": 0.84375
+          },
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 1512,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_8",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 24192,
+            "allocated_bits": 32768,
+            "packing_efficiency": 0.73828125
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 30,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 96,
+            "resources": {
+              "lut": 96,
+              "lutram_bits": 1536
+            },
+            "payload_bits": 1440,
+            "allocated_bits": 1536,
+            "packing_efficiency": 0.9375
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1192,
+          "ff": 474,
+          "dsp": 4,
+          "lutram_bits": 2048,
+          "bram": 5,
+          "lut_sites": 1230
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "3947710f6d44fb03e6eddae399c61c7951bd6b0ad678898c4ce4de60aa71ca31",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/7ac16511fbcdc651f0d190ef483fbae3c271a12434cc8f88cfaed744c27da08f/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/0c27c3960ded69fc39c5cd765e2b59972ecce5473e87fe0411f970dbf120da36"
+        }
+      }
+    },
+    "value_153": {
+      "out1_reduce1_parallel_logic_block_rows0": {
+        "output_lanes": 1,
+        "reduction_lanes": 1,
+        "memories": {
+          "weight": "logic",
+          "line": "block",
+          "line_layout": "parallel"
+        },
+        "resources": {
+          "lut": 394,
+          "ff": 203,
+          "dsp": 1,
+          "lutram_bits": 256,
+          "lut_sites": 461
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 64,
+        "weight_width": 8,
+        "period_bound": 814464,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 4,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 1,
+            "mode": "distributed_bit",
+            "banks": 16,
+            "resources": {
+              "lut": 16,
+              "lutram_bits": 256
+            },
+            "payload_bits": 64,
+            "allocated_bits": 256,
+            "packing_efficiency": 0.25
+          },
+          {
+            "name": "logic_weights",
+            "width": 8,
+            "depth": 64,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "logic",
+            "copies": 1,
+            "mode": "logic_rom",
+            "banks": 32,
+            "resources": {
+              "lut": 32
+            },
+            "payload_bits": 512,
+            "allocated_bits": 512,
+            "packing_efficiency": 1.0
+          }
+        ],
+        "estimated_resources": {
+          "lut": 410,
+          "ff": 192,
+          "dsp": 1,
+          "lutram_bits": 256,
+          "lut_sites": 467
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "61d990505b6c3677d1b452e3b646d5fc0dab177fea61877349b5a7a3a1c7a043",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/18d08e7f0a1c82d1aee96c0e964acfbebb1d903e2d0ea7294aefaf17a966fb7b/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/85ff0162f1ca62de7cb1dc4b195b51f58a1c25ee0172173f8d7f74b2628bcb13"
+        }
+      }
+    },
+    "value_249": {
+      "out3_reduce4_shared_block_block_rows1": {
+        "output_lanes": 3,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "block",
+          "line": "block",
+          "extra_rows": 1
+        },
+        "resources": {
+          "lut": 1646,
+          "ff": 644,
+          "dsp": 12,
+          "bram": 5,
+          "lut_sites": 1768
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 378,
+        "weight_width": 72,
+        "period_bound": 3443328,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "source_rows_0",
+            "width": 16,
+            "depth": 1134,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_8",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 18144,
+            "allocated_bits": 32768,
+            "packing_efficiency": 0.5537109375
+          },
+          {
+            "name": "source_rows_1",
+            "width": 16,
+            "depth": 504,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 8064,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.4921875
+          },
+          {
+            "name": "weights",
+            "width": 72,
+            "depth": 378,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_36",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 27216,
+            "allocated_bits": 36864,
+            "packing_efficiency": 0.73828125
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1717,
+          "ff": 673,
+          "dsp": 12,
+          "bram": 5,
+          "lut_sites": 1872
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "663913552239b86431f834c3b52630b8ccb11ef0878bc95ac9f8dc0d6d279751",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/ac46dfe5bf9ab2bafa9760c8a86bb9270f12590ed28f87129e92bb1e9d887091/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/862755021fe57779317250e7f696cd43867966aca57bd06119c6ab9fc13cbb87"
+        }
+      }
+    },
+    "value_265": {
+      "out2_reduce4_packed_block_block_rows0": {
+        "output_lanes": 2,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "block",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 986,
+          "ff": 492,
+          "dsp": 8,
+          "lutram_bits": 768,
+          "bram": 3,
+          "lut_sites": 1102
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 288,
+        "weight_width": 64,
+        "period_bound": 2931440,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "weights",
+            "width": 64,
+            "depth": 288,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_32",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 18432,
+            "allocated_bits": 32768,
+            "packing_efficiency": 0.5625
+          },
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 1008,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 16128,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.984375
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 12,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 48,
+            "resources": {
+              "lut": 48,
+              "lutram_bits": 768
+            },
+            "payload_bits": 576,
+            "allocated_bits": 768,
+            "packing_efficiency": 0.75
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1045,
+          "ff": 476,
+          "dsp": 8,
+          "lutram_bits": 768,
+          "bram": 3,
+          "lut_sites": 1147
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "fcac88da08581ee0b7f2f569788896f0738049982c063159f4d8973224929116",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/5422011da10999094983cfed64f69f4317d5744268066a702ccc98e98386c330/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/103e392499a1da34b208b3cf1b6f219e714b1ca19adaeba0ddcae5df02889a5c"
+        }
+      }
+    },
+    "value_116": {
+      "out1_reduce1_parallel_logic_block_rows0": {
+        "output_lanes": 1,
+        "reduction_lanes": 1,
+        "memories": {
+          "weight": "logic",
+          "line": "block",
+          "line_layout": "parallel"
+        },
+        "resources": {
+          "lut": 314,
+          "ff": 177,
+          "dsp": 1,
+          "lutram_bits": 256,
+          "lut_sites": 369
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 24,
+        "weight_width": 8,
+        "period_bound": 1387008,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 3,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 1,
+            "mode": "distributed_bit",
+            "banks": 16,
+            "resources": {
+              "lut": 16,
+              "lutram_bits": 256
+            },
+            "payload_bits": 48,
+            "allocated_bits": 256,
+            "packing_efficiency": 0.1875
+          },
+          {
+            "name": "logic_weights",
+            "width": 8,
+            "depth": 24,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "logic",
+            "copies": 1,
+            "mode": "logic_rom",
+            "banks": 16,
+            "resources": {
+              "lut": 16
+            },
+            "payload_bits": 192,
+            "allocated_bits": 256,
+            "packing_efficiency": 0.75
+          }
+        ],
+        "estimated_resources": {
+          "lut": 339,
+          "ff": 173,
+          "dsp": 1,
+          "lutram_bits": 256,
+          "lut_sites": 390
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "cf265218d9d737d4465b338422f40b1e8b7a38b9f65f279ed2385c957962d060",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/062bb605fdfbfe1d87f4545c3753bbe2237e15bec8e090a6a27f3c1fa7e19083/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/1fe0c0131ec27a95c1e4f9b4fa1369cbed06d5598b5adf1b31a45c6764597fb8"
+        }
+      }
+    },
+    "value_293": {
+      "out4_reduce4_shared_block_block_rows1": {
+        "output_lanes": 4,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "block",
+          "line": "block",
+          "extra_rows": 1
+        },
+        "resources": {
+          "lut": 1664,
+          "ff": 618,
+          "dsp": 16,
+          "bram": 6,
+          "lut_sites": 1791
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 90,
+        "weight_width": 96,
+        "period_bound": 3451392,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "source_rows_0",
+            "width": 16,
+            "depth": 1512,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_8",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 24192,
+            "allocated_bits": 32768,
+            "packing_efficiency": 0.73828125
+          },
+          {
+            "name": "source_rows_1",
+            "width": 8,
+            "depth": 1008,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_8",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 8064,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.4921875
+          },
+          {
+            "name": "weights",
+            "width": 96,
+            "depth": 90,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_32",
+            "banks": 3,
+            "resources": {
+              "bram": 3
+            },
+            "payload_bits": 8640,
+            "allocated_bits": 49152,
+            "packing_efficiency": 0.17578125
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1692,
+          "ff": 663,
+          "dsp": 16,
+          "bram": 6,
+          "lut_sites": 1865
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "0d3f47fac0ef22e8e558613a847c20979804d9e78c7556798bb9f5a9a806f04a",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/a06ecc3e5da473836287c22abe61e34bff4b41bae4ecca8cd4dec7f202b92f2e/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": false,
+          "cache_path": "build/characterization-cache/ae7d76cf5883cf4140724c3f93414cbe980d2ff13e95df2df05480229e0851ed"
+        }
+      }
+    },
+    "value_309": {
+      "out2_reduce4_packed_logic_block_rows0": {
+        "output_lanes": 2,
+        "reduction_lanes": 4,
+        "memories": {
+          "weight": "logic",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 1134,
+          "ff": 433,
+          "lutram_bits": 768,
+          "bram": 1,
+          "dsp": 8,
+          "lut_sites": 1211
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 72,
+        "weight_width": 64,
+        "period_bound": 3390816,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 1008,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 16128,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.984375
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 6,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 48,
+            "resources": {
+              "lut": 48,
+              "lutram_bits": 768
+            },
+            "payload_bits": 288,
+            "allocated_bits": 768,
+            "packing_efficiency": 0.375
+          },
+          {
+            "name": "logic_weights",
+            "width": 64,
+            "depth": 72,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "logic",
+            "copies": 1,
+            "mode": "logic_rom",
+            "banks": 320,
+            "resources": {
+              "lut": 320
+            },
+            "payload_bits": 4608,
+            "allocated_bits": 5120,
+            "packing_efficiency": 0.9
+          }
+        ],
+        "estimated_resources": {
+          "lut": 1166,
+          "ff": 427,
+          "lutram_bits": 768,
+          "bram": 1,
+          "dsp": 8,
+          "lut_sites": 1239
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "fa2dd17ceafa05d07c2de2608e34e366c27a7d3e8f8482f6cb3e515b48264d32",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/4612d20ce5fd34662708bb624ccf77405f8b48e657e40b8c2fa1e58c52fb9b06/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/0c8f8c7a7d0663d37dbd6789905d3d34755691a70a50aa890316d82d15cb9c4c"
+        }
+      }
+    },
+    "value_322": {
+      "out1_reduce1_packed_logic_block_rows0": {
+        "output_lanes": 1,
+        "reduction_lanes": 1,
+        "memories": {
+          "weight": "logic",
+          "line": "block",
+          "line_layout": "packed"
+        },
+        "resources": {
+          "lut": 706,
+          "ff": 317,
+          "dsp": 1,
+          "lutram_bits": 768,
+          "bram": 1,
+          "lut_sites": 758
+        },
+        "evidence": "geometry estimate",
+        "weight_depth": 72,
+        "weight_width": 8,
+        "period_bound": 2713056,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [
+          {
+            "name": "lines",
+            "width": 16,
+            "depth": 1008,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 16128,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.984375
+          },
+          {
+            "name": "horizontal",
+            "width": 16,
+            "depth": 6,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 3,
+            "mode": "distributed_bit",
+            "banks": 48,
+            "resources": {
+              "lut": 48,
+              "lutram_bits": 768
+            },
+            "payload_bits": 288,
+            "allocated_bits": 768,
+            "packing_efficiency": 0.375
+          },
+          {
+            "name": "logic_weights",
+            "width": 8,
+            "depth": 72,
+            "read_ports": 1,
+            "write_ports": 0,
+            "style": "logic",
+            "copies": 1,
+            "mode": "logic_rom",
+            "banks": 40,
+            "resources": {
+              "lut": 40
+            },
+            "payload_bits": 576,
+            "allocated_bits": 640,
+            "packing_efficiency": 0.9
+          }
+        ],
+        "estimated_resources": {
+          "lut": 719,
+          "ff": 315,
+          "dsp": 1,
+          "lutram_bits": 768,
+          "bram": 1,
+          "lut_sites": 769
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "f2578c0b2c88a2029985fa9cf96097c7b9e305efc61a85f77586ee4b8e19038f",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/0a9c789496b9ff7329d141a27327c4f22037d8f67499f3b0c021db53425ff276/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/1a9ada2aa58d990c000e0ccf510394c3b8400495a15fc2dd9db27b00a89809dd"
+        }
+      }
+    },
+    "value_324": {
+      "stream": {
+        "resources": {
+          "lut": 6,
+          "ff": 3,
+          "lut_sites": 8
+        },
+        "evidence": "geometry estimate",
+        "period_bound": 32256,
+        "resource_coverage": "Memory geometry and multiplier slots only; characterize RTL for complete costs",
+        "memory_report": [],
+        "estimated_resources": {
+          "lut": 6,
+          "ff": 3,
+          "lut_sites": 8
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "fd4941b5df851652fb4e21ed7db91128064484cb8c5f85354b5724a44194f4df",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/330cb0cc342b2d75dce674cd34bc189d4bdeb7639a06d8b729c845c7b9b521e5/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/2c86f47a0466e96d321673f33546fa622130bbf428f8f681463965233bd3cb91"
+        }
+      }
+    }
+  },
+  "fifo_options": {
+    "input->value_84:0": {
+      "depth8_distributed": {
+        "depth": 8,
+        "memory": "distributed",
+        "resources": {
+          "lut": 89,
+          "ff": 71,
+          "lutram_bits": 384,
+          "lut_sites": 113
+        },
+        "memories": [
+          {
+            "name": "fifo",
+            "width": 24,
+            "depth": 8,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 1,
+            "mode": "distributed_bit",
+            "banks": 24,
+            "resources": {
+              "lut": 24,
+              "lutram_bits": 384
+            },
+            "payload_bits": 192,
+            "allocated_bits": 384,
+            "packing_efficiency": 0.5
+          }
+        ],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 89,
+          "ff": 71,
+          "lutram_bits": 384,
+          "lut_sites": 113
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "e52ab75004839f328381f9a985d72847fcf2a701dcffe98d0ad33417586a5600",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/de0e959743cb982e7a5fc8b6bf06fb422eae37fe6713644576e6268a67ca9604/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/7274dca729a57e1afc36f6767df8298267eed105dd6dc3d2119711df6d46472e"
+        }
+      }
+    },
+    "value_84->value_100:0": {
+      "depth8_distributed": {
+        "depth": 8,
+        "memory": "distributed",
+        "resources": {
+          "lut": 73,
+          "ff": 51,
+          "lutram_bits": 256,
+          "lut_sites": 89
+        },
+        "memories": [
+          {
+            "name": "fifo",
+            "width": 16,
+            "depth": 8,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 1,
+            "mode": "distributed_bit",
+            "banks": 16,
+            "resources": {
+              "lut": 16,
+              "lutram_bits": 256
+            },
+            "payload_bits": 128,
+            "allocated_bits": 256,
+            "packing_efficiency": 0.5
+          }
+        ],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 73,
+          "ff": 51,
+          "lutram_bits": 256,
+          "lut_sites": 89
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "c3746288db17c8c0917a57142ba7352c150a97594167843fca349235d2fbb9a3",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/c925648998e93a4080d5c30ebb0376c2dc5ef336b87032ce119a09be30267a31/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/227af79b5964582df1c7bab77a8621e656aecf14eb3a45dca5898abc31655daf"
+        }
+      }
+    },
+    "value_100->value_121:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_121->value_137:0": {
+      "depth256_block": {
+        "depth": 256,
+        "memory": "block",
+        "resources": {
+          "lut": 95,
+          "ff": 68,
+          "bram": 1,
+          "lut_sites": 135
+        },
+        "memories": [
+          {
+            "name": "fifo",
+            "width": 16,
+            "depth": 256,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_16",
+            "banks": 1,
+            "resources": {
+              "bram": 1
+            },
+            "payload_bits": 4096,
+            "allocated_bits": 16384,
+            "packing_efficiency": 0.25
+          }
+        ],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 95,
+          "ff": 68,
+          "bram": 1,
+          "lut_sites": 135
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "7393d8497cdebf4003463b809d989e8c03184e08b28d78aaabc445dc6320e1d5",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/7237e9e58ce02976603f9ad1f9378ec02ef08abec8ca5fb327cf94162fcc8dcd/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/7ac33d35b629706c0a36e99fb79b937b1965393fa5bf5092d76a801be9166d51"
+        }
+      }
+    },
+    "value_137->value_158:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_158->value_174:0": {
+      "depth128_distributed": {
+        "depth": 128,
+        "memory": "distributed",
+        "resources": {
+          "lut": 431,
+          "ff": 231,
+          "lutram_bits": 2048,
+          "lut_sites": 431
+        },
+        "memories": [
+          {
+            "name": "fifo",
+            "width": 16,
+            "depth": 128,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "distributed",
+            "copies": 1,
+            "mode": "distributed_bit",
+            "banks": 128,
+            "resources": {
+              "lut": 128,
+              "lutram_bits": 2048
+            },
+            "payload_bits": 2048,
+            "allocated_bits": 2048,
+            "packing_efficiency": 1.0
+          }
+        ],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 431,
+          "ff": 231,
+          "lutram_bits": 2048,
+          "lut_sites": 431
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "d7718105caa4adde01ae9e2ab5513d2fcfe5c5fa50d5377d0cd0f60adc7a9663",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/7f5d67821d8d33d9d5b9190df9ce45760c5ff6b7c8dd6048e50cf3d94f8d1c7e/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/a1c625319eaf35842b22f4de048fe042202289d5f8aac177fa89b90fee37f2c0"
+        }
+      }
+    },
+    "value_174->value_190:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_190->value_221:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_137->value_153:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_221->value_249:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_153->value_249:1": {
+      "depth2048_block": {
+        "depth": 2048,
+        "memory": "block",
+        "resources": {
+          "lut": 119,
+          "ff": 80,
+          "bram": 2,
+          "lut_sites": 162
+        },
+        "memories": [
+          {
+            "name": "fifo",
+            "width": 16,
+            "depth": 2048,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_8",
+            "banks": 2,
+            "resources": {
+              "bram": 2
+            },
+            "payload_bits": 32768,
+            "allocated_bits": 32768,
+            "packing_efficiency": 1.0
+          }
+        ],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 119,
+          "ff": 80,
+          "bram": 2,
+          "lut_sites": 162
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "c9330a543bb45775f2125598516d080ab6e18af4913fb0c1a5739d1b5d324d5f",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/aeb45728b15951c5f5bb7ec4b3578518b4113e9fca3eed56b4e356961e3a805b/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/a3dfbfb9710f4eaf3d0829053a45e900648ccf2fd0fdeb535677dcd2e5dbe5c6"
+        }
+      }
+    },
+    "value_249->value_265:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_100->value_116:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_265->value_293:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_116->value_293:1": {
+      "depth8192_block": {
+        "depth": 8192,
+        "memory": "block",
+        "resources": {
+          "lut": 123,
+          "ff": 72,
+          "bram": 4,
+          "lut_sites": 152
+        },
+        "memories": [
+          {
+            "name": "fifo",
+            "width": 8,
+            "depth": 8192,
+            "read_ports": 1,
+            "write_ports": 1,
+            "style": "block",
+            "copies": 1,
+            "mode": "block_2",
+            "banks": 4,
+            "resources": {
+              "bram": 4
+            },
+            "payload_bits": 65536,
+            "allocated_bits": 65536,
+            "packing_efficiency": 1.0
+          }
+        ],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 123,
+          "ff": 72,
+          "bram": 4,
+          "lut_sites": 152
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "c88726621432e30d3ee06420e823c44a74551a46da95a07bf15a5f80a6612d7b",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/bb9caefa5b6a83f1ca73251f14d3ebcb3171ebe75aed35690a69f9a5b6f19b20/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/274b4bedc1e794c5fa3bd5990f42aac2d0e3616686bf9452ae89492d7aae9764"
+        }
+      }
+    },
+    "value_293->value_309:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_309->value_322:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 17,
+          "lut_sites": 20
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "601576f4c58a631e7347fd57eca7b02593d852b03f0d1507a72d30bfc4197258",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/58fd07448aaba9f6e17368241825bde94352f25e594b8b313f6841d4e45ad3fb/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/4d979876527d85f03e04b3f181418e8a3cbde4c5ea168833b7ab2c408e5fde6c"
+        }
+      }
+    },
+    "value_322->value_324:0": {
+      "depth1_block": {
+        "depth": 1,
+        "memory": "block",
+        "resources": {
+          "lut": 4,
+          "ff": 9,
+          "lut_sites": 12
+        },
+        "memories": [],
+        "evidence": "geometry estimate",
+        "estimated_resources": {
+          "lut": 4,
+          "ff": 9,
+          "lut_sites": 12
+        },
+        "measurement": {
+          "identity": {
+            "source": {
+              "source": {
+                "rtl_sha256": "b3bdfbd04d9155b66a558e330f11285c07b85cf20345fe87def74cdc3072587a",
+                "synthesis": {
+                  "command": "synth_gowin",
+                  "family": "gw2a",
+                  "flags": [
+                    "-nowidelut"
+                  ],
+                  "timeout_seconds": 180
+                },
+                "cell_costs": {
+                  "LUT[1234]": {
+                    "lut": 1
+                  },
+                  "ALU": {
+                    "lut": 1
+                  },
+                  "DFF*": {
+                    "ff": 1
+                  },
+                  "MULT9X9": {
+                    "dsp": 1
+                  },
+                  "MULT18X18": {
+                    "dsp": 2
+                  },
+                  "MULT36X36": {
+                    "dsp": 8
+                  },
+                  "DPX9B": {
+                    "bram": 1
+                  },
+                  "SDPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9B": {
+                    "bram": 1
+                  },
+                  "SPX9": {
+                    "bram": 1
+                  },
+                  "DPB": {
+                    "bram": 1
+                  },
+                  "SDPB": {
+                    "bram": 1
+                  },
+                  "SP": {
+                    "bram": 1
+                  },
+                  "RAM16SDP1": {
+                    "lut": 1,
+                    "lutram_bits": 16
+                  },
+                  "RAM16SDP2": {
+                    "lut": 2,
+                    "lutram_bits": 32
+                  },
+                  "RAM16SDP4": {
+                    "lut": 4,
+                    "lutram_bits": 64
+                  },
+                  "MUX2_LUT*": {},
+                  "IBUF": {},
+                  "OBUF": {},
+                  "GND": {},
+                  "VCC": {}
+                },
+                "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+              },
+              "mapping": {
+                "pack_product_registers": true,
+                "lut_mapping": "area",
+                "timeout_seconds": 180
+              },
+              "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+            },
+            "analysis": {
+              "lut_sites": "gowin"
+            },
+            "packer": {
+              "executable": "nextpnr-himbaechel",
+              "device": "GW2AR-LV18QN88C8/I7",
+              "family": "GW2A-18C",
+              "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+            },
+            "packer_identity": {
+              "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+              "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+            },
+            "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+          },
+          "netlist_path": "build/characterization-cache/d8135870a018f095c66e0b3cac5348cda40143135541fc7d3986cb109fb5099e/netlist.json",
+          "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+          "cache_hit": true,
+          "cache_path": "build/characterization-cache/7cb08f7a32672ee34c1d435592c6aa2cb392a8411538895fd47804bf77608959"
+        }
+      }
+    }
+  },
+  "fixed_resources": {
+    "lut": 128,
+    "ff": 128,
+    "lut_sites": 128
+  },
+  "resource_provenance": "Exact RTL/target/tool keyed actor and FIFO synthesis; whole-design mapping and routing still required",
+  "screen": {
+    "considered_actor_options": {
+      "value_84": 72,
+      "value_100": 74,
+      "value_121": 2,
+      "value_137": 82,
+      "value_158": 2,
+      "value_174": 96,
+      "value_190": 104,
+      "value_221": 104,
+      "value_153": 48,
+      "value_249": 49,
+      "value_265": 86,
+      "value_116": 24,
+      "value_293": 39,
+      "value_309": 74,
+      "value_322": 12,
+      "value_324": 1
+    },
+    "max_actor_options": 8,
+    "fifo_linear_max_words": 256,
+    "scope": "Heuristic catalogue screen; joint CP-SAT optimality applies only to retained options",
+    "seed_period_bound": 3032822,
+    "dominated_measured_fifo_options": 0
+  }
+}

@@ -6,7 +6,7 @@ from itertools import combinations
 import pytest
 
 from torch2rtl.cp_sat import solve
-from torch2rtl.schedule import Dependency, Fifo, Limits, Option, Problem
+from torch2rtl.schedule import ChoiceDelay, Dependency, Fifo, Limits, Option, Problem
 
 
 def test_ordered_capacity_matches_occupancy():
@@ -125,3 +125,17 @@ def test_large_period_cycle_is_optimized_without_an_explicit_cycle_sum():
         (), {}, 2000000, 3000000, "epoch")
     solution = solve(model, Limits(seconds=5))
     assert solution.status == "OPTIMAL" and solution.period == 1000000
+
+
+@pytest.mark.parametrize("values", [(('serial',8),('parallel',4)), (('serial',8),)])
+@pytest.mark.parametrize("budget", [0,1,2])
+def test_shared_choice_delay_matches_explicit_conditional_edges(values,budget):
+    choices={"actor":(Option("serial",{"lanes":1}),Option("parallel",{"lanes":2}))}
+    common=(Dependency("start","end",2),Dependency("end","start",1,1))
+    compact=Problem(("start","end"),choices,
+                    common+(Dependency("start","end",ChoiceDelay("actor",values)),),
+                    (),{"lanes":budget},30,60,"start",resource_weights={"lanes":1})
+    explicit=replace(compact,dependencies=common+tuple(
+        Dependency("start","end",delay,when=(("actor",option),)) for option,delay in values))
+    first,second=solve(compact),solve(explicit)
+    assert (first.status,first.period,first.selected) == (second.status,second.period,second.selected)

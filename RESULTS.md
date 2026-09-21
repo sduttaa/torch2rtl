@@ -1,12 +1,30 @@
 # Current result
 
-**Timing correction:** the installed nextpnr database omits multiplier timing,
+The current fabric-only integer implementation uses **44 BRAMs** and sustains
+**30.2226 scheduled inferences/s at 108 MHz**, with validation Dice
+**0.6500655308**. Three complete RTL frames meet their CP-SAT transfer deadlines;
+the corrected timing flow passes and produces a bitstream. This is a
+compiler/simulation/timing result, not a physical-board FPS measurement.
+Nextpnr reports a 109.218-MHz setup limit. The 35-BRAM / 50-FPS stretch goal
+remains unmet. See [the current artifacts](results/compiler-optimization/README.md).
+
+The previous 46-BRAM / 30.1131-FPS implementation remains preserved in
+[the baseline artifacts](results/on-chip-inference/README.md).
+The generic compiler changes and their resource/timing evidence are documented
+in [compiler improvements](docs/compiler-improvements.md).
+
+## Earlier experiments
+
+The records below predate the accepted result above. Their failures and
+conditional estimates remain here as development evidence.
+
+**Timing correction during those experiments:** the installed nextpnr database omits multiplier timing,
 small-LUT variants and certain RAM input checks. Earlier timing passes below
 are tool results, not complete timing closure. The 21.56-FPS figure is conditional
 on a safe 135 MHz clock; it is not verified hardware throughput.
 [Coverage audit and evidence](docs/timing-coverage.md).
 
-**Accuracy meets the revised threshold; fabric-memory-only 30 FPS is not achieved.**
+**At this earlier stage, accuracy met the threshold but fabric-only 30 FPS was not achieved.**
 The compiler produces full-model RTL and CP-SAT schedules with independently
 checked constraints and RTL transfer deadlines. The latest pipelined candidate
 places and routes, but **fails timing at the required clock**. Its weights and

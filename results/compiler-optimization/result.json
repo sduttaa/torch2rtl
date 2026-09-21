@@ -1,0 +1,138 @@
+{
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "validation_dice": 0.6500655307994757,
+  "accuracy_scope": "Inherited from unchanged exported model; validation split was used for checkpoint selection, not an independent test set.",
+  "period_cycles": 3573484,
+  "configured_clock_hz": 108000000,
+  "scheduled_fps": 30.222606285630494,
+  "required_clock_hz_for_thirty_fps": 107204520,
+  "reported_fmax": {
+    "clock_source.clock_out": {
+      "achieved": 109.2179946899414,
+      "constraint": 108.0030288696289
+    }
+  },
+  "bram_blocks": 44,
+  "signed_nine_bit_multiplier_slots": 95,
+  "mandatory_logic_sites": 18636,
+  "physical_board_measured": false,
+  "compiled_result_passes": true,
+  "gates": {
+    "unchanged_model_identity": true,
+    "accuracy_inherited_from_unchanged_model": true,
+    "solver_verified": true,
+    "selection_matches_relaxation": true,
+    "rtl_identity": true,
+    "bit_exact_three_frames": true,
+    "all_scheduled_transfers": true,
+    "steady_frame_interval": true,
+    "mapping_equivalence": true,
+    "capacity_preflight": true,
+    "dsp_configuration_guard": true,
+    "used_pin_structural_coverage": true,
+    "route_timing": true,
+    "bitstream_packed": true,
+    "scheduled_thirty_fps": true
+  },
+  "timing_scope": "Corrected nextpnr timing database with exact DSP configuration guard and structural used-pin audit; not a complete independent timing signoff or board measurement.",
+  "harness_scope": "Counter-source/checksum toolflow harness; no host or camera transport, no board programming.",
+  "optimization_scope": "CP-SAT resource/actor-period relaxation over a bounded generic catalogue selected the architecture; exact joint event/FIFO schedule then solved with those choices fixed. Optimal period applies only to the fixed choices; no global architecture optimality claim.",
+  "stretch_goal": {
+    "bram_blocks": 35,
+    "scheduled_fps": 50,
+    "achieved": false
+  },
+  "baseline_comparison": {
+    "bram_blocks": 46,
+    "scheduled_fps": 30.113107192427083,
+    "bram_reduction_percent": 4.3478260869565215,
+    "fps_increase_percent": 0.3636260200705843,
+    "period_reduction_percent": 6.2233492440757265
+  },
+  "evidence": {
+    "baseline": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/result.json",
+      "sha256": "d93516a0d1b43faf5289a4c3662432d857e353c40e705d20d5850cd569d4321c"
+    },
+    "model": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/model.pt2",
+      "sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d"
+    },
+    "architecture_candidates": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-catalogue/catalogue.json",
+      "sha256": "c8968069f1d57abe5f0ac401e69382cbba833ee6732440a73f147c433e9c525c"
+    },
+    "schedule_offsets": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-schedule/offsets.jsonl.gz",
+      "sha256": "b7f54559b83c113c4f5770df174fec360fc304878b48a4bba02490add66cc958"
+    },
+    "input_transfer_cycles": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-schedule/input_cycles.hex",
+      "sha256": "c9ed597a89a8f112b0036a75abc74300fedeac1e1e6e71942b3bad1f5afee264"
+    },
+    "output_transfer_cycles": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-schedule/output_cycles.hex",
+      "sha256": "3302cec27d6a818f704f93be78d07bc6ae0a45b1a5fbd1cb528842c0ca9e9a5f"
+    },
+    "reference": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/reference.json",
+      "sha256": "33ca42768980ea629372ded08b8792012499d2082ef54e59163026c70607d0b4"
+    },
+    "reference_input": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/input.hex",
+      "sha256": "4b7cd3b2fd786dd69fa8beaa69a37fb0aae2cd2464249afdbdfa738cd435977c"
+    },
+    "reference_output": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/expected.hex",
+      "sha256": "4b8b25fd2394680ab56aae8239c3836f6762ee5f58a273a5350b6ca956a246d4"
+    },
+    "mapped_modules": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-linked/mapped/modules.json",
+      "sha256": "689afef9b4ae11ab4c95c390616fdb29481d776b68be2e3b87470a3e420b708d"
+    },
+    "mapped_structure": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-linked/mapped/structure.sv",
+      "sha256": "8c29e90bbfb231f5c591ff16dca7d1a64a98fbadf7dfb5e5b27c5205c1de5e71"
+    },
+    "linked_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-route/linked-flat.json",
+      "sha256": "2b3bab57a16755917b60ed9c1996f15e180719fece2f26b0fab0d5945014f07e"
+    },
+    "packed_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-route/packed.json",
+      "sha256": "76edce6dafa603cb3ef0b4a461102dd003f1d11691b02c4ad27afd6ee8498f85"
+    },
+    "routed_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-route/routed.json",
+      "sha256": "ff17c75d11fd76d970dbc48cb849b18a52f5bab11d8f217141ed44123c6492c6"
+    },
+    "place_route_log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-optimization/rate-headroom-route/place-route.log",
+      "sha256": "ab0342de539b51e083364a0f95409eb8726b1af4e263d75b4cb7081a3332587e"
+    },
+    "chip_database": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin",
+      "sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+    },
+    "scoped_multiplier_timing": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/verification/vendor-timing/multiplier-timing.json",
+      "sha256": "6e5a5bf02051ecea8e486b9460daf80d834a2be5a90a7fd128e5075a719b0626"
+    },
+    "registered-bias-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/registered-bias-tests.log",
+      "sha256": "bf34b8b6f5aa63dc1e647ed33f7eb6e27c4cc55c53784f46f153a4992391931b"
+    },
+    "startup-selection-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/startup-selection-tests.log",
+      "sha256": "5c64d6f0018275a964114e30b0ba768c5fcf67a13eb876fbf830cfc97708c3ab"
+    },
+    "reuse-validation-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/reuse-validation-tests.log",
+      "sha256": "769dcbb7603e1f4e241b3d2e53414dff128da4509009d72bd17fce3cc9a2e339"
+    },
+    "compiler-integration-tests.log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/compiler-integration-tests.log",
+      "sha256": "946e6a50df1696673ad8567a196558daa099f84ee245145b618f09280ee5c83c"
+    }
+  }
+}

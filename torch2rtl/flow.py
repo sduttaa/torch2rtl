@@ -6,6 +6,10 @@ from pathlib import Path
 import json
 import re
 import subprocess
+import hashlib
+import os
+import signal
+from functools import lru_cache
 
 
 def synthesis_command(config, top):
@@ -36,11 +40,26 @@ def synthesize(rtl, directory, target):
               "bufnorm -conn\nclean\nwrite_json netlist.json\n")
     (directory / "synth.ys").write_text(script)
     with (directory / "synthesis.log").open("w") as log:
-        subprocess.run(["yosys", "-Q", "-T", "-s", "synth.ys"], cwd=directory,
-                       stdout=log, stderr=subprocess.STDOUT, check=True)
+        command=["yosys", "-Q", "-T", "-s", "synth.ys"]
+        with subprocess.Popen(command,cwd=directory,stdout=log,stderr=subprocess.STDOUT,
+                              start_new_session=True) as process:
+            (directory/"process.json").write_text(json.dumps({"pid":process.pid,"command":command})+"\n")
+            try:
+                status=process.wait(timeout=target["synthesis"].get("timeout_seconds"))
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid,signal.SIGTERM)
+                process.wait()
+                raise ValueError("Actor synthesis exceeded the supplied time limit") from None
+            if status:
+                raise subprocess.CalledProcessError(status,command)
     netlist = json.loads((directory / "netlist.json").read_text())
     cells = Counter(c["type"] for c in netlist["modules"]["inference"]["cells"].values())
     (directory / "cells.json").write_text(json.dumps(cells, indent=2) + "\n")
+    return resource_usage(netlist,target)
+
+
+def resource_usage(netlist,target,top="inference"):
+    cells=Counter(cell["type"] for cell in netlist["modules"][top]["cells"].values())
     resources = Counter()
     for cell, count in cells.items():
         costs = [cost for pattern, cost in target["cell_costs"].items() if fnmatchcase(cell, pattern)]
@@ -51,3 +70,69 @@ def synthesize(rtl, directory, target):
                 raise ValueError("Cell costs must be nonnegative integers")
             resources[resource] += count * cost
     return dict(resources)
+
+
+@lru_cache(maxsize=1)
+def tool_identity():
+    return subprocess.check_output(["yosys", "-V"],text=True).strip()
+
+
+def characterize(rtl,target,cache):
+    """Reuse only exactly matching RTL, mapping settings, costs and tool builds."""
+    if target.get("resource_analysis"):
+        from . import packing
+        if target["resource_analysis"] != {"lut_sites":"gowin"} or target["synthesis"]["command"] != "synth_gowin":
+            raise ValueError("Unsupported physical resource analysis")
+        base=characterize(rtl,{**target,"resource_analysis":{}},cache)
+        identity={"source":base["identity"],"analysis":target["resource_analysis"],
+                  "packer":target["place_route"],
+                  "packer_identity":packing.tool_identity(target["place_route"]["executable"],target["place_route"].get("chipdb")),
+                  "analyzer_sha256":hashlib.sha256(Path(packing.__file__).read_bytes()).hexdigest()}
+        key=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
+        directory=Path(cache)/key
+        report=directory/"report.json"
+        if report.exists():
+            record=json.loads(report.read_text())
+            if record.get("identity") == identity and "resources" in record:
+                return {**record,"cache_hit":True,"cache_path":str(directory)}
+        directory.mkdir(parents=True,exist_ok=True)
+        netlist=Path(base["cache_path"])/"netlist.json"
+        if not netlist.exists():
+            netlist=netlist.with_name("registered.json")
+        resources=packing.characterize(netlist,directory,target,base["resources"])
+        record={"identity":identity,"resources":resources,"netlist_path":str(netlist),
+                "evidence":"Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites"}
+        report.write_text(json.dumps(record,indent=2)+"\n")
+        return {**record,"cache_hit":False,"cache_path":str(directory)}
+    if target.get("characterize_netlist_mapping"):
+        from . import gowin
+        raw=characterize(rtl,{**target,"characterize_netlist_mapping":False},cache)
+        identity={"source":raw["identity"],"mapping":target["netlist_mapping"],
+                  "mapper_sha256":hashlib.sha256(Path(gowin.__file__).read_bytes()).hexdigest()}
+        key=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
+        directory=Path(cache)/key
+        report=directory/"report.json"
+        if report.exists():
+            record=json.loads(report.read_text())
+            if record.get("identity") == identity and "resources" in record:
+                return {**record,"cache_hit":True,"cache_path":str(directory)}
+        mapped=gowin.map_netlist(Path(raw["cache_path"])/"netlist.json",directory,target)
+        resources=resource_usage(json.loads(mapped.read_text()),target)
+        record={"identity":identity,"resources":resources,"raw_cache_path":raw["cache_path"],
+                "evidence":"actor RTL synthesis and selected netlist mapping"}
+        report.write_text(json.dumps(record,indent=2)+"\n")
+        return {**record,"cache_hit":False,"cache_path":str(directory)}
+    identity={"rtl_sha256":hashlib.sha256(rtl.encode()).hexdigest(),
+              "synthesis":target["synthesis"],"cell_costs":target["cell_costs"],
+              "tool":tool_identity()}
+    key=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
+    directory=Path(cache)/key
+    report=directory/"report.json"
+    if report.exists():
+        record=json.loads(report.read_text())
+        if record.get("identity") == identity and "resources" in record:
+            return {**record,"cache_hit":True,"cache_path":str(directory)}
+    resources=synthesize(rtl,directory,target)
+    record={"identity":identity,"resources":resources,"evidence":"actor RTL synthesis"}
+    report.write_text(json.dumps(record,indent=2)+"\n")
+    return {**record,"cache_hit":False,"cache_path":str(directory)}
