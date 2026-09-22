@@ -28,6 +28,8 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
     memories = memories or {}
     convolution_actor = value.operation in ("quantized_convolution", "quantized_convolution_pool", "quantized_view_convolution")
     allowed = {"weight", "line", "line_layout", "weight_block_depth"} if convolution_actor else {"storage"}
+    if convolution_actor and value.operation != "quantized_view_convolution":
+        allowed |= {"line_bank_width"}
     if value.operation == "__interpolate.size_list_scale_list":
         allowed |= {"row_buffers"}
     if value.operation == "quantized_view_convolution":
@@ -40,7 +42,7 @@ def actor_rtl(value, lanes, output_lanes=None, memories=None, reduction_lanes=No
     if convolution_actor:
         return convolution.emit(value, lanes, output_lanes, memories.get("weight", "auto"),
                                 memories.get("line", "auto"), memories.get("line_layout", "parallel"), reduction_lanes,
-                                memories.get("weight_block_depth"),requantization)
+                                memories.get("weight_block_depth"),requantization,memories.get("line_bank_width"))
     if reduction_lanes is not None:
         raise ValueError(f"No reduction parallelism for {value.operation}")
     if value.operation == "max_pool2d":
@@ -123,9 +125,15 @@ def emit(graph, lanes, output_lanes, depths, memories=None, reduction_lanes=None
         rtl = "" if external_modules else actor_rtl(value, lanes, output_lanes.get(value.name), memories.get(value.name),
             reduction_lanes.get(value.name),requantizations.get(value.name,"auto"))
         rtl = rtl.replace("module inference (", f"module actor_{index} (", 1)
-        # All sources here are compiler-owned templates, with ordinary module
-        # declarations. Keep each shared template definition exactly once.
-        for match in re.finditer(r"\bmodule\s+(\w+)\b.*?\bendmodule\b", rtl, flags=re.S):
+        # Alternatives may intentionally implement the same local interface
+        # differently. Namespace that actor's complete hierarchy on collision;
+        # unchanged shared definitions still appear only once.
+        pattern=r"\bmodule\s+(\w+)\b.*?\bendmodule\b"
+        definitions={match.group(1):match.group(0) for match in re.finditer(pattern,rtl,flags=re.S)}
+        if any(name in modules and modules[name]!=source for name,source in definitions.items()):
+            names={name:f"actor_{index}_{name}" for name in definitions if name!=f"actor_{index}"}
+            rtl=re.sub(r"\b("+"|".join(map(re.escape,names))+r")\b",lambda match:names[match.group()],rtl)
+        for match in re.finditer(pattern, rtl, flags=re.S):
             name, source = match.group(1), match.group(0)
             if name in modules and modules[name] != source:
                 raise ValueError(f"Conflicting RTL template definitions: {name}")

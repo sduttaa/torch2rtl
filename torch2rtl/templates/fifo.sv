@@ -26,6 +26,30 @@ module stream_fifo #(
         end
       end
     end
+  end else if (DEPTH == 2) begin: pair
+    // Two registers sustain one transfer per edge without a RAM read stage.
+    // Ready depends only on occupancy; downstream ready does not propagate
+    // combinationally across the FIFO. A full queue releases credit next edge.
+    reg [WIDTH-1:0] head, tail;
+    reg head_valid, tail_valid;
+    wire push=in_valid && in_ready;
+    assign in_ready=!rst && !tail_valid;
+    assign out_valid=!rst && head_valid;
+    assign out_data=head;
+    always @(posedge clk) begin
+      if (rst) begin head_valid <= 0; tail_valid <= 0; end
+      else begin
+        // The three reachable states are empty, head only, and head+tail.
+        // Direct next-state equations avoid cascaded pop/push priority muxes.
+        head_valid <= in_valid || tail_valid || (head_valid && !out_ready);
+        tail_valid <= !out_ready && (tail_valid || (in_valid && head_valid));
+        // Select data using registered occupancy. Downstream ready controls
+        // only the enable, keeping it off the data mux and its fanout.
+        if ((out_ready && tail_valid) || (push && (!head_valid || out_ready)))
+          head <= tail_valid ? tail : in_data;
+        if (push && head_valid && !out_ready) tail <= in_data;
+      end
+    end
   end else begin: buffered
     localparam integer ADDRESS_BITS = $clog2(DEPTH);
     localparam integer COUNT_BITS = $clog2(DEPTH+1);

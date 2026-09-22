@@ -1,0 +1,233 @@
+{
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "validation_dice": 0.6500655307994757,
+  "accuracy_scope": "Inherited from unchanged exported model; validation split was used for checkpoint selection, not an independent test set.",
+  "period_cycles": 3085714,
+  "configured_clock_hz": 108000000,
+  "scheduled_fps": 35.00000324074104,
+  "required_fps": 35,
+  "bram_blocks": 35,
+  "signed_nine_bit_multiplier_slots": 96,
+  "mandatory_logic_sites": 17250,
+  "logic_sites_available": 20736,
+  "routed_logic_sites": 17527,
+  "logic_sites_reserved": 3209,
+  "reported_fmax": {
+    "clock_source.clock_out": {
+      "achieved": 110.50945281982422,
+      "constraint": 108.0030288696289
+    }
+  },
+  "compiled_result_passes": true,
+  "gates": {
+    "unchanged_model": true,
+    "accuracy_requirement": true,
+    "automatic_selection": true,
+    "solver_verified": true,
+    "rtl_identity": true,
+    "bit_exact_frames": true,
+    "scheduled_transfers": true,
+    "steady_frame_interval": true,
+    "mapping_equivalence": true,
+    "physical_capacity": true,
+    "logic_margin": true,
+    "dsp_configuration_guard": true,
+    "used_pin_coverage": true,
+    "route_timing": true,
+    "bitstream_packed": true,
+    "bram_requirement": true,
+    "throughput_requirement": true,
+    "timing_database_identity": true
+  },
+  "automatic_architecture_selection": {
+    "external_configuration_seed": false,
+    "external_schedule_seed": false,
+    "compiler_buffer_planning": true,
+    "scope": "Bounded compiler search; no global optimality claim"
+  },
+  "physical_board_measured": false,
+  "timing_scope": "Configuration-scoped DSP timing database and used-pin structural audit; not independent timing signoff.",
+  "harness_scope": "Counter-source/checksum harness; no host/camera transport or board measurement.",
+  "evidence": {
+    "inference.sv": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/inference.sv",
+      "sha256": "8fd828431cfd127db64fa96a3f0c5a55371ec59b7e0164f01e0796406fe19b5e"
+    },
+    "configuration.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/configuration.json",
+      "sha256": "34f674ce1fdc2add9e570f8fdf7525ece828115947cf204888ee41ac783d00f4"
+    },
+    "schedule-report.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/report.json",
+      "sha256": "c90be83a5487d7bd4dad604f4d7be7e01e1d926224ed99a6a821ad7e39d60a01"
+    },
+    "selected-catalogue.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/catalogue.json",
+      "sha256": "cb46eb6d26a5cb53a05f86c21589f29072346d19748efdaf728d0547d30ca34a"
+    },
+    "architecture-bound.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/throughput-screen.json",
+      "sha256": "18c53be786402626009f17162d7dfb3c42710061785055c36b12d5863f70ef84"
+    },
+    "simulation-report.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/simulation/report.json",
+      "sha256": "e3f6063968ac3e0cbac8d84f22c9e62339382e712d1fe855655a663866e2c417"
+    },
+    "mapping-proofs.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/report.json",
+      "sha256": "e55331ddd0e7aac57df548c05f1ee3a64cde3d879186e8783c1bc753b1ca3e05"
+    },
+    "mapping-evidence.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/mapped/evidence.json",
+      "sha256": "807aec40d54b84d4905cc8ae316fba52d640d8ad3850e1ad5177a9ea067dcfd8"
+    },
+    "target.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/target.json",
+      "sha256": "a42a2a27358d115700529b91e3e5dd975d3d59677004ae548b6939aa78535bfd"
+    },
+    "search.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/search.json",
+      "sha256": "e71dcc78136e2d4c27b746abe912b4e8f32301d9e74cb537ecabc8f79630b918"
+    },
+    "job.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/job.json",
+      "sha256": "761c10189e10dd6b5fb59a29cb1488f8b156172cb815b6cc8bf964232ac1ec57"
+    },
+    "pll.sv": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/inputs/throughput-pll.sv",
+      "sha256": "3a7b7ab9f623de781934d956ea7f6ef32abb016f6e8920c6523971d209d9363c"
+    },
+    "constraints.cst": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/constraints.cst",
+      "sha256": "dc5a92ef6cd232c593f32e6333d714f488f98d60e7f28a89e01af4227db24f3a"
+    },
+    "capacity.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/capacity.json",
+      "sha256": "fb6f075abe41ea3960e41a6f546438415cc75af7cf4b2f96a6bbcf76c5566a10"
+    },
+    "route-report.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/route-report.json",
+      "sha256": "f5a407b96cca3464a64c46469b577757d82643ac925ba0cc00ce476e01fea6b0"
+    },
+    "toolflow-summary.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/toolflow-summary.json",
+      "sha256": "36db07f6e3d3ab3f86504e24537ba7d72bd5eb0e1bc594bd94aac06671ea8219"
+    },
+    "dsp-timing-guard.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/dsp-timing-guard.json",
+      "sha256": "609d204a0ba287bf2b33ff62d1ccae039a846c4f2d885a71878df1ac61ba18e8"
+    },
+    "pin-coverage.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/pin-coverage.json",
+      "sha256": "56dfb0091371b18dfcfe5a5e23d13ab10cb407bdf8e3523ccf1964250530e529"
+    },
+    "harness.fs": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/harness.fs",
+      "sha256": "16ccfb169b32289a4c8918032d75c4397be964f71e1f62fd108dc945a457799f"
+    },
+    "harness.sv": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/harness.sv",
+      "sha256": "e26ddf95a23e20cc6f2e5927987d89b6a10265c348152ea50c8a5a6af77c253e"
+    },
+    "clocks.py": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/clocks.py",
+      "sha256": "37ce61cc94693c93a389e689af4a2479a600fc92b5a32e6b114ef82c4e4e87aa"
+    },
+    "timing-database-identity.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/timing-database-identity.json",
+      "sha256": "06693d252224268328df4d23cca87808c78a6be2abbee662c1fd681347b351ba"
+    },
+    "resource-breakdown.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/resource-breakdown.json",
+      "sha256": "cec2d1acb50ff7ef675f342d8a0e07e9dab63bb2fb9e619bacd7e45537ee1173"
+    },
+    "resume-provenance.json": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/resume-provenance.json",
+      "sha256": "02c5cfbb54eea26971fcf75c04386adaf945de7c7a3600b5c5f79e430820da49"
+    },
+    "model": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/model.pt2",
+      "sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d"
+    },
+    "accuracy": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/results/bram-reduction/result.json",
+      "sha256": "58f264781bb2400fcaecc89b9d1b2e061ffe0ebb4c0846cf746d3cba85590cf1"
+    },
+    "reference": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/reference.json",
+      "sha256": "33ca42768980ea629372ded08b8792012499d2082ef54e59163026c70607d0b4"
+    },
+    "reference_input": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/input.hex",
+      "sha256": "4b7cd3b2fd786dd69fa8beaa69a37fb0aae2cd2464249afdbdfa738cd435977c"
+    },
+    "reference_output": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/compact-balanced/vectors/expected.hex",
+      "sha256": "4b8b25fd2394680ab56aae8239c3836f6762ee5f58a273a5350b6ca956a246d4"
+    },
+    "offsets": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/offsets.jsonl.gz",
+      "sha256": "cd671d4192815ee428323319afa9120ea8b45c4ab0b9c671753d764c73dea691"
+    },
+    "input_cycles": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/input_cycles.hex",
+      "sha256": "b7a76b18a3056e51888cad359a700387449caec45e6fef0255e36bfcef24f458"
+    },
+    "output_cycles": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/output_cycles.hex",
+      "sha256": "d9a8593e731d6c07d611a0eecd4a9bd2942e672e8cf0fbacfdf15975eb5ed506"
+    },
+    "mapped_modules": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/mapped/modules.json",
+      "sha256": "00cfba92bce5e1b386de79ab8c7d6659c8370a8441093cd0757ee8c691a5de91"
+    },
+    "mapped_structure": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/schedule/mapped/structure.sv",
+      "sha256": "8c29e90bbfb231f5c591ff16dca7d1a64a98fbadf7dfb5e5b27c5205c1de5e71"
+    },
+    "linked_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/linked-flat.json",
+      "sha256": "be325d12ea80e3e88d08064a55986a03216c561b4ca8fa933ff0491d99c6974f"
+    },
+    "packed_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/packed.json",
+      "sha256": "77c0252a0d0fbf2c9f2157f1f5024437be3d888a2abc9aa113e0c9078665f7f9"
+    },
+    "routed_netlist": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/routed.json",
+      "sha256": "17a5d49d8c07ede4e1a4eb19f351617f6c11a3c24434a3ca3c57a3d299a60e0b"
+    },
+    "route_log": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/place-route.log",
+      "sha256": "f444607b7cbb21069105a7561ad3533d079d72a12bf5a525cc49c3f4ca3f55dd"
+    },
+    "buffer_plan": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/cycle-feedback/buffer-planning/report.json",
+      "sha256": "094650b2795329effacebf7aadf283f045a566e7b3f5076a7bc4a526ac2ea82c"
+    },
+    "buffer_hint": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/cycle-feedback/buffer-planning/storage-hint.json",
+      "sha256": "8aa4d1181f1ef34a08f4c0681dec601e2f2acef2bac8f94145c6198ec77b1f10"
+    },
+    "chip_database": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin",
+      "sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+    },
+    "timing_guard": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/verification/vendor-timing/guard-netlist.py",
+      "sha256": "0cbedc5e859237953de5d2074226e1c7865599ae3d0696bb6a598b9fd485da91"
+    },
+    "timing_table": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/verification/vendor-timing/multiplier-timing.json",
+      "sha256": "6e5a5bf02051ecea8e486b9460daf80d834a2be5a90a7fd128e5075a719b0626"
+    },
+    "pin_audit": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/audit-used-pins.py",
+      "sha256": "383e660ac5549b9a7ee851c726bf6d0e10bf538c91a352bd1370a34d8897842d"
+    },
+    "database_generator": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/gowin_arch_gen.py",
+      "sha256": "e0f5e61a443f33dbe9c473afeac3bee719a216db224d246f16e5d5d7683dc08c"
+    }
+  }
+}

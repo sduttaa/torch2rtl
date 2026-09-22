@@ -41,13 +41,14 @@ def main():
     optimize_parser.add_argument("--cache", type=Path, required=True)
     optimize_parser.add_argument("--stage", choices=("screen","measure","schedule"), default="schedule")
     optimize_parser.add_argument("--seconds", type=float, default=30)
+    optimize_parser.add_argument("--workers", type=int, default=1)
     optimize_parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "optimize-network":
         from .optimize import optimize
         from .schedule import Limits
         report = optimize(args.model,json.loads(args.target.read_text()),json.loads(args.search.read_text()),
-                          args.output,args.cache,Limits(seconds=args.seconds),args.stage)
+                          args.output,args.cache,Limits(seconds=args.seconds,workers=args.workers),args.stage)
         print(json.dumps(report,indent=2))
         return
     if args.command == "schedule-network":

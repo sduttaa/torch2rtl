@@ -1,0 +1,19 @@
+{
+  "source_catalogue": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/cycle-feedback/catalogue.json",
+  "catalogue_sha256": "a8a2d827a62e440ce33cf689b9cf65ebe9368fee43564e9e25eea832c6f9ceb8",
+  "scope": "Refresh every retained compiler-generated candidate after a generic template change; no architecture, FIFO choice, or schedule override",
+  "template_hashes": {
+    "torch2rtl/templates/block_pool.sv": "522ef89909f378a11a6e3588d642b6d339ff216e8b366c5f89b66bb96697ea60",
+    "torch2rtl/templates/concatenate.sv": "8327d337b965a4bb0045455bd1e8216175527a8ff2d6d9fe6578239cd221d138",
+    "torch2rtl/templates/convolution.sv": "7ceb90cf6610204a7b959d6ec81eb7cce8fb6250ef988fd55e34f896deb64b00",
+    "torch2rtl/templates/fifo.sv": "40a976e78e73b4882083c6269d11d037e4c4dc35d51761e21dc28bb5dca0a3d8",
+    "torch2rtl/templates/lookup.sv": "17938c6f7992811266d8936bf741ea27fbd31e18d91cc8128a450fefb84d53b9",
+    "torch2rtl/templates/pool.sv": "a5092c28a7af16ee2a40c239cb5c7413919fae6963725645bc6998a334894571",
+    "torch2rtl/templates/resize.sv": "da131c185131771eebb5807a997ddd6a0eea54783a0aac24b512c11c45afaff6",
+    "torch2rtl/templates/view.sv": "916611fa6df21c621b91b252a5e8fa685dbb858e8851a3ab072e7c8c376e51cb",
+    "torch2rtl/templates/window.sv": "36cb6d0898277f4550e25fbf8ab6ab4a2fed002380885a14a815b20f55c00c48",
+    "torch2rtl/templates/window_prefetch.sv": "a3f7c065fef0ca815d0e23a211e8fe7832cd58fa941416bfe7008a52bfdf5d1b",
+    "torch2rtl/templates/window_ring.sv": "d0e7cd597e7757316ef2d4fbe8a2903fd8f5e5c253e86fb9732ba163b1f21566",
+    "torch2rtl/templates/window_storage.sv": "be9a9a40f3c7ba826dd762a626291b57644ef1c202ca474d8d1220e0af599ad8"
+  }
+}

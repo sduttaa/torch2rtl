@@ -1,0 +1,248 @@
+{
+  "description": "Explicit generated-clock toolflow experiment with fabric-only inference; not a physical-board measurement",
+  "source": "https://wiki.sipeed.com/hardware/en/tang/tang-nano-20k/nano-20k.html",
+  "fabric_memory_bits": {
+    "block_ram": 847872,
+    "distributed_ram": 41472
+  },
+  "resources": {
+    "lut": 20736,
+    "ff": 15552,
+    "bram": 35,
+    "dsp": 96,
+    "lutram_bits": 41472,
+    "lut_sites": 18000
+  },
+  "resource_weights": {
+    "lut_sites": 1
+  },
+  "logic_lut_inputs": 4,
+  "resource_units": {
+    "dsp": "One signed 9-by-9 multiplier slot; an 18-by-18 multiplier occupies two slots",
+    "bram": "One 18-Kbit block"
+  },
+  "cell_costs": {
+    "LUT[1234]": {
+      "lut": 1
+    },
+    "ALU": {
+      "lut": 1
+    },
+    "DFF*": {
+      "ff": 1
+    },
+    "MULT9X9": {
+      "dsp": 1
+    },
+    "MULT18X18": {
+      "dsp": 2
+    },
+    "MULT36X36": {
+      "dsp": 8
+    },
+    "DPX9B": {
+      "bram": 1
+    },
+    "SDPX9B": {
+      "bram": 1
+    },
+    "SPX9B": {
+      "bram": 1
+    },
+    "SPX9": {
+      "bram": 1
+    },
+    "DPB": {
+      "bram": 1
+    },
+    "SDPB": {
+      "bram": 1
+    },
+    "SP": {
+      "bram": 1
+    },
+    "RAM16SDP1": {
+      "lut": 1,
+      "lutram_bits": 16
+    },
+    "RAM16SDP2": {
+      "lut": 2,
+      "lutram_bits": 32
+    },
+    "RAM16SDP4": {
+      "lut": 4,
+      "lutram_bits": 64
+    },
+    "MUX2_LUT*": {},
+    "IBUF": {},
+    "OBUF": {},
+    "GND": {},
+    "VCC": {}
+  },
+  "clock_hz": 108000000,
+  "synthesis": {
+    "command": "synth_gowin",
+    "family": "gw2a",
+    "flags": [
+      "-nowidelut"
+    ],
+    "timeout_seconds": 180
+  },
+  "place_route": {
+    "executable": "nextpnr-himbaechel",
+    "device": "GW2AR-LV18QN88C8/I7",
+    "family": "GW2A-18C",
+    "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+  },
+  "memory_modes": [
+    {
+      "name": "block_1",
+      "kind": "block",
+      "width": 1,
+      "depth": 16384,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_2",
+      "kind": "block",
+      "width": 2,
+      "depth": 8192,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_4",
+      "kind": "block",
+      "width": 4,
+      "depth": 4096,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_8",
+      "kind": "block",
+      "width": 8,
+      "depth": 2048,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_9",
+      "kind": "block",
+      "width": 9,
+      "depth": 2048,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_16",
+      "kind": "block",
+      "width": 16,
+      "depth": 1024,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_18",
+      "kind": "block",
+      "width": 18,
+      "depth": 1024,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_32",
+      "kind": "block",
+      "width": 32,
+      "depth": 512,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "block_36",
+      "kind": "block",
+      "width": 36,
+      "depth": 512,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "bram": 1
+      }
+    },
+    {
+      "name": "distributed_bit",
+      "kind": "distributed",
+      "width": 1,
+      "depth": 16,
+      "read_ports": 1,
+      "write_ports": 1,
+      "resources": {
+        "lut": 1,
+        "lutram_bits": 16
+      }
+    },
+    {
+      "name": "logic_rom",
+      "kind": "logic",
+      "width": 1,
+      "depth": 16,
+      "read_ports": 1,
+      "write_ports": 0,
+      "resources": {
+        "lut": 1
+      }
+    }
+  ],
+  "memory_modes_source": "https://cdn.gowinsemi.com.cn/UG285E.pdf",
+  "multiplier_modes": [
+    {
+      "input_bits": 9,
+      "signed": true,
+      "resources": {
+        "dsp": 1
+      }
+    }
+  ],
+  "resource_priority": [
+    "bram",
+    "lut",
+    "dsp",
+    "ff"
+  ],
+  "netlist_mapping": {
+    "pack_product_registers": true,
+    "lut_mapping": "area",
+    "timeout_seconds": 180
+  },
+  "characterize_netlist_mapping": true,
+  "resource_analysis": {
+    "lut_sites": "gowin"
+  },
+  "required_fps": 35,
+  "logic_budget_source": "Physical LUT-site capacity from the supplied device toolflow; whole-design placement and timing remain mandatory."
+}

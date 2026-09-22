@@ -1,0 +1,176 @@
+{
+  "model": "/Users/Obi-wan/Documents/torch2rtl/results/on-chip-inference/model.pt2",
+  "model_sha256": "7ccf827c803d7498664e7b103b6652f1da722b781995d5f9d20609bd99b4fc1d",
+  "fusions": [
+    "convolution_pool",
+    "resize_concat_convolution"
+  ],
+  "lanes": 4,
+  "output_lanes": {
+    "value_84": 8,
+    "value_100": 6,
+    "value_137": 6,
+    "value_174": 3,
+    "value_190": 4,
+    "value_221": 2,
+    "value_153": 1,
+    "value_249": 4,
+    "value_265": 2,
+    "value_116": 1,
+    "value_293": 8,
+    "value_309": 4,
+    "value_322": 1
+  },
+  "reduction_lanes": {
+    "value_84": 2,
+    "value_100": 2,
+    "value_137": 1,
+    "value_174": 1,
+    "value_190": 1,
+    "value_221": 2,
+    "value_153": 1,
+    "value_249": 4,
+    "value_265": 4,
+    "value_116": 1,
+    "value_293": 2,
+    "value_309": 2,
+    "value_322": 1
+  },
+  "requantizations": {
+    "value_84": "overlap_folded",
+    "value_100": "overlap_folded",
+    "value_137": "overlap_folded",
+    "value_174": "overlap_folded",
+    "value_190": "overlap_folded",
+    "value_221": "overlap_folded",
+    "value_153": "overlap_shift_add",
+    "value_249": "overlap_folded",
+    "value_265": "overlap_shift_add",
+    "value_116": "threshold",
+    "value_293": "overlap_folded",
+    "value_309": "overlap_folded",
+    "value_322": "overlap_shift_add"
+  },
+  "memories": {
+    "value_84": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "ring",
+      "line_bank_width": 8
+    },
+    "value_100": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "ring"
+    },
+    "value_121": {
+      "storage": "block"
+    },
+    "value_137": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "prefetch"
+    },
+    "value_158": {
+      "storage": "distributed"
+    },
+    "value_174": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "prefetch"
+    },
+    "value_190": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "prefetch",
+      "weight_block_depth": 1024
+    },
+    "value_221": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "prefetch"
+    },
+    "value_153": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_249": {
+      "weight": "block",
+      "line": "block",
+      "extra_rows": [
+        0,
+        13
+      ]
+    },
+    "value_265": {
+      "weight": "block",
+      "line": "block",
+      "line_layout": "prefetch",
+      "line_bank_width": 8
+    },
+    "value_116": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "packed"
+    },
+    "value_293": {
+      "weight": "logic",
+      "line": "block",
+      "extra_rows": [
+        0,
+        29
+      ]
+    },
+    "value_309": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "prefetch"
+    },
+    "value_322": {
+      "weight": "logic",
+      "line": "block",
+      "line_layout": "ring"
+    }
+  },
+  "fifo_depths": {
+    "input->value_84:0": 2,
+    "value_84->value_100:0": 2,
+    "value_100->value_121:0": 2,
+    "value_121->value_137:0": 2,
+    "value_137->value_158:0": 2,
+    "value_158->value_174:0": 2,
+    "value_174->value_190:0": 1,
+    "value_190->value_221:0": 2,
+    "value_137->value_153:0": 2,
+    "value_221->value_249:0": 2,
+    "value_153->value_249:1": 2,
+    "value_249->value_265:0": 1,
+    "value_100->value_116:0": 2,
+    "value_265->value_293:0": 2,
+    "value_116->value_293:1": 2,
+    "value_293->value_309:0": 1,
+    "value_309->value_322:0": 2,
+    "value_322->value_324:0": 2
+  },
+  "fifo_memories": {
+    "input->value_84:0": "block",
+    "value_84->value_100:0": "block",
+    "value_100->value_121:0": "block",
+    "value_121->value_137:0": "block",
+    "value_137->value_158:0": "block",
+    "value_158->value_174:0": "block",
+    "value_174->value_190:0": "block",
+    "value_190->value_221:0": "block",
+    "value_137->value_153:0": "block",
+    "value_221->value_249:0": "block",
+    "value_153->value_249:1": "block",
+    "value_249->value_265:0": "block",
+    "value_100->value_116:0": "block",
+    "value_265->value_293:0": "block",
+    "value_116->value_293:1": "block",
+    "value_293->value_309:0": "block",
+    "value_309->value_322:0": "block",
+    "value_322->value_324:0": "block"
+  }
+}

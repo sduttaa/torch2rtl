@@ -10,6 +10,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from torch2rtl.flow import synthesize
+from torch2rtl.memory import fifo_latency
 from torch2rtl.spatial import wrapped
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -32,7 +33,7 @@ def measure(depth):
     if args.memory != "auto":
         parameters["MEMORY_STYLE"] = f'"{args.memory}"'
     rtl = wrapped("stream_fifo", parameters, args.bits, ("fifo.sv",))
-    record = {"bits": args.bits, "depth": depth, "forward_delay": 1 if depth == 1 else 2,
+    record = {"bits": args.bits, "depth": depth, "forward_delay": fifo_latency(depth),
               "memory": args.memory, "rtl_sha256": hashlib.sha256(rtl.encode()).hexdigest()}
     try:
         record["resources"] = synthesize(rtl, directory, target)

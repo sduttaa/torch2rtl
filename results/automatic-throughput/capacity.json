@@ -1,0 +1,23 @@
+{
+  "netlist_sha256": "77c0252a0d0fbf2c9f2157f1f5024437be3d888a2abc9aa113e0c9078665f7f9",
+  "packed_luts": 15352,
+  "unpaired_ff_drivers": {
+    "GOWIN_GND": 39,
+    "DFFR": 52,
+    "DFFE": 756,
+    "DFF": 54,
+    "DFFRE": 379,
+    "GOWIN_VCC": 11,
+    "DFFSE": 136,
+    "DFFP": 1
+  },
+  "duplicate_ff_consumers": 470,
+  "lut_site_lower_bound": 17250,
+  "lut_sites_available": 20736,
+  "other_exceeded_resources": {},
+  "necessary_capacity_check_passes": true,
+  "placement_verified": true,
+  "routed_netlist_sha256": "17a5d49d8c07ede4e1a4eb19f351617f6c11a3c24434a3ca3c57a3d299a60e0b",
+  "routed_logic_sites": 17527,
+  "routed_logic_sites_free": 3209
+}

@@ -1,0 +1,81 @@
+{
+  "lanes": 4,
+  "output_lanes": [
+    1,
+    2,
+    3,
+    4,
+    6,
+    8
+  ],
+  "reduction_lanes": [
+    1,
+    2,
+    4
+  ],
+  "line_layouts": [
+    "parallel",
+    "packed",
+    "ring",
+    "ring_compact",
+    "prefetch"
+  ],
+  "weight_memories": [
+    "block",
+    "logic"
+  ],
+  "line_memories": [
+    "block"
+  ],
+  "storage_memories": [
+    "block",
+    "distributed"
+  ],
+  "row_buffers": [
+    1,
+    2
+  ],
+  "extra_rows": [
+    0
+  ],
+  "hybrid_weights": true,
+  "fifo_max_words": 8192,
+  "fifo_linear_max_words": 256,
+  "fifo_small_depths": [
+    1,
+    2,
+    3,
+    8,
+    128,
+    256
+  ],
+  "fifo_memories": [
+    "block",
+    "distributed"
+  ],
+  "max_actor_options": 20,
+  "retention_period_slack": 1.08,
+  "period_limit": 6000000,
+  "offset_limit": 20000000,
+  "fusions": [
+    "convolution_pool",
+    "resize_concat_convolution"
+  ],
+  "fixed_resources": {
+    "lut": 128,
+    "ff": 128,
+    "lut_sites": 128
+  },
+  "requantizations": [
+    "multiply",
+    "threshold",
+    "overlap",
+    "overlap_shift_add",
+    "overlap_folded"
+  ],
+  "automatic_buffering": true,
+  "characterization_workers": 2,
+  "characterization_rounds": 2,
+  "stop_at_required_fps": true,
+  "banked_lines": true
+}

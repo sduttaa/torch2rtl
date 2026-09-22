@@ -1,21 +1,44 @@
 # Current result
 
-The current fabric-only integer implementation uses **35 BRAMs** and sustains
-**30.7049 scheduled inferences/s at 114.75 MHz**, with validation Dice
-**0.6500655308**. Three complete RTL frames meet their CP-SAT transfer deadlines;
-the corrected timing flow passes and produces a bitstream. This is a
-compiler/simulation/timing result, not a physical-board FPS measurement.
-Nextpnr reports a 115.674-MHz setup limit. The hard 35-BRAM / 30-FPS requirement
-is met; the 50-FPS stretch goal remains unmet. See
-[the current artifacts](results/bram-reduction/README.md).
+The automatically compiled fabric-only integer implementation meets the current
+**35-BRAM / 18,000-site / 35-FPS** target:
 
-The previous [44-BRAM / 30.2226-FPS](results/compiler-optimization/README.md) and
-[46-BRAM / 30.1131-FPS](results/on-chip-inference/README.md) implementations remain
-preserved. The model is unchanged; these gains come from generic compiler and
-template changes. The final change passes 128 focused tests and 22 distinct
-mapped-module equivalence checks. [Reduction mathematics and timing findings](docs/bram-reduction.md).
-The generic compiler changes and their resource/timing evidence are documented
-in [compiler improvements](docs/compiler-improvements.md).
+| Metric | Verified result |
+| --- | ---: |
+| Scheduled inferences/s | 35.0000032 |
+| BRAM blocks | 35 |
+| Actual routed logic sites | 17,527 |
+| Sites below the requested cap | 473 |
+| Free physical logic sites | 3,209 of 20,736 |
+| Clock / reported routed setup limit | 108 / 110.509 MHz |
+| Period | 3,085,714 cycles |
+| Validation Dice, unchanged model | 0.6500655308 |
+| Signed 9-by-9 multiplier slots | 96 |
+
+All 18 packaging gates pass. Three complete RTL frames are bit-exact and meet
+every scheduled transfer deadline; all 20 distinct mapped modules pass
+equivalence checks. The corrected timing flow passes and produces a bitstream.
+This is a compiler/simulation/timing result, not a physical-board FPS measurement.
+See [the current artifacts and reproduction instructions](results/automatic-throughput/README.md).
+
+The compiler selects all actor and FIFO configurations and the complete schedule;
+no external architecture or schedule seed is supplied. The final solve reused
+the compiler-generated catalogue after remeasuring every retained candidate with
+the final templates. This is bounded automatic search, not a global optimum claim.
+Generic template changes include fused pooling/quantization overlap, internal
+window prefetch, registered flow control, and independently registered hybrid
+weight-ROM banks. [Template evidence](docs/template-quality.md).
+
+BRAM use is 13 weight blocks and 22 activation blocks. About 99.5% of occupied
+logic serves neural actors or internal interconnect; only 91 sites serve the
+counter/checksum harness and other logic. [Resource attribution](docs/resource-use.md).
+
+The previous [35-BRAM / 30.7049-FPS result](results/bram-reduction/README.md)
+used 19,596 actual sites. The new result is 14.0% faster and uses 2,069 fewer
+sites. The earlier 50-FPS stretch goal remains unmet.
+The [44-BRAM / 30.2226-FPS](results/compiler-optimization/README.md) and
+[46-BRAM / 30.1131-FPS](results/on-chip-inference/README.md) implementations are
+also preserved. The model is unchanged across these accepted results.
 
 ## Earlier experiments
 

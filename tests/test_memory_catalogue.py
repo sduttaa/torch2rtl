@@ -47,6 +47,7 @@ def test_generic_catalogue_contains_real_actor_and_fifo_alternatives():
     rtl=actor_rtl(graph.output,2,selected["output_lanes"],selected["memories"],selected["reduction_lanes"])
     assert "view_rows" in rtl
     assert any(row["memory"] == "distributed" for rows in catalogue["fifo_options"].values() for row in rows.values())
+    assert all({1,3,8} <= {row["depth"] for row in rows.values()} for rows in catalogue["fifo_options"].values())
     value=graph.output
     spec={"output_lanes":2,"reduction_lanes":2,"memories":{"weight":"block"}}
     renamed=replace(value,name="unrelated_name")
@@ -91,12 +92,31 @@ def test_retention_crosses_lower_lane_compute_with_both_weight_memories():
 def test_fifo_pruning_preserves_latency_and_resource_tradeoffs():
     from torch2rtl.optimize import prune_fifos
     options={"register":{"depth":1,"resources":{"lut":1}},
+             "pair":{"depth":2,"resources":{"lut":5}},
              "small":{"depth":8,"resources":{"lut":5}},
              "larger":{"depth":16,"resources":{"lut":5}},
              "block":{"depth":128,"resources":{"lut":4,"bram":1}}}
     catalogue={"fifo_options":{"edge":options},"screen":{}}
     prune_fifos(catalogue)
-    assert set(catalogue["fifo_options"]["edge"]) == {"register","larger","block"}
+    assert set(catalogue["fifo_options"]["edge"]) == {"register","pair","larger","block"}
+
+
+def test_resource_proofs_prune_impossible_choices_without_restricting_slower_ones():
+    from torch2rtl.optimize import prune_unsupported
+    from torch2rtl.schedule import Limits
+    catalogue={"actor_options":{
+        "left":{"fast":{"period_bound":10,"resources":{"dsp":1}},
+                "permitted":{"period_bound":19,"resources":{"dsp":1}},
+                "too_slow":{"period_bound":21,"resources":{}},
+                "too_wide":{"period_bound":5,"resources":{"dsp":2}}},
+        "right":{"fixed":{"period_bound":10,"resources":{"dsp":1}}}},
+        "fifo_options":{"edge":{"small":{"depth":1,"resources":{}},
+                                "large":{"depth":4,"resources":{"lut":2}}}},
+        "period_limit":20,"screen":{},"preferred_options":{"actor:left":"too_wide"}}
+    assert prune_unsupported(catalogue,{"resources":{"dsp":2,"lut":2}},Limits(seconds=2))==2
+    assert set(catalogue["actor_options"]["left"])=={"fast","permitted"}
+    assert len(catalogue["fifo_options"]["edge"])==2
+    assert not catalogue["preferred_options"]
 
 
 def test_input_buffer_absorption_uses_source_geometry_and_preserves_the_seed():
@@ -125,6 +145,14 @@ def test_input_buffer_absorption_uses_source_geometry_and_preserves_the_seed():
     assert repeated["memories"][graph.output.name]["extra_rows"]==[0,5]
     with pytest.raises(ValueError,match="different model"):
         absorb_input_buffers(graph,catalogue,{**seed,"model_sha256":"other"},target())
+    # Fill otherwise unused physical capacity, preferring a depth that permits
+    # rolling across frames. This comes from memory modes and source geometry.
+    seed["fifo_depths"][edge]=140
+    packed_catalogue=prepare(graph,Path("user.pt2"),"hash",target(),search)
+    packed=absorb_input_buffers(graph,packed_catalogue,seed,target(),pack_rows=True)
+    packed_geometry=geometry(graph.output,2,packed["memories"][graph.output.name]["extra_rows"])[1]
+    assert packed_geometry["rolling"]
+    assert packed_geometry["depth"]>=seed["fifo_depths"][edge]
 
 
 def test_retention_preserves_the_seed_and_exact_quantizer_alternatives():
@@ -138,3 +166,101 @@ def test_retention_preserves_the_seed_and_exact_quantizer_alternatives():
     retain(catalogue,SimpleNamespace(period=100,selected={"actor:operator":"multiply"}),2)
     assert "multiply" in catalogue["actor_options"]["operator"]
     assert len(catalogue["actor_options"]["operator"])==2
+
+
+def test_automatic_buffer_plan_uses_a_fresh_finite_occupancy_schedule(tmp_path):
+    from torch2rtl.optimize import automatic_buffer_plan
+    from torch2rtl.schedule import Limits
+    graph=fuse(network(shape=(4,6)),2)
+    search={"lanes":2,"output_lanes":[2],"reduction_lanes":[2],
+            "line_layouts":["packed"],"weight_memories":["block"],"extra_rows":[0],
+            "storage_memories":["block"],"fifo_max_words":128,"fifo_linear_max_words":8,
+            "fifo_small_depths":[1,8],"fifo_memories":["block"],"max_actor_options":4,
+            "period_limit":20000,"offset_limit":50000}
+    catalogue=prepare(graph,Path("user.pt2"),"hash",target(),search)
+    hint,report=automatic_buffer_plan(graph,catalogue,target(),search,tmp_path,Limits(seconds=10),lambda _:None)
+    assert report["solver_verified"] and report["physical_candidate"] is False
+    assert hint["model_sha256"]=="hash"
+    assert all(depth>=1 for depth in hint["fifo_depths"].values())
+    assert "initial_schedule" not in report
+    import json
+    planned=json.loads((tmp_path/"catalogue.json").read_text())
+    assert all(spec["resources"]=={} for options in planned["fifo_options"].values() for spec in options.values())
+    # The original catalogue keeps its physical costs; the relaxation is local.
+    assert any(spec["resources"] for options in catalogue["fifo_options"].values() for spec in options.values())
+
+
+def test_refinement_keeps_the_measured_incumbent_while_exploring_new_geometry():
+    from types import SimpleNamespace
+    from torch2rtl.catalogue import retain
+    options={name:{"output_lanes":lanes,"reduction_lanes":1,"period_bound":period,
+                   "resources":{"lut":cost},"memories":{"weight":"logic"}}
+             for name,lanes,period,cost in (("measured",2,105,20),("optimistic",4,100,0),("other",1,200,1))}
+    catalogue={"actor_options":{"operator":options},"screen":{}}
+    retain(catalogue,SimpleNamespace(period=100,selected={"actor:operator":"optimistic"}),2,
+           incumbent=SimpleNamespace(selected={"actor:operator":"measured"}))
+    assert set(catalogue["actor_options"]["operator"])=={"measured","optimistic"}
+
+
+def test_retention_keeps_burst_capacity_missing_from_actor_period_bounds():
+    from types import SimpleNamespace
+    from torch2rtl.catalogue import retain
+    base={"output_lanes":2,"reduction_lanes":1,"period_bound":100,"memories":{"weight":"block"}}
+    options={"plain":{**base,"resources":{"lut":1}},
+             "arithmetic":{**base,"resources":{"lut":2},"requantization":"threshold"},
+             "buffered":{**base,"resources":{"lut":3},"prefetch_words":16,
+                         "memories":{"weight":"block","line_layout":"prefetch"}}}
+    catalogue={"actor_options":{"operator":options},"screen":{}}
+    retain(catalogue,SimpleNamespace(period=100,selected={"actor:operator":"plain"}),2)
+    assert set(catalogue["actor_options"]["operator"])=={"plain","buffered"}
+
+
+def test_ring_window_costs_one_span_without_duplicate_horizontal_storage():
+    from test_threshold_quantization import example
+    from torch2rtl.memory import actor_memories
+    graph=example(pooled=True)
+    memories=actor_memories(graph.output,2,{"output_lanes":3,"reduction_lanes":2,
+                                           "memories":{"line_layout":"ring"}})
+    windows=[memory for memory in memories if memory.name=="window_ring"]
+    # Four effective rows/columns, padded input width eight, two channel words.
+    assert len(windows)==1 and windows[0].depth==64
+    assert all(memory.name not in ("lines","horizontal") for memory in memories)
+
+
+def test_compact_ring_survives_equal_optimistic_memory_costs():
+    from test_threshold_quantization import example
+    graph=example()
+    board=target()
+    board["memory_modes"][0]["depth"]=16
+    board["memory_modes"][1]["depth"]=32
+    spec={"output_lanes":3,"reduction_lanes":2,"memories":{"line_layout":"ring_compact"}}
+    compact=profile(graph.output,2,spec,board)
+    padded=profile(graph.output,2,{**spec,"memories":{"line_layout":"ring"}},board)
+    assert compact["resources"]["bram"]<padded["resources"]["bram"]
+    # A target mapper can select a different aspect ratio than the geometry
+    # lower bound. Exact synthesis must see both implementations in that case.
+    compact=profile(graph.output,2,spec,target())
+    padded=profile(graph.output,2,{**spec,"memories":{"line_layout":"ring"}},target())
+    assert compact["resources"]==padded["resources"]
+
+
+def test_width_bank_candidates_come_from_target_memory_modes():
+    from test_threshold_quantization import example
+    graph=example(pooled=True)
+    board=target()
+    search={"lanes":4,"output_lanes":[2],"reduction_lanes":[1],
+            "line_layouts":["ring"],"weight_memories":["logic"],"banked_lines":True,
+            "fifo_max_words":8,"fifo_small_depths":[1,3,8],"fifo_memories":["distributed"],
+            "max_actor_options":4,"period_limit":20000,"offset_limit":50000}
+    catalogue=prepare(graph,Path("supplied.pt2"),"hash",board,search)
+    options=catalogue["actor_options"][graph.output.name]
+    banked=[spec for spec in options.values() if "line_bank_width" in spec["memories"]]
+    assert banked
+    for spec in banked:
+        bank_width=spec["memories"]["line_bank_width"]
+        assert bank_width in {mode["width"] for mode in board["memory_modes"]}
+        arrays=[row for row in spec["memory_report"] if row["name"].startswith("window_ring_")]
+        assert sum(row["width"] for row in arrays)==24
+        assert all(row["width"]<=bank_width for row in arrays)
+        rtl=actor_rtl(graph.output,4,spec["output_lanes"],spec["memories"],spec["reduction_lanes"])
+        assert f".BANK_WIDTH({bank_width})" in rtl

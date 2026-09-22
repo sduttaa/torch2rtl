@@ -95,12 +95,24 @@ def actor_memories(value,lanes,spec):
             width=(p["KERNEL_W"]-1)*p["DILATION_W"]+1+(p["POOL_W"]-1)*p["STRIDE_W"]
             words=ceil(p["INPUT_CHANNELS"]/lanes)
             bits=min(lanes,p["INPUT_CHANNELS"])*p["INPUT_BITS"]
-            if memories.get("line_layout","parallel") == "packed":
+            if memories.get("line_layout","parallel") in ("ring","ring_compact","prefetch"):
+                span=((height-1)*(p["WIDTH"]+2*p["PAD_W"])+width)*words
+                depth=span if memories["line_layout"]=="ring_compact" else 1 << (span-1).bit_length()
+                bank=memories.get("line_bank_width")
+                if bank is None:
+                    add("window_ring",bits,depth,memories.get("line","block"))
+                else:
+                    if type(bank)is not int or bank<1:
+                        raise ValueError("Line bank width must be positive")
+                    for start in range(0,bits,bank):
+                        add(f"window_ring_{start//bank}",min(bank,bits-start),depth,memories.get("line","block"))
+            elif memories.get("line_layout","parallel") == "packed":
                 add("lines",bits,(height-1)*p["WIDTH"]*words,memories.get("line","block"))
             else:
                 add("lines",bits,p["WIDTH"]*words,memories.get("line","block"),height-1)
             taps=p["KERNEL_H"] if p["POOL_H"] == 1 else height
-            add("horizontal",bits,width*words,"distributed",taps)
+            if memories.get("line_layout","parallel") not in ("ring","ring_compact","prefetch"):
+                add("horizontal",bits,width*words,"distributed",taps)
     elif op == "max_pool2d":
         data,kernel,stride,padding,dilation,ceil_mode=value.args
         if tuple(stride or kernel) != tuple(kernel) or any(padding) or tuple(dilation) != (1,1) or ceil_mode:
@@ -117,8 +129,13 @@ def actor_memories(value,lanes,spec):
     return result
 
 
+def fifo_latency(depth):
+    """Write-to-readable delay of the selected FIFO template, in edges."""
+    return 1 if depth<=2 else 2
+
+
 def fifo_memories(width,depth,style):
-    return [] if depth == 1 else [Memory("fifo",width,depth,style="block" if style == "auto" else style)]
+    return [] if depth <= 2 else [Memory("fifo",width,depth,style="block" if style == "auto" else style)]
 
 
 def depth_candidates(width,maximum,target,small=(1,2,3,8)):

@@ -25,28 +25,33 @@ from torch2rtl.spatial_schedule import ActorConfig, Events, FifoConfig, problem
      "LANES": 2, "REDUCTION_LANES": 1, "OUTPUT_LANES": 3, "POOL_H": 2, "POOL_W": 3, "MULTIPLIER_BYTES": 2},
     {"HEIGHT": 8, "WIDTH": 8, "INPUT_CHANNELS": 4, "OUTPUT_CHANNELS": 6, "GROUPS": 2,
      "LANES": 2, "REDUCTION_LANES": 2, "OUTPUT_LANES": 2, "POOL_H": 3, "POOL_W": 2},
+    {"HEIGHT": 4, "WIDTH": 4, "INPUT_CHANNELS": 2, "OUTPUT_CHANNELS": 3, "KERNEL_H": 2, "KERNEL_W": 2,
+     "LANES": 2, "REDUCTION_LANES": 2, "OUTPUT_LANES": 2, "POOL_H": 2, "POOL_W": 2},
 ])
 def test_pool_comparison_uses_idle_accumulator_cycle(tmp_path, parameters):
     root = Path(convolution.__file__).parent / "templates"
     source = (root / "convolution.sv").read_text()
     assertions = """
   always @(posedge clk) if (!rst && POOL_ITEMS > 1 && pool_update) begin
-    assert (!product_valid);
+    assert (!dot_valid);
+    if (PIPELINED_POOL == 0) assert (!product_valid);
     assert (state == DOT || state == POOL_WAIT);
     if (pool_last) begin
       assert (state == POOL_WAIT);
       assert (accumulator_byte == BYTE_BITS'(ACCUMULATOR_BYTES-1));
       assert (multiplier_group == GROUP_BITS'(MULTIPLIER_GROUPS-1));
-    end else assert (state == DOT && dot_step == 0);
+    end else if (PIPELINED_POOL == 0) assert (state == DOT && dot_step == 0);
   end
   always @(posedge clk) if (!rst && POOL_ITEMS > 1 && pool_commit) begin
-    assert (!product_valid);
+    if (PIPELINED_POOL == 0) assert (!product_valid);
+    else if (!pool_last) assert (dot_valid && dot_first);
+    else assert (!dot_valid);
     if (pool_last) assert (state == RQ);
   end
   // Prefetched coordinates must describe the active dot, and move ahead only
   // while its products drain. Prove this with arbitrary input/output stalls.
   wire [BLOCK_BITS-1:0] following_block = block == BLOCK_BITS'(BLOCKS-1) ? 0 : block + 1'b1;
-  always @(posedge clk) if (!rst) begin
+  always @(posedge clk) if (!rst && PIPELINED_POOL == 0) begin
     assert (release_window == (state == DOT && dot_last && release_after_dot));
     case (state)
       DOT: begin
@@ -109,7 +114,7 @@ def example(shape=(1, 3, 7, 9), channels=5, kernel=(3, 3), stride=(1, 1), paddin
     return Graph(source, output, reachable(output))
 
 
-@pytest.mark.parametrize("layout", ["parallel", "packed"])
+@pytest.mark.parametrize("layout", ["parallel", "packed", "ring", "ring_compact", "prefetch"])
 @pytest.mark.parametrize("kwargs,lanes,outputs,reduction", [
     ({}, 2, 3, 1),
     ({"shape": (1, 2, 9, 13), "kernel": (2, 3), "stride": (2, 1), "padding": (0, 1),
@@ -120,6 +125,7 @@ def example(shape=(1, 3, 7, 9), channels=5, kernel=(3, 3), stride=(1, 1), paddin
     ({"shape": (1, 1, 5, 1), "channels": 1, "kernel": (3, 1), "padding": (1, 0),
       "pool": (2, 1)}, 1, 1, 1),
     ({"pool": (1, 1)}, 4, 2, 2),
+    ({"shape": (1, 2, 5, 7), "kernel": (2, 2), "padding": (0, 0)}, 2, 3, 2),
 ])
 def test_pooled_convolution_rtl(tmp_path, layout, kwargs, lanes, outputs, reduction):
     graph = example(**kwargs)
@@ -176,6 +182,7 @@ def test_unproved_fusion_is_rejected(case):
 
 @pytest.mark.parametrize("layout,outputs,reduction,pool", [
     ("parallel", 5, 2, (2, 2)), ("parallel", 2, 1, (2, 3)), ("packed", 2, 2, (2, 2)),
+    ("prefetch", 5, 2, (2, 2)), ("prefetch", 2, 1, (2, 3)),
 ])
 def test_pooled_convolution_deadlines(tmp_path, layout, outputs, reduction, pool):
     graph = pooled_convolutions(example(pool=pool))
@@ -191,7 +198,7 @@ def test_optional_fusion_is_explicit():
 
 
 @pytest.mark.parametrize("outputs", [2, 5])
-@pytest.mark.parametrize("layout", ["parallel", "packed"])
+@pytest.mark.parametrize("layout", ["parallel", "packed", "ring", "ring_compact", "prefetch"])
 def test_implied_window_paths_preserve_optimum(monkeypatch, outputs, layout):
     graph = pooled_convolutions(example(shape=(1, 3, 5, 7)))
     options = {graph.output.name: {"selected": ActorConfig(outputs, 1, layout)}}

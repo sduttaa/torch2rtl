@@ -21,6 +21,8 @@
 - Keep the optimization problem independent of its initial CP-SAT backend.
 - Do not tune rules for particular models. Measure generic template behavior.
 
-- Current user acceptance threshold is validation Dice >= 0.65. Prior baseline-matching accuracy requirements are superseded. Prioritize the still-required 30 sustained FPS with fabric-only weights and activations.
-- Batch expensive tests, synthesis and routing after substantive changes. Use cached resource data, schedule analysis and focused checks between builds; do not repeat full validation for minor edits. The current priority is a credible 30-FPS result within hours.
-- The current hard resource requirement is at most 35 BRAM blocks while retaining at least 30 sustained scheduled FPS and validation Dice >= 0.65. The prior 44-BRAM result is a baseline, not completion of this requirement.
+- Current user acceptance threshold is validation Dice >= 0.65. Prior baseline-matching accuracy requirements are superseded. Keep weights and activations in fabric memory.
+- Batch expensive tests, synthesis and routing after substantive changes. Use cached resource data, schedule analysis and focused checks between builds; do not repeat full validation for minor edits. Prioritize useful measured progress within hours.
+- The current hard resource requirement is at most 35 BRAM blocks, at most 18,000 actual routed logic sites, and at least 35 sustained scheduled FPS, retaining validation Dice >= 0.65. Architecture and buffering choices must be produced automatically from model/target/search inputs, without an externally supplied architecture or schedule seed. The prior 35-BRAM/30.70-FPS result is the baseline.
+
+- Pursue structural improvements with meaningful placement headroom. Near-capacity logic use (20,618 of 20,736 sites) is unacceptable; do not route it merely because it passes a numerical capacity check. Current working input budget reserves roughly 13% of logic sites.

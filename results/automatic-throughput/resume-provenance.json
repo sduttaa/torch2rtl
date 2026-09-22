@@ -1,0 +1,7 @@
+{
+  "target": "/Users/Obi-wan/Documents/torch2rtl/inputs/throughput-target.json",
+  "target_sha256": "a42a2a27358d115700529b91e3e5dd975d3d59677004ae548b6939aa78535bfd",
+  "source_catalogue": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/hybrid-pipeline/catalogue.json",
+  "catalogue_sha256": "3d13e29e4076bbeb7b8060148f2d3f4c6e731e8d5b20e55848e3063ed07add2c",
+  "scope": "Resume the compiler-generated measured candidate set; no architecture, FIFO choice, or schedule override"
+}

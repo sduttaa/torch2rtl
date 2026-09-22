@@ -7,8 +7,8 @@ from functools import lru_cache
 from itertools import product
 from math import ceil, prod
 
-from .convolution import configuration
-from .memory import Memory, actor_memories, allocation, depth_candidates, fifo_memories
+from .convolution import configuration, timing
+from .memory import Memory, actor_memories, allocation, depth_candidates, fifo_memories, fifo_latency
 from .network import edges, fifo_width
 from .spatial_schedule import window, words
 from . import spatial_schedule
@@ -45,6 +45,13 @@ def window_gaps(value,lanes,layout):
 def profile(value,lanes,spec,target):
     memories=actor_memories(value,lanes,spec)
     result=allocation(memories,target)
+    if spec.get("memories",{}).get("line_layout")=="ring_compact":
+        padded={**spec,"memories":{**spec["memories"],"line_layout":"ring"}}
+        # Geometry packing is an optimistic bound: the target mapper may
+        # choose a different aspect ratio. Keep a smaller logical memory even
+        # when both bounds coincide; exact characterization decides its value.
+        if memories==actor_memories(value,lanes,padded):
+            raise ValueError("Compact ring does not reduce storage depth")
     resources=Counter(result["resources"])
     if value.operation in ("quantized_convolution","quantized_convolution_pool","quantized_view_convolution"):
         original=value
@@ -60,19 +67,23 @@ def profile(value,lanes,spec,target):
         selected=min(multiply,key=lambda mode:tuple(mode["resources"].get(k,0)
                      for k in target.get("resource_priority",["dsp","lut","ff"])))
         resources.update({key:cost*int(mask,16).bit_count() for key,cost in selected["resources"].items()})
-        blocks=p["GROUPS"]*ceil((p["OUTPUT_CHANNELS"]//p["GROUPS"])/p["OUTPUT_LANES"])
+        blocks,tile,quantizer,release=timing(p)
         dot=p["KERNEL_H"]*p["KERNEL_W"]*ceil((p["INPUT_CHANNELS"]//p["GROUPS"])/p["REDUCTION_LANES"])
-        pool=p["POOL_H"]*p["POOL_W"]
-        extra=int(p["REDUCTION_LANES"]>1)
-        quantizer=p["THRESHOLD_BITS"]+1 if p.get("THRESHOLD_BITS") else p["ACCUMULATOR_BYTES"]*ceil(p["MULTIPLIER_BYTES"]/p["REDUCTION_LANES"])+3
-        tile=pool*(dot+2+extra)+quantizer+int(pool>1)
-        release=pool*(dot+2)+(pool-1)*extra-2
         if original.operation == "quantized_view_convolution":
             period=prod(value.tensor.shape[2:])*(blocks*tile+1)
         else:
             gaps=window_gaps(value,lanes,spec.get("memories",{}).get("line_layout","parallel"))
-            period=sum(count*(max(tile+1,release+gap) if blocks==1 else
-                tile+max((blocks-1)*tile+1,(blocks-2)*tile+release+gap)) for gap,count in gaps.items())
+            if p.get("OVERLAP_QUANTIZER"):
+                period=sum(count*max(blocks*tile+1,(blocks-1)*tile+release+gap) for gap,count in gaps.items())
+            else:
+                period=sum(count*(max(tile+1,release+gap) if blocks==1 else
+                    tile+max((blocks-1)*tile+1,(blocks-2)*tile+release+gap)) for gap,count in gaps.items())
+            if spec.get("memories",{}).get("line_layout")=="prefetch":
+                period=max(period,(p["HEIGHT"]+2*p["PAD_H"])*(p["WIDTH"]+2*p["PAD_W"])*ceil(p["INPUT_CHANNELS"]/lanes))
+                height=(p["KERNEL_H"]-1)*p["DILATION_H"]+1+(p["POOL_H"]-1)*p["STRIDE_H"]
+                width=(p["KERNEL_W"]-1)*p["DILATION_W"]+1+(p["POOL_W"]-1)*p["STRIDE_W"]
+                span=((height-1)*(p["WIDTH"]+2*p["PAD_W"])+width)*ceil(p["INPUT_CHANNELS"]/lanes)
+                result["prefetch_words"]=(1 << (span-1).bit_length())-span
         if spec.get("memories",{}).get("weight") == "logic":
             logic=allocation([Memory("logic_weights",p["OUTPUT_LANES"]*p["REDUCTION_LANES"]*p["WEIGHT_BITS"],
                                blocks*dot,write_ports=0,style="logic")],target)
@@ -154,6 +165,14 @@ def prepare(graph,model,model_hash,target,search):
             except ValueError:
                 continue
             options[name]={**spec,**cost}
+            if search.get("banked_lines") and spec.get("memories",{}).get("line_layout") in ("ring","prefetch"):
+                for memory in cost["memory_report"]:
+                    if memory["name"]!="window_ring":
+                        continue
+                    mode=next(mode for mode in target["memory_modes"] if mode["name"]==memory["mode"])
+                    if mode["width"]<memory["width"]:
+                        variant={**spec,"memories":{**spec["memories"],"line_bank_width":mode["width"]}}
+                        options[name+f'_banks{mode["width"]}']={**variant,**profile(value,lanes,variant,target)}
             if search.get("hybrid_weights") and spec.get("memories",{}).get("weight") == "block":
                 for mode in target["memory_modes"]:
                     if mode["kind"] != "block" or mode["read_ports"] < 1:
@@ -195,14 +214,16 @@ def prepare(graph,model,model_hash,target,search):
             if signature not in signatures and all(spec["resources"].get(k,0)<=v for k,v in target["resources"].items()):
                 fifo_options[name][label]=spec
                 signatures.add(signature)
-        # Within the geometry screen equal memory costs and latency favor the
-        # larger capacity. Complete FF/control costs are measured subsequently.
+        # Keep the requested small depths as well as allocation-boundary
+        # capacities. Equal RAM geometry does not imply equal pointer/control
+        # cost; only the later measured-cost pass can prove dominance.
         best={}
         for label,spec in fifo_options[name].items():
-            signature=(1 if spec["depth"] == 1 else 2,tuple(sorted(spec["resources"].items())))
+            signature=(fifo_latency(spec["depth"]),tuple(sorted(spec["resources"].items())))
             if signature not in best or spec["depth"]>best[signature][1]["depth"]:
                 best[signature]=(label,spec)
-        fifo_options[name]=dict(best.values())
+        fifo_options[name]={**dict(best.values()),**{label:spec for label,spec in fifo_options[name].items()
+                            if spec["depth"] in search["fifo_small_depths"]}}
     return {"model":str(model),"model_sha256":model_hash,"lanes":lanes,
         "fusions":search.get("fusions",[]),"period_limit":search["period_limit"],
         "offset_limit":search["offset_limit"],"actor_options":actor_options,"fifo_options":fifo_options,
@@ -212,7 +233,7 @@ def prepare(graph,model,model_hash,target,search):
                   "scope":"Heuristic catalogue screen; joint CP-SAT optimality applies only to retained options"}}
 
 
-def absorb_input_buffers(graph,catalogue,configuration,target,maximum_fifo_depth=8):
+def absorb_input_buffers(graph,catalogue,configuration,target,maximum_fifo_depth=8,pack_rows=False):
     """Offer a bounded storage-retiming candidate derived from an input seed.
 
     A view already stores a random-access source window. Move a large incoming
@@ -247,7 +268,18 @@ def absorb_input_buffers(graph,catalogue,configuration,target,maximum_fifo_depth
             queued=depth>base[port]["depth"] and depth>=2*base[port]["row_words"]
             retained=existing[port]["rows"]>=2*base[port]["rows"]
             if queued or retained:
-                inputs[port]=capacity//base[port]["row_words"]-base[port]["rows"]
+                rows=capacity//base[port]["row_words"]
+                if pack_rows:
+                    g=base[port]
+                    style=configuration.get("memories",{}).get(value.name,{}).get("line","block")
+                    if style=="auto":style="block"
+                    def cost(count):
+                        return allocation([Memory("source",g["width"],count*g["row_words"],style=style)],target)["resources"]
+                    allocated=cost(rows)
+                    available=[count for count in range(rows,max(rows,g["words"]//g["row_words"])+1) if cost(count)==allocated]
+                    rolling=[count for count in available if g["words"]%(count*g["row_words"])==0]
+                    rows=max(rolling or available)
+                inputs[port]=rows-base[port]["rows"]
                 absorbed[edge]={"source_rows":base[port]["rows"]+inputs[port],"previous_fifo_depth":depth}
         if not inputs:
             continue
@@ -271,11 +303,12 @@ def absorb_input_buffers(graph,catalogue,configuration,target,maximum_fifo_depth
             raise ValueError("Include small FIFO depths when requesting input-buffer absorption")
         catalogue["fifo_options"][edge]=options
         hint["fifo_depths"][edge]=max(spec["depth"] for spec in options.values())
-    catalogue["storage_retiming"]={"absorbed_edges":absorbed,"scope":"Candidate only; complete schedule verification required"}
+    catalogue["storage_retiming"]={"absorbed_edges":absorbed,"pack_rows":pack_rows,
+                                  "scope":"Candidate only; complete schedule verification required"}
     return hint
 
 
-def retain(catalogue,solution,limit,period_slack=1.25):
+def retain(catalogue,solution,limit,period_slack=1.25,incumbent=None):
     """Keep a globally resource-balanced seed plus neighboring implementations."""
     for actor,options in catalogue["actor_options"].items():
         selected=solution.selected["actor:"+actor]
@@ -306,7 +339,19 @@ def retain(catalogue,solution,limit,period_slack=1.25):
                 shape=compute(options[min(eligible,key=order)])
                 if shape not in shapes:
                     shapes.append(shape)
-        keys=[selected]
+        previous=incumbent.selected.get("actor:"+actor) if incumbent is not None else None
+        keys=list(dict.fromkeys(name for name in (selected,previous) if name in options))
+        # Frame-period bounds alone do not describe burst absorption. Preserve
+        # an internal-buffer alternative before filling the bounded catalogue
+        # with arithmetic variants of a non-prefetching implementation.
+        for shape in shapes:
+            for style in ("block","logic"):
+                buffered=[name for name in eligible if compute(options[name])==shape and
+                          options[name].get("prefetch_words",0)>0 and
+                          options[name].get("memories",{}).get("weight")==style]
+                if buffered:
+                    candidate=min(buffered,key=memory_key)
+                    if candidate not in keys:keys.append(candidate)
         for shape in shapes:
             matched=[name for name in eligible if compute(options[name]) == shape]
             # Cross each compute choice with storage choices. A logic-only

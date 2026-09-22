@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "decoded_timing_identical": true,
+  "original_bba_reassembles_to_routed_database": true,
+  "speed_grades": 8,
+  "cell_variants_per_grade": {
+    "C8/I7": 41,
+    "C8/I7_LV": 40,
+    "C7/I6": 40,
+    "C7/I6_LV": 40,
+    "constid:25": 40,
+    "A6_LV": 40,
+    "C9/I8": 40,
+    "C9/I8_LV": 40
+  },
+  "scope": "All decoded cell timing and indexed pip/node timing classes match. Routing-graph serialization differs; whole regenerated databases are not claimed identical. The archived original BBA assembles byte-identically to the database used for routing.",
+  "evidence": {
+    "original": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bba",
+      "sha256": "9fd4e429dddf3fd3eed8f6896dbee88dd4dea3201e31d39326fde0cbca052b50"
+    },
+    "regenerated": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/audited-chipdb.bba",
+      "sha256": "98e18515ad7e2c8d48fe3964f8e81cdd5b43f5db3d43cd61ece462a8462016b7"
+    },
+    "binary": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin",
+      "sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+    },
+    "reassembled": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/route/reassembled-original-chipdb.bin",
+      "sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+    },
+    "generator": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/throughput-push/gowin_arch_gen.py",
+      "sha256": "e0f5e61a443f33dbe9c473afeac3bee719a216db224d246f16e5d5d7683dc08c"
+    },
+    "timing_table": {
+      "path": "/Users/Obi-wan/Documents/torch2rtl/build/verification/vendor-timing/multiplier-timing.json",
+      "sha256": "6e5a5bf02051ecea8e486b9460daf80d834a2be5a90a7fd128e5075a719b0626"
+    }
+  }
+}

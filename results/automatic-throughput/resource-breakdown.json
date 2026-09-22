@@ -1,0 +1,177 @@
+{
+  "scope": "Measured routed resource attribution; timing acceptance is recorded separately in the route evidence",
+  "source": "build/automatic-throughput/clock-margin",
+  "bram": {
+    "convolution windows": 13,
+    "weight ROMs": 13,
+    "other actor storage": 1,
+    "fused branch/source buffers": 8
+  },
+  "routed_logic_sites": 17527,
+  "logic_sites_by_owner": {
+    "neural actors": 16807,
+    "harness/other": 91,
+    "inter-actor FIFOs": 436,
+    "inter-actor FIFOs+neural actors": 193
+  },
+  "sites_touched_by_actor": {
+    "1": 1982,
+    "2": 1582,
+    "3": 267,
+    "4": 907,
+    "5": 909,
+    "6": 927,
+    "7": 2004,
+    "8": 916,
+    "9": 404,
+    "10": 1724,
+    "11": 905,
+    "12": 308,
+    "13": 2599,
+    "14": 1040,
+    "15": 518,
+    "16": 8
+  },
+  "bram_cells": [
+    {
+      "cell": "core.node_8.actor.local_window.window.storage.banks[0].memory.0.1",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_8.actor.local_window.window.storage.banks[0].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_8.actor.genblk4.uniform_weights.weight_memory.0.2",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_8.actor.genblk4.uniform_weights.weight_memory.0.1",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_8.actor.genblk4.uniform_weights.weight_memory.0.0",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_7.actor.local_window.window.storage.banks[0].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_7.actor.genblk4.split_weights.blocks.0.1",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_7.actor.genblk4.split_weights.blocks.0.0",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_6.actor.local_window.window.storage.banks[0].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_6.actor.genblk4.uniform_weights.weight_memory.0.1",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_6.actor.genblk4.uniform_weights.weight_memory.0.0",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_4.actor.local_window.window.storage.banks[0].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_4.actor.genblk4.uniform_weights.weight_memory.0.0",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_3.actor.memory.0.0",
+      "kind": "other actor storage"
+    },
+    {
+      "cell": "core.node_2.actor.local_window.window.ring_window.memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_15.actor.local_window.window.ring_window.memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_14.actor.local_window.window.storage.banks[0].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_13.rows_1.memory.0.3",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_13.rows_1.memory.0.2",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_13.rows_1.memory.0.1",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_13.rows_1.memory.0.0",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_13.rows_0.memory.0.0",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_11.actor.local_window.window.storage.banks[1].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_11.actor.local_window.window.storage.banks[0].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_11.actor.genblk4.uniform_weights.weight_memory.0.1",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_11.actor.genblk4.uniform_weights.weight_memory.0.0",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_10.rows_1.memory.0.1",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_10.rows_1.memory.0.0",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_10.rows_0.memory.0.0",
+      "kind": "fused branch/source buffers"
+    },
+    {
+      "cell": "core.node_10.actor.genblk4.uniform_weights.weight_memory.0.2",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_10.actor.genblk4.uniform_weights.weight_memory.0.1",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_10.actor.genblk4.uniform_weights.weight_memory.0.0",
+      "kind": "weight ROMs"
+    },
+    {
+      "cell": "core.node_1.actor.local_window.window.ring_window.storage.banks[2].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_1.actor.local_window.window.ring_window.storage.banks[1].memory.0.0",
+      "kind": "convolution windows"
+    },
+    {
+      "cell": "core.node_1.actor.local_window.window.ring_window.storage.banks[0].memory.0.0",
+      "kind": "convolution windows"
+    }
+  ]
+}

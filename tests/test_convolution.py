@@ -9,7 +9,7 @@ from rtl_check import pack, simulate
 
 
 @pytest.mark.parametrize("stalls", [False, True])
-@pytest.mark.parametrize("line_layout", ["parallel", "packed"])
+@pytest.mark.parametrize("line_layout", ["parallel", "packed", "ring", "ring_compact", "prefetch"])
 @pytest.mark.parametrize("reduction_lanes", [None, 1])
 @pytest.mark.parametrize("shape,channels,kernel,stride,padding,dilation,groups,lanes,outputs,signed,overflow", [
     ((3, 5, 3), 5, (3, 3), (1, 1), (1, 1), (1, 1), 1, 2, 3, False, False),
@@ -22,7 +22,7 @@ from rtl_check import pack, simulate
     ((2, 3, 2), 3, (1, 1), (1, 1), (0, 0), (1, 1), 1, 4, 3, False, True),
 ])
 def test_folded_convolution(tmp_path, shape, channels, kernel, stride, padding, dilation,
-                            groups, lanes, outputs, signed, overflow, stalls, line_layout, reduction_lanes, weight_bits=8, weight_memory="auto"):
+                            groups, lanes, outputs, signed, overflow, stalls, line_layout, reduction_lanes, weight_bits=8, weight_memory="auto", line_bank_width=None):
     generator = np.random.default_rng(23)
     height, width, inputs = shape
     magnitude = 1 << (weight_bits-1)
@@ -52,9 +52,16 @@ def test_folded_convolution(tmp_path, shape, channels, kernel, stride, padding, 
                            for word in pack(pixel, 8, lanes))
         expected_words.extend(word for pixel in expected.transpose(0, 2, 3, 1).reshape(-1, channels)
                               for word in pack(pixel, 8, lanes))
-    simulate(tmp_path, emit(actor, lanes, outputs, weight_memory=weight_memory, line_layout=line_layout, reduction_lanes=reduction_lanes),
+    simulate(tmp_path, emit(actor, lanes, outputs, weight_memory=weight_memory, line_layout=line_layout, reduction_lanes=reduction_lanes,line_bank_width=line_bank_width),
              lanes*8, lanes*8, input_words, expected_words, stalls,
              max_cycles=100 + 200*(len(input_words) + len(expected_words)))
+
+
+@pytest.mark.parametrize("bank_width",[1,5,9])
+@pytest.mark.parametrize("layout",["ring","ring_compact"])
+def test_width_banked_window_preserves_partial_vectors_and_stalls(tmp_path,bank_width,layout):
+    test_folded_convolution(tmp_path,(3,5,3),5,(3,3),(1,1),(1,1),(1,1),
+                            1,4,3,True,True,True,layout,2,line_bank_width=bank_width)
 
 
 @pytest.mark.parametrize("outputs",[1,2,3])
@@ -106,7 +113,7 @@ def test_sparse_requantization_bytes_across_output_tiles(tmp_path, coefficients,
     simulate(tmp_path, emit(actor, 4, 2, reduction_lanes=reduction_lanes), 32, 32, inputs, expected, True)
 
 
-@pytest.mark.parametrize("line_layout", ["parallel", "packed"])
+@pytest.mark.parametrize("line_layout", ["parallel", "packed", "ring", "ring_compact", "prefetch"])
 def test_half_vector_reduction_with_incomplete_last_vector(tmp_path, line_layout):
     test_folded_convolution(tmp_path, (3, 5, 6), 5, (3, 3), (1, 1), (1, 1),
                             (1, 1), 1, 4, 3, True, True, True, line_layout, 2)

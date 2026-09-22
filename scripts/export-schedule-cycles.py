@@ -5,7 +5,9 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import sys
 
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from torch2rtl.frontend import load
 from torch2rtl.graph import actors, read
 from torch2rtl.spatial_schedule import words

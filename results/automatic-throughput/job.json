@@ -1,0 +1,23 @@
+{
+  "model": "results/on-chip-inference/model.pt2",
+  "target": "inputs/throughput-target.json",
+  "search": "inputs/automatic-search.json",
+  "cache": "build/characterization-cache",
+  "vectors": "build/throughput-push/compact-balanced/vectors",
+  "accuracy_evidence": "results/bram-reduction/result.json",
+  "minimum_accuracy": 0.65,
+  "constraints": "results/on-chip-inference/constraints.cst",
+  "clock_rtl": "inputs/throughput-pll.sv",
+  "reference_clock_hz": 27000000,
+  "clock_net": "clock_source.clock_out",
+  "bram_resource": "BSRAM",
+  "dsp_resource": "MULT9X9",
+  "timing_guard": "build/verification/vendor-timing/guard-netlist.py",
+  "timing_table": "build/verification/vendor-timing/multiplier-timing.json",
+  "pin_audit": "build/throughput-push/audit-used-pins.py",
+  "database_generator": "build/throughput-push/gowin_arch_gen.py",
+  "pin_audit_python": ".tools/oss-cad-suite/bin/tabbypy3",
+  "pin_audit_pythonpath": [
+    ".tools/src/nextpnr-3e53a0bf/himbaechel"
+  ]
+}

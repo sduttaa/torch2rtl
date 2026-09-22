@@ -37,9 +37,9 @@ endmodule
     if not stalls:
         first_input = next(int(line.split()[2]) for line in (tmp_path / "simulation.log").read_text().splitlines()
                            if line.startswith("INPUT"))
-        assert cycles[0] - first_input == (1 if depth == 1 else 2)
+        assert cycles[0] - first_input == (1 if depth <= 2 else 2)
         transfers = len(words)-1
-        elapsed = 2*transfers if depth == 1 else transfers + transfers//2 if depth == 2 else transfers
+        elapsed = 2*transfers if depth == 1 else transfers
         assert cycles[-1] - cycles[0] == elapsed
 
 
@@ -96,7 +96,7 @@ def test_branched_convolution_network(tmp_path, lanes, stalls):
 
 
 @pytest.mark.parametrize("signed", [False, True])
-@pytest.mark.parametrize("line_layout", ["parallel", "packed"])
+@pytest.mark.parametrize("line_layout", ["parallel", "packed", "mixed", "mixed_compact", "mixed_prefetch"])
 @pytest.mark.parametrize("lanes", [3, 4])
 def test_narrow_storage_preserves_branched_integer_values(tmp_path, monkeypatch, signed, line_layout, lanes):
     from torch2rtl.ranges import bounds, storage_bits
@@ -117,7 +117,9 @@ def test_narrow_storage_preserves_branched_integer_values(tmp_path, monkeypatch,
                ("max_pool2d", "__interpolate.size_list_scale_list", "quantized_concat"))
     rtl = emit(graph, lanes, {value.name: min(2, value.tensor.shape[1]) for value in convs},
                {name: 128 for name, *_ in edges(graph)},
-               {value.name: {"line_layout": line_layout} for value in convs})
+               {value.name: {"line_layout": (({"mixed":"ring","mixed_compact":"ring_compact","mixed_prefetch":"prefetch"}[line_layout])
+                                            if index%2==0 else "packed") if line_layout.startswith("mixed") else line_layout}
+                for index,value in enumerate(convs)})
     assert "stream_fifo #(.WIDTH(15)" in rtl
     assert fifo_width(graph.input, lanes) == 24
     assert fifo_width(convs[1], lanes) == 5

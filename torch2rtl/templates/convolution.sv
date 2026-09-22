@@ -1,5 +1,5 @@
-// Integer convolution with raster channel vectors. The same signed byte
-// multipliers perform the dot product and exact integer requantization.
+// Folded integer convolution. Quantization either reuses dot multipliers,
+// searches exact thresholds, or runs in an independent overlapping stage.
 module integer_convolution #(
   parameter integer HEIGHT = 1, WIDTH = 1,
   parameter integer INPUT_CHANNELS = 1, OUTPUT_CHANNELS = 1,
@@ -13,10 +13,13 @@ module integer_convolution #(
   parameter integer WEIGHT_BITS = 8,
   parameter integer REDUCTION_LANES = LANES,
   parameter integer ACCUMULATOR_BYTES = 4, MULTIPLIER_BYTES = 8,
+  parameter integer MULTIPLIER_BITS = MULTIPLIER_BYTES * 8,
   parameter integer ACCUMULATOR_BITS = ACCUMULATOR_BYTES * 8,
   parameter integer INNER_BITS = MULTIPLIER_BYTES * 8 + 9 > 64 ? 64 : MULTIPLIER_BYTES * 8 + 9,
   parameter integer MULTIPLIER_SIGNED = 1, REQUANT_BITS = 64,
   parameter integer THRESHOLD_BITS = 0,
+  parameter integer OVERLAP_QUANTIZER = 0,
+  parameter integer QUANTIZER_LANES = OUTPUT_LANES,
   parameter integer SHIFT = 0,
   parameter [63:0] OFFSET = 0, LOW = 0, HIGH = 255,
   parameter WEIGHT_MEMORY = "auto", LINE_MEMORY = "auto",
@@ -31,6 +34,7 @@ module integer_convolution #(
   localparam integer TILES = (GROUP_OUTPUTS + OUTPUT_LANES - 1) / OUTPUT_LANES,
   localparam integer BLOCKS = GROUPS * TILES,
   localparam integer DOT_STEPS = KERNEL_H * KERNEL_W * GROUP_WORDS,
+  parameter integer PIPELINED_POOL = POOL_H*POOL_W > 1 && DOT_STEPS >= 4,
   localparam integer ROM_WIDTH = OUTPUT_LANES * REDUCTION_LANES * WEIGHT_BITS,
   localparam integer ROM_DEPTH = BLOCKS * DOT_STEPS,
   parameter integer WEIGHT_BLOCK_DEPTH = ROM_DEPTH,
@@ -70,6 +74,7 @@ module integer_convolution #(
   reg [BLOCK_BITS-1:0] block;
   reg [STEP_BITS-1:0] dot_step;
   reg [POOL_BITS-1:0] pool_item;
+  reg dot_bubble, prefetch_bubble;
   reg [ROM_ADDRESS_BITS-1:0] weight_address;
   reg [BYTE_BITS-1:0] accumulator_byte;
   reg [GROUP_BITS-1:0] multiplier_group;
@@ -89,11 +94,12 @@ module integer_convolution #(
     if (rst) release_window <= 0;
     else release_window <=
       (starting_dot && DOT_STEPS == 1 && read_block == BLOCK_BITS'(BLOCKS-1) && read_pool == POOL_BITS'(POOL_ITEMS-1)) ||
-      (state == DOT && !dot_last && dot_step == STEP_BITS'(DOT_STEPS-2) && release_after_dot);
+      (state == DOT && !dot_last && dot_step == STEP_BITS'(DOT_STEPS-2) &&
+       (PIPELINED_POOL != 0 ? block == BLOCK_BITS'(BLOCKS-1) && pool_item == POOL_BITS'(POOL_ITEMS-1) : release_after_dot));
     if (rst) begin
       read_block <= 0;
       read_pool <= 0;
-    end else if (state == DOT && dot_last) begin
+    end else if (state == DOT && (PIPELINED_POOL != 0 ? !prefetch_bubble && prefetch_step == STEP_BITS'(DOT_STEPS-1) : dot_last)) begin
       read_pool <= read_pool == POOL_BITS'(POOL_ITEMS-1) ? POOL_BITS'(0) : read_pool + 1'b1;
       if (read_pool == POOL_BITS'(POOL_ITEMS-1))
         read_block <= read_block == BLOCK_BITS'(BLOCKS-1) ? BLOCK_BITS'(0) : read_block + 1'b1;
@@ -105,9 +111,13 @@ module integer_convolution #(
     // Prime the counter during every non-dot phase. The window selects its
     // separately decoded first coordinate then, so startup does not feed the
     // counter through window/ready/reset logic. Extra final increments are idle.
-    if (state == DOT)
-      prefetch_step <= prefetch_step == STEP_BITS'(DOT_STEPS-1) ? STEP_BITS'(0) : prefetch_step + 1'b1;
-    else prefetch_step <= STEP_BITS'(DOT_STEPS > 2 ? 2 : 0);
+    if (rst || state != DOT) prefetch_bubble <= 0;
+    else prefetch_bubble <= PIPELINED_POOL != 0 && !prefetch_bubble &&
+      prefetch_step == STEP_BITS'(DOT_STEPS-1) && read_pool != POOL_BITS'(POOL_ITEMS-1);
+    if (state == DOT) begin
+      if (!prefetch_bubble)
+        prefetch_step <= prefetch_step == STEP_BITS'(DOT_STEPS-1) ? STEP_BITS'(0) : prefetch_step + 1'b1;
+    end else prefetch_step <= STEP_BITS'(DOT_STEPS > 2 ? 2 : 0);
   end
   wire [STEP_BITS-1:0] read_step = prefetch_step;
   // Select the second startup word after coordinate decoding is registered.
@@ -218,37 +228,71 @@ module integer_convolution #(
       weight_memory[address] = WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
     always @(posedge clk) if (state == DOT) weight_word <= weight_memory[weight_address];
   end else begin: split_weights
+    localparam integer BLOCK_ADDRESS_BITS=WEIGHT_BLOCK_DEPTH<=1 ? 1 : $clog2(WEIGHT_BLOCK_DEPTH);
+    localparam integer TAIL_DEPTH=ROM_DEPTH-WEIGHT_BLOCK_DEPTH;
+    localparam integer BANKS=(TAIL_DEPTH+LOGIC_WEIGHT_BANK_DEPTH-1)/LOGIC_WEIGHT_BANK_DEPTH;
+    localparam integer BANK_BITS=BANKS<=1 ? 1 : $clog2(BANKS);
+    localparam integer ADDRESS_BITS=$clog2(LOGIC_WEIGHT_BANK_DEPTH);
     (* rom_style = "block" *) reg [ROM_WIDTH-1:0] blocks [0:WEIGHT_BLOCK_DEPTH-1];
-    (* rom_style = "logic" *) reg [ROM_WIDTH-1:0] tail [0:ROM_DEPTH-WEIGHT_BLOCK_DEPTH-1];
+    reg [ROM_WIDTH-1:0] block_word;
+    wire [ROM_WIDTH-1:0] words [0:BANKS-1];
+    wire [ROM_ADDRESS_BITS-1:0] tail_address=weight_address-ROM_ADDRESS_BITS'(WEIGHT_BLOCK_DEPTH);
+    reg selected_block;
+    reg [BANK_BITS-1:0] selected_bank;
     integer address;
-    initial begin
-      for (address = 0; address < WEIGHT_BLOCK_DEPTH; address = address + 1)
-        blocks[address] = WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
-      for (address = WEIGHT_BLOCK_DEPTH; address < ROM_DEPTH; address = address + 1)
-        tail[address-WEIGHT_BLOCK_DEPTH] = WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
+    initial for (address=0; address<WEIGHT_BLOCK_DEPTH; address=address+1)
+      blocks[address]=WEIGHTS[address*ROM_WIDTH +: ROM_WIDTH];
+    always @(posedge clk) begin
+      block_word <= blocks[BLOCK_ADDRESS_BITS'(weight_address)];
+      selected_block <= 32'(weight_address)<WEIGHT_BLOCK_DEPTH;
+      selected_bank <= BANK_BITS'(32'(tail_address)/LOGIC_WEIGHT_BANK_DEPTH);
     end
-    always @(posedge clk) if (state == DOT)
-      weight_word <= weight_address < WEIGHT_BLOCK_DEPTH ? blocks[weight_address] : tail[weight_address-WEIGHT_BLOCK_DEPTH];
+    genvar bank;
+    for (bank=0; bank<BANKS; bank=bank+1) begin: tail_storage
+      (* rom_style="logic" *) reg [ROM_WIDTH-1:0] memory [0:LOGIC_WEIGHT_BANK_DEPTH-1];
+      reg [ROM_WIDTH-1:0] word;
+      integer entry;
+      initial for (entry=0; entry<LOGIC_WEIGHT_BANK_DEPTH; entry=entry+1)
+        memory[entry]=bank*LOGIC_WEIGHT_BANK_DEPTH+entry<TAIL_DEPTH ?
+          WEIGHTS[(WEIGHT_BLOCK_DEPTH+bank*LOGIC_WEIGHT_BANK_DEPTH+entry)*ROM_WIDTH +: ROM_WIDTH] : {ROM_WIDTH{1'b0}};
+      always @(posedge clk) word <= memory[ADDRESS_BITS'(tail_address)];
+      assign words[bank]=word;
+    end
+    // Read the block prefix and bounded logic banks independently. Selection
+    // uses their registered outputs in the existing multiplier-input stage.
+    // Reads outside DOT are unobserved, so no state-dependent enable is needed.
+    always @* weight_word=selected_block ? block_word : words[selected_bank];
   end endgenerate
 
   reg [REDUCTION_LANES*8-1:0] input_word;
   reg operand_valid, operand_rq, operand_last;
   reg operand_first_group, operand_last_group, operand_last_byte;
   reg product_valid, product_rq, product_last;
+  reg operand_first, product_first;
+  reg [POOL_BITS-1:0] operand_pool, product_pool;
   reg product_first_group, product_last_group, product_last_byte;
-  wire dot_valid, dot_complete;
+  wire dot_valid, dot_complete, dot_first;
+  wire [POOL_BITS-1:0] dot_pool;
   generate if (REDUCTION_LANES > 1) begin: dot_pipeline
     reg valid, last;
+    reg first;
+    reg [POOL_BITS-1:0] item;
     always @(posedge clk) begin
       if (rst) valid <= 0;
       else valid <= product_valid && !product_rq;
       last <= product_last;
+      first <= product_first;
+      item <= product_pool;
     end
     assign dot_valid = valid;
     assign dot_complete = valid && last;
+    assign dot_first = first;
+    assign dot_pool = item;
   end else begin: direct_dot
     assign dot_valid = product_valid && !product_rq;
     assign dot_complete = dot_valid && product_last;
+    assign dot_first = product_first;
+    assign dot_pool = product_pool;
   end endgenerate
   reg pool_update, pool_commit, pool_first, pool_last;
   reg pool_choose [0:OUTPUT_LANES-1];
@@ -272,6 +316,20 @@ module integer_convolution #(
   localparam integer SEARCH_BITS = THRESHOLD_BITS < 1 ? 1 : THRESHOLD_BITS;
   reg [SEARCH_BITS-1:0] search_mask;
   reg [SEARCH_BITS-1:0] quantizer_code [0:OUTPUT_LANES-1];
+  localparam [1:0] QUANT_IDLE=0, QUANT_PRIME=1, QUANT_SEARCH=2, QUANT_POST=3;
+  reg [1:0] quantizer_state;
+  reg [BLOCK_BITS-1:0] quantizer_block;
+  reg signed [ACCUMULATOR_BITS-1:0] quantizer_value [0:OUTPUT_LANES-1];
+  wire signed [REQUANT_BITS-1:0] quantizer_sum [0:OUTPUT_LANES-1];
+  localparam integer COEFFICIENT_STEPS=MULTIPLIER_BITS;
+  localparam integer QUANTIZER_STEP_BITS=COEFFICIENT_STEPS<=1 ? 1 : $clog2(COEFFICIENT_STEPS);
+  reg [QUANTIZER_STEP_BITS-1:0] quantizer_step;
+  localparam integer QUANTIZER_GROUPS=OUTPUT_LANES/QUANTIZER_LANES;
+  localparam integer QUANTIZER_GROUP_BITS=QUANTIZER_GROUPS<=1 ? 1 : $clog2(QUANTIZER_GROUPS);
+  reg [QUANTIZER_GROUP_BITS-1:0] quantizer_group;
+  wire quantizer_accept = OVERLAP_QUANTIZER != 0 && state == POST && quantizer_state == QUANT_IDLE;
+  wire searching = OVERLAP_QUANTIZER != 0 ? quantizer_state == QUANT_SEARCH : state == RQ;
+  wire [BLOCK_BITS-1:0] threshold_block = OVERLAP_QUANTIZER != 0 ? quantizer_block : block;
 
   genvar output_lane, reduction_lane;
   generate for (output_lane = 0; output_lane < OUTPUT_LANES; output_lane = output_lane + 1) begin: mac
@@ -341,13 +399,29 @@ module integer_convolution #(
             (INNER_BITS'($signed(product[output_lane*REDUCTION_LANES+lane])) << (8*lane));
       end
     end
-    assign selected_maximum[output_lane] = pool_choose[output_lane] ?
+    assign selected_maximum[output_lane] = PIPELINED_POOL != 0 ? pool_maximum[output_lane] : pool_choose[output_lane] ?
       accumulator[output_lane] : pool_maximum[output_lane];
     assign group_sum[output_lane] = group_value;
     assign next_inner[output_lane] = group_sum[output_lane] +
       (product_first_group ? INNER_BITS'(0) : inner_sum[output_lane] << (8*REDUCTION_LANES));
     assign next_total[output_lane] = (total_sum[output_lane] << 8) + REQUANT_BITS'($signed(next_inner[output_lane]));
-    assign shifted[output_lane] = 64'($signed(total_sum[output_lane])) >>> SHIFT;
+    assign shifted[output_lane] = 64'($signed(OVERLAP_QUANTIZER != 0 && THRESHOLD_BITS == 0 ?
+      quantizer_sum[output_lane%QUANTIZER_LANES] : total_sum[output_lane])) >>> SHIFT;
+    if (OVERLAP_QUANTIZER != 0 && THRESHOLD_BITS == 0 && output_lane<QUANTIZER_LANES) begin: shift_add_quantizer
+      wire signed [ACCUMULATOR_BITS-1:0] value;
+      wire [31:0] lane_index=32'(quantizer_group)*QUANTIZER_LANES+output_lane;
+      assign value=quantizer_value[output_lane];
+      wire signed [ACCUMULATOR_BITS+MULTIPLIER_BITS-1:0] result;
+      serial_product #(.VALUE_BITS(ACCUMULATOR_BITS), .COEFFICIENT_BITS(MULTIPLIER_BITS),
+        .SIGNED_COEFFICIENT(MULTIPLIER_SIGNED)) multiply (
+        .clk(clk), .start(quantizer_state == QUANT_PRIME), .step(quantizer_state == QUANT_SEARCH),
+        .last(quantizer_step == 0), .value(value),
+        .coefficient(MULTIPLIER_BITS'(MULTIPLIERS[(32'(quantizer_block)*OUTPUT_LANES+lane_index)*COEFFICIENT_BITS +: COEFFICIENT_BITS])),
+        .product(result));
+      // Narrow after the exact product, then add with the declared modular
+      // width. This also preserves INT64 overflow before the signed shift.
+      assign quantizer_sum[output_lane] = REQUANT_BITS'(result)+REQUANT_BITS'(OFFSET);
+    end else assign quantizer_sum[output_lane] = 0;
     if (THRESHOLD_BITS > 0) begin: threshold_quantizer
       localparam integer THRESHOLD_WIDTH = ACCUMULATOR_BITS+2;
       localparam integer LEVELS = 1<<THRESHOLD_BITS;
@@ -367,8 +441,8 @@ module integer_convolution #(
           THRESHOLDS[(BASE+RIGHT)*THRESHOLD_WIDTH +: THRESHOLD_WIDTH],
           THRESHOLDS[(BASE+LEFT)*THRESHOLD_WIDTH +: THRESHOLD_WIDTH]};
       end
-      wire [NODE_BITS-1:0] node = THRESHOLD_BITS > 1 && state == RQ ? NODE_BITS'(quantizer_code[output_lane]) : NODE_BITS'(0);
-      wire [ADDRESS_BITS-1:0] address = (ADDRESS_BITS'(block) << (THRESHOLD_BITS-1)) | ADDRESS_BITS'(node);
+      wire [NODE_BITS-1:0] node = THRESHOLD_BITS > 1 && searching ? NODE_BITS'(quantizer_code[output_lane]) : NODE_BITS'(0);
+      wire [ADDRESS_BITS-1:0] address = (ADDRESS_BITS'(threshold_block) << (THRESHOLD_BITS-1)) | ADDRESS_BITS'(node);
       reg [2*THRESHOLD_WIDTH-1:0] child_pair;
       reg choose_upper;
       wire signed [THRESHOLD_WIDTH-1:0] threshold = choose_upper ?
@@ -376,6 +450,7 @@ module integer_convolution #(
       // The accumulator remains stable throughout the search. One bit of the
       // exact output code is decided per cycle, with no arithmetic approximation.
       wire signed [ACCUMULATOR_BITS-1:0] search_value =
+        OVERLAP_QUANTIZER != 0 ? quantizer_value[output_lane] :
         POOL_ITEMS > 1 && pool_commit && pool_last ? selected_maximum[output_lane] : accumulator[output_lane];
       wire upper_half = THRESHOLD_WIDTH'(search_value) >= threshold;
       always @(posedge clk) begin
@@ -385,14 +460,22 @@ module integer_convolution #(
         // leaving exactly the output code. Leaf-child reads are unobserved.
         child_pair <= children[address];
         choose_upper <= upper_half;
-        if (dot_complete) quantizer_code[output_lane] <= SEARCH_BITS'(1);
-        else if (state == RQ)
+        if (OVERLAP_QUANTIZER != 0 ? quantizer_accept : dot_complete)
+          quantizer_code[output_lane] <= SEARCH_BITS'(1);
+        else if (searching)
           quantizer_code[output_lane] <= (quantizer_code[output_lane] << 1) | SEARCH_BITS'(upper_half);
       end
       assign quantized[output_lane] = LOW[7:0]+8'(quantizer_code[output_lane]);
     end else begin: multiplier_quantizer
-      assign quantized[output_lane] = shifted[output_lane] < $signed(LOW) ? LOW[7:0] :
-                                     shifted[output_lane] > $signed(HIGH) ? HIGH[7:0] : shifted[output_lane][7:0];
+      wire [7:0] result = shifted[output_lane] < $signed(LOW) ? LOW[7:0] :
+                         shifted[output_lane] > $signed(HIGH) ? HIGH[7:0] : shifted[output_lane][7:0];
+      if (QUANTIZER_GROUPS>1 && output_lane/QUANTIZER_LANES<QUANTIZER_GROUPS-1) begin: partial
+        reg [7:0] held;
+        always @(posedge clk)
+          if (quantizer_state==QUANT_POST && quantizer_group==QUANTIZER_GROUP_BITS'(output_lane/QUANTIZER_LANES))
+            held <= result;
+        assign quantized[output_lane]=held;
+      end else assign quantized[output_lane]=result;
     end
   end endgenerate
 
@@ -400,12 +483,13 @@ module integer_convolution #(
   reg output_pending;
   reg [OUTPUT_BITS-1:0] output_word;
   wire output_finished = out_ready && output_word == OUTPUT_BITS'(OUTPUT_WORDS-1);
-  wire [31:0] tile_channel = (GROUPS == 1 ? 32'(block) : 32'(block) % TILES) * OUTPUT_LANES;
-  wire [31:0] group_channel = GROUPS == 1 ? 32'd0 : (32'(block) / TILES) * GROUP_OUTPUTS;
+  wire [BLOCK_BITS-1:0] committed_block = OVERLAP_QUANTIZER != 0 ? quantizer_block : block;
+  wire [31:0] tile_channel = (GROUPS == 1 ? 32'(committed_block) : 32'(committed_block) % TILES) * OUTPUT_LANES;
+  wire [31:0] group_channel = GROUPS == 1 ? 32'd0 : (32'(committed_block) / TILES) * GROUP_OUTPUTS;
   assign out_valid = output_pending && !rst;
   assign starting_dot = (state == IDLE && window_available) ||
-    (state == DOT_DRAIN && dot_complete && pool_item != POOL_BITS'(POOL_ITEMS-1)) ||
-    (state == POST && (!output_pending || output_finished) && block != BLOCK_BITS'(BLOCKS-1));
+    (PIPELINED_POOL == 0 && state == DOT_DRAIN && dot_complete && pool_item != POOL_BITS'(POOL_ITEMS-1)) ||
+    (state == POST && (OVERLAP_QUANTIZER != 0 ? quantizer_accept : (!output_pending || output_finished)) && block != BLOCK_BITS'(BLOCKS-1));
 
   // Tile startup has spare operand-read cycles before the first MAC result.
   // Register its decision while the new block's bias passes through its ROM
@@ -414,12 +498,12 @@ module integer_convolution #(
   always @(posedge clk) begin
     if (rst) initialize_tile <= 0;
     else initialize_tile <= {initialize_tile[0],(state == IDLE && window_available) ||
-      (state == POST && (!output_pending || output_finished) && block != BLOCK_BITS'(BLOCKS-1))};
+      (state == POST && (OVERLAP_QUANTIZER != 0 ? quantizer_accept : (!output_pending || output_finished)) && block != BLOCK_BITS'(BLOCKS-1))};
   end
   integer accumulator_lane;
   always @(posedge clk) begin
     for (accumulator_lane = 0; accumulator_lane < OUTPUT_LANES; accumulator_lane = accumulator_lane + 1) begin
-      if (initialize_tile[1])
+      if (initialize_tile[1] || (PIPELINED_POOL != 0 && pool_update && !pool_last))
         accumulator[accumulator_lane] <= tile_bias[accumulator_lane];
       else if (dot_valid)
         accumulator[accumulator_lane] <= completed_dot[accumulator_lane];
@@ -445,6 +529,7 @@ module integer_convolution #(
       block <= 0;
       dot_step <= 0;
       pool_item <= 0;
+      dot_bubble <= 0;
       weight_address <= 0;
       operand_valid <= 0;
       product_valid <= 0;
@@ -452,39 +537,53 @@ module integer_convolution #(
       pool_commit <= 0;
       output_pending <= 0;
       output_word <= 0;
+      quantizer_state <= QUANT_IDLE;
+      quantizer_block <= 0;
     end else begin
+      dot_bubble <= 0;
       if (POOL_ITEMS > 1) begin
         pool_update <= dot_complete;
         pool_commit <= pool_update;
         if (dot_complete) begin
-          pool_first <= pool_item == 0;
-          pool_last <= pool_item == POOL_BITS'(POOL_ITEMS-1);
+          pool_first <= (PIPELINED_POOL != 0 ? dot_pool : pool_item) == 0;
+          pool_last <= (PIPELINED_POOL != 0 ? dot_pool : pool_item) == POOL_BITS'(POOL_ITEMS-1);
         end
-        // Compare and select on separate edges. The next dot's operand stages
-        // leave time to reset its accumulator before its first product arrives.
-        if (pool_update) begin
+        // The pipelined form updates the maximum through its register enable.
+        // The operand bubble leaves this comparison an idle accumulator edge,
+        // so that same edge can initialize the next dot's bias. No bias mux is
+        // inserted into the accumulator's carry-feedback path.
+        if (PIPELINED_POOL != 0 && pool_update) begin
+          for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
+            if (pool_first || accumulator[channel] > pool_maximum[channel])
+              pool_maximum[channel] <= accumulator[channel];
+        end
+        if (PIPELINED_POOL == 0 && pool_update) begin
           for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
             pool_choose[channel] <= pool_first || accumulator[channel] > pool_maximum[channel];
         end
-        if (pool_commit) begin
+        if (PIPELINED_POOL == 0 && pool_commit) begin
           for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) begin
             pool_maximum[channel] <= selected_maximum[channel];
           end
         end
       end
-      operand_valid <= state == DOT || (THRESHOLD_BITS == 0 && state == RQ);
-      operand_rq <= THRESHOLD_BITS == 0 && state == RQ;
+      operand_valid <= (state == DOT && !dot_bubble) || (OVERLAP_QUANTIZER == 0 && THRESHOLD_BITS == 0 && state == RQ);
+      operand_rq <= OVERLAP_QUANTIZER == 0 && THRESHOLD_BITS == 0 && state == RQ;
       operand_last <= dot_step == STEP_BITS'(DOT_STEPS-1);
+      operand_first <= dot_step == 0;
+      operand_pool <= pool_item;
       operand_first_group <= multiplier_group == GROUP_BITS'(MULTIPLIER_GROUPS-1);
       operand_last_group <= multiplier_group == 0;
       operand_last_byte <= accumulator_byte == 0;
       product_valid <= operand_valid;
       product_rq <= operand_rq;
       product_last <= operand_last;
+      product_first <= operand_first;
+      product_pool <= operand_pool;
       product_first_group <= operand_first_group;
       product_last_group <= operand_last_group;
       product_last_byte <= operand_last_byte;
-      if (state == DOT) begin
+      if (state == DOT && !dot_bubble) begin
         input_word <= window_data[32'(subword)*REDUCTION_LANES*8 +: REDUCTION_LANES*8];
         weight_address <= weight_address + 1'b1;
       end
@@ -507,13 +606,13 @@ module integer_convolution #(
         if (product_last_group && product_last_byte) state <= POST;
       end
       if (dot_complete) begin
-        if (POOL_ITEMS == 1 || pool_item == POOL_BITS'(POOL_ITEMS-1)) begin
-          search_mask <= SEARCH_BITS'(1) << (SEARCH_BITS-1);
+        if (POOL_ITEMS == 1 || (PIPELINED_POOL != 0 ? dot_pool : pool_item) == POOL_BITS'(POOL_ITEMS-1)) begin
+          if (OVERLAP_QUANTIZER == 0) search_mask <= SEARCH_BITS'(1) << (SEARCH_BITS-1);
           accumulator_byte <= BYTE_BITS'(ACCUMULATOR_BYTES-1);
           multiplier_group <= GROUP_BITS'(MULTIPLIER_GROUPS-1);
           for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1) total_sum[channel] <= 0;
-          state <= POOL_ITEMS > 1 ? POOL_WAIT : RQ;
-        end else begin
+          state <= POOL_ITEMS > 1 ? POOL_WAIT : OVERLAP_QUANTIZER != 0 ? POST : RQ;
+        end else if (PIPELINED_POOL == 0) begin
           pool_item <= pool_item + 1'b1;
           dot_step <= 0;
           weight_address <= ROM_ADDRESS_BITS'(32'(block)*DOT_STEPS);
@@ -529,9 +628,19 @@ module integer_convolution #(
           weight_address <= 0;
           state <= DOT;
         end
-        DOT: if (dot_step == STEP_BITS'(DOT_STEPS-1)) state <= DOT_DRAIN;
-             else dot_step <= dot_step + 1'b1;
-        POOL_WAIT: state <= RQ;
+        DOT: if (!dot_bubble) begin
+          if (dot_step == STEP_BITS'(DOT_STEPS-1)) begin
+            if (PIPELINED_POOL != 0 && pool_item != POOL_BITS'(POOL_ITEMS-1)) begin
+              // One empty operand edge leaves the completed sum stable for
+              // the maximum update and bias reset while the next dot starts.
+              pool_item <= pool_item+1'b1;
+              dot_step <= 0;
+              dot_bubble <= 1;
+              weight_address <= ROM_ADDRESS_BITS'(32'(block)*DOT_STEPS);
+            end else state <= DOT_DRAIN;
+          end else dot_step <= dot_step + 1'b1;
+        end
+        POOL_WAIT: state <= OVERLAP_QUANTIZER != 0 ? POST : RQ;
         RQ: if (THRESHOLD_BITS > 0) begin
           if (search_mask == SEARCH_BITS'(1)) state <= POST;
           else search_mask <= search_mask >> 1;
@@ -540,13 +649,16 @@ module integer_convolution #(
           if (accumulator_byte == 0) state <= RQ_DRAIN;
           else accumulator_byte <= accumulator_byte - 1'b1;
         end else multiplier_group <= multiplier_group - 1'b1;
-        POST: if (!output_pending || output_finished) begin
-          for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
-            if (tile_channel+channel < GROUP_OUTPUTS)
-              output_pixel[group_channel+tile_channel+channel] <= OUTPUT_ELEMENT_BITS'(quantized[channel]);
+        POST: if (OVERLAP_QUANTIZER != 0 ? quantizer_accept : (!output_pending || output_finished)) begin
+          if (OVERLAP_QUANTIZER == 0)
+            for (channel = 0; channel < OUTPUT_LANES; channel = channel + 1)
+              if (tile_channel+channel < GROUP_OUTPUTS)
+                output_pixel[group_channel+tile_channel+channel] <= OUTPUT_ELEMENT_BITS'(quantized[channel]);
           if (block == BLOCK_BITS'(BLOCKS-1)) begin
-            output_pending <= 1;
-            output_word <= 0;
+            if (OVERLAP_QUANTIZER == 0) begin
+              output_pending <= 1;
+              output_word <= 0;
+            end
             state <= IDLE;
           end else begin
             block <= block + 1'b1;
@@ -557,8 +669,80 @@ module integer_convolution #(
         end
         default: ;
       endcase
+      // One completed tile is held independently of the MAC accumulator.
+      // Backpressure stops this stage at commit, then stops the producer at
+      // its next handoff. No output pixel or unfinished sum is overwritten.
+      if (OVERLAP_QUANTIZER != 0) begin
+        if (quantizer_accept) begin
+          quantizer_block <= block;
+          for (channel=0; channel<OUTPUT_LANES; channel=channel+1)
+            quantizer_value[channel] <= POOL_ITEMS > 1 && pool_commit && pool_last ?
+              selected_maximum[channel] : accumulator[channel];
+          search_mask <= SEARCH_BITS'(1) << (SEARCH_BITS-1);
+          quantizer_step <= QUANTIZER_STEP_BITS'(COEFFICIENT_STEPS-1);
+          quantizer_group <= 0;
+          quantizer_state <= QUANT_PRIME;
+        end else case (quantizer_state)
+          QUANT_PRIME: begin
+            quantizer_step <= QUANTIZER_STEP_BITS'(COEFFICIENT_STEPS-1);
+            quantizer_state <= QUANT_SEARCH;
+          end
+          QUANT_SEARCH: if (THRESHOLD_BITS > 0) begin
+            if (search_mask == SEARCH_BITS'(1)) quantizer_state <= QUANT_POST;
+            else search_mask <= search_mask >> 1;
+          end else begin
+            if (quantizer_step == 0) quantizer_state <= QUANT_POST;
+            else quantizer_step <= quantizer_step - 1'b1;
+          end
+          QUANT_POST: if (quantizer_group!=QUANTIZER_GROUP_BITS'(QUANTIZER_GROUPS-1)) begin
+            // Consume a fixed set of lanes, then move the remaining values
+            // forward. Each register has one neighboring source; this avoids
+            // a wide group-indexed read mux and an extra operand register bank.
+            for (channel=0; channel<OUTPUT_LANES; channel=channel+1)
+              quantizer_value[channel] <= channel+QUANTIZER_LANES < OUTPUT_LANES ?
+                quantizer_value[channel+QUANTIZER_LANES] : ACCUMULATOR_BITS'(0);
+            quantizer_group <= quantizer_group+1'b1;
+            quantizer_state <= QUANT_PRIME;
+          end else if (!output_pending || output_finished) begin
+            for (channel=0; channel<OUTPUT_LANES; channel=channel+1)
+              if (tile_channel+channel < GROUP_OUTPUTS)
+                output_pixel[group_channel+tile_channel+channel] <= OUTPUT_ELEMENT_BITS'(quantized[channel]);
+            if (quantizer_block == BLOCK_BITS'(BLOCKS-1)) begin
+              output_pending <= 1;
+              output_word <= 0;
+            end
+            quantizer_state <= QUANT_IDLE;
+          end
+          default: ;
+        endcase
+      end
     end
   end
+endmodule
+
+// The consumed coefficient bits become product bits. Only the upper value
+// width needs an adder, rather than the full product width on every cycle.
+// The final coefficient bit has negative weight for a signed coefficient.
+module serial_product #(
+  parameter integer VALUE_BITS=8, COEFFICIENT_BITS=8, SIGNED_COEFFICIENT=0
+) (
+  input wire clk, start, step, last,
+  input wire signed [VALUE_BITS-1:0] value,
+  input wire [COEFFICIENT_BITS-1:0] coefficient,
+  output wire signed [VALUE_BITS+COEFFICIENT_BITS-1:0] product
+);
+  localparam integer WIDTH=VALUE_BITS+COEFFICIENT_BITS+1;
+  reg signed [WIDTH-1:0] work;
+  wire subtract=SIGNED_COEFFICIENT != 0 && last;
+  wire [VALUE_BITS:0] term=work[0] ? (VALUE_BITS+1)'(value) : (VALUE_BITS+1)'(0);
+  wire [VALUE_BITS:0] upper=work[COEFFICIENT_BITS +: VALUE_BITS+1]+
+    (term ^ {(VALUE_BITS+1){subtract}})+(VALUE_BITS+1)'(subtract);
+  wire signed [WIDTH-1:0] combined={upper,work[0 +: COEFFICIENT_BITS]};
+  always @(posedge clk) begin
+    if (start) work <= WIDTH'(coefficient);
+    else if (step) work <= combined >>> 1;
+  end
+  assign product=(VALUE_BITS+COEFFICIENT_BITS)'(work);
 endmodule
 
 // Exact addition modulo 2**BITS. Each level compresses triples in parallel;

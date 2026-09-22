@@ -9,9 +9,10 @@ from math import ceil, prod
 
 import torch
 
-from .convolution import configuration
+from .convolution import configuration, timing
 from .graph import references
 from .network import edges
+from .memory import fifo_latency
 from .schedule import ChoiceDelay, Dependency, Fifo, Option, Problem
 
 
@@ -72,7 +73,10 @@ class Events:
         grouped={}
         for (before,after,delay,frames),mask in self.shared.items():
             if mask == complete:
-                self.dependencies.append(Dependency(before,after,delay,frames))
+                # Retain ownership in a fixed proposal so the solver can
+                # explain which selected contracts caused infeasibility.
+                when=((self.choice,next(iter(self.alternatives))),) if len(self.alternatives)==1 else ()
+                self.dependencies.append(Dependency(before,after,delay,frames,when))
             else:
                 values=grouped.setdefault((before,after,frames),{})
                 for name,index in self.alternatives.items():
@@ -134,6 +138,18 @@ def window(events, prefix, inputs, shape, lanes, kernel, stride, padding, dilati
                     completed.append(len(issues)-1)
     if real_word != len(inputs) or len(completed) != len(releases):
         raise ValueError("Window geometry disagrees with actor streams")
+    if layout=="prefetch":
+        # The independent writer may fill spare ring capacity during compute.
+        # A slot holding the oldest live word is reusable one edge after the
+        # window releases it. Keep those finite-capacity constraints in CP-SAT.
+        span=((effective_h-1)*(width+2*pw)+effective_w)*channel_words
+        depth=1 << (span-1).bit_length()
+        events.order(issues)
+        events.period_bound(issues[0],len(issues))
+        for index,(release,delay) in zip(completed,releases):
+            frame,word=divmod(index-span+1+depth,len(issues))
+            events.link(release,issues[word],delay+1,frame)
+        return [(issues[index],2) for index in completed],[1]*len(completed)
     cumulative = [0]
     for index, event in enumerate(issues):
         following = (index+1) % len(issues)
@@ -160,17 +176,12 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
         from .fusion import materialized
         value = materialized(value)
     parameters = configuration(value, lanes, config.output_lanes, config.reduction_lanes, config.requantization)
+    if parameters.get("OVERLAP_QUANTIZER"):
+        return overlapped_convolution(events,prefix,value,view_value,inputs,outputs,lanes,config,parameters)
     pixels = prod(value.tensor.shape[2:])
     output_words = ceil(value.tensor.shape[1] / lanes)
-    blocks = parameters["GROUPS"] * ceil((parameters["OUTPUT_CHANNELS"] // parameters["GROUPS"]) / parameters["OUTPUT_LANES"])
-    dot = parameters["KERNEL_H"]*parameters["KERNEL_W"]*ceil(
-        (parameters["INPUT_CHANNELS"] // parameters["GROUPS"]) / parameters["REDUCTION_LANES"])
-    requant = parameters["ACCUMULATOR_BYTES"]*ceil(parameters["MULTIPLIER_BYTES"] / parameters["REDUCTION_LANES"])
     pool = (parameters["POOL_H"], parameters["POOL_W"])
-    reduction_stage = int(parameters["REDUCTION_LANES"] > 1)
-    quantizer_cycles = parameters["THRESHOLD_BITS"]+1 if parameters.get("THRESHOLD_BITS") else requant+3
-    tile_cycles = prod(pool)*(dot+2+reduction_stage) + quantizer_cycles + int(prod(pool) > 1)
-    release_delay = prod(pool)*(dot+2) + (prod(pool)-1)*reduction_stage - 2
+    blocks,tile_cycles,_,release_delay=timing(parameters)
     starts = events.series(prefix+".start", pixels)
     posts = events.series(prefix+".post", pixels)
     # Only the first tile can wait for the previous output pixel. Subsequent
@@ -212,6 +223,64 @@ def convolution(events, prefix, value, inputs, outputs, lanes, config):
         events.link(posts[pixel], outputs[pixel*output_words], (blocks-1)*tile_cycles+1)
         for word in range(pixel*output_words+1, (pixel+1)*output_words):
             events.link(outputs[word-1], outputs[word], 1)
+
+
+def overlapped_convolution(events,prefix,value,view_value,inputs,outputs,lanes,config,parameters):
+    """A one-tile elastic handoff to an independent exact quantizer.
+
+    Compute service is at least quantizer service, so only the first commit
+    can wait on the previous output pixel. After its successor handoff all
+    remaining tiles have fixed offsets; eliminate those internal events.
+    """
+    blocks,compute,quantizer,release=timing(parameters)
+    pixels=prod(value.tensor.shape[2:])
+    output_words=ceil(value.tensor.shape[1]/lanes)
+    starts=events.series(prefix+".start",pixels)
+    handoffs=events.series(prefix+".handoff",pixels)
+    posts=events.series(prefix+".post",pixels)
+    resumes=events.series(prefix+".resume",pixels) if blocks>1 else handoffs
+    if blocks==1:
+        releases=[(start,release) for start in starts]
+    elif blocks==2:
+        releases=[(handoff,release) for handoff in handoffs]
+    else:
+        releases=[(resume,(blocks-3)*compute+release) for resume in resumes]
+    if view_value is not None:
+        view_window(events,prefix,view_value,inputs,starts,releases,lanes,config.extra_rows)
+        ready,gaps=[],[]
+        events.period_bound(starts[0],pixels*(blocks*compute+1))
+    else:
+        data,weight,_,stride,padding,dilation,*_=value.args
+        pool=(parameters["POOL_H"],parameters["POOL_W"])
+        kernel=weight.shape[2:]
+        if prod(pool)>1:
+            kernel=tuple((size-1)*dil+1+(extent-1)*step for size,dil,extent,step in zip(kernel,dilation,pool,stride))
+            stride=tuple(step*extent for step,extent in zip(stride,pool))
+            dilation=(1,1)
+        ready,gaps=window(events,prefix,inputs,data.tensor.shape,lanes,kernel,stride,padding,dilation,releases,config.line_layout)
+        events.period_bound(starts[0],sum(max(blocks*compute+1,(blocks-1)*compute+release+gap) for gap in gaps))
+    for pixel in range(pixels):
+        previous=(pixel-1)%pixels
+        following=(pixel+1)%pixels
+        if gaps:
+            released,delay=releases[previous]
+            events.implied(released,starts[pixel],delay+gaps[pixel],int(pixel==0))
+            events.link(ready[pixel][0],starts[pixel],ready[pixel][1])
+        events.link(starts[pixel],handoffs[pixel],compute)
+        events.link(handoffs[pixel],posts[pixel],quantizer)
+        events.link(outputs[(pixel*output_words-1)%len(outputs)],posts[pixel],frames=int(pixel==0))
+        if blocks==1:
+            events.link(posts[previous],handoffs[pixel],1,int(pixel==0))
+            events.link(handoffs[pixel],starts[following],1,int(following==0))
+            events.link(posts[pixel],outputs[pixel*output_words],1)
+        else:
+            events.link(resumes[previous],handoffs[pixel],(blocks-2)*compute+quantizer+1,int(pixel==0))
+            events.link(handoffs[pixel],resumes[pixel],compute)
+            events.link(posts[pixel],resumes[pixel],1)
+            events.link(resumes[pixel],starts[following],(blocks-2)*compute+1,int(following==0))
+            events.link(resumes[pixel],outputs[pixel*output_words],(blocks-2)*compute+quantizer+1)
+        for word in range(pixel*output_words+1,(pixel+1)*output_words):
+            events.link(outputs[word-1],outputs[word],1)
 
 
 def view_window(events, prefix, value, inputs, starts, releases, lanes, extra_rows):
@@ -364,7 +433,7 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
         choices[choice] = tuple(Option(name, config.resources) for name, config in actor_options[value.name].items())
         events.begin_options(choice,actor_options[value.name])
         for name, config in actor_options[value.name].items():
-            if config.line_layout not in ("parallel", "packed"):
+            if config.line_layout not in ("parallel", "packed", "ring", "ring_compact", "prefetch"):
                 raise ValueError("Unknown line memory layout")
             events.when = ((choice, name),)
             # Exactly one alternative is active. Reuse its internal event
@@ -395,7 +464,7 @@ def problem(graph, lanes, actor_options, fifo_options, budgets, period_limit, of
         choices[choice] = tuple(Option(key, config.resources) for key, config in options.items())
         fifos.append(Fifo(outgoing[source], incoming[destination][port], choice,
                           {key: config.depth for key, config in options.items()},
-                          forward_delays={key: 1 if config.depth == 1 else 2 for key, config in options.items()},
+                          forward_delays={key: fifo_latency(config.depth) for key, config in options.items()},
                           replacement_delay=1, order_transfers=False))
     return Problem(tuple(events.names), choices, tuple(events.dependencies), tuple(fifos), budgets,
                    period_limit, offset_limit, anchor, fixed_resources=fixed_resources or {}, resource_weights=resource_weights or {})

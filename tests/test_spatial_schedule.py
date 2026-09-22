@@ -50,7 +50,7 @@ def check_schedule(directory, graph, lanes, actor_options, fifo_depths=(1, 2, 8)
 
 
 @pytest.mark.parametrize("lanes,reduction,layout", [(1, 1, "parallel"), (2, 1, "parallel"),
-                                                   (4, 2, "parallel"), (4, 1, "packed")])
+                                                   (4, 2, "parallel"), (4, 1, "packed"), (4, 2, "ring"), (1, 1, "ring"), (4, 2, "ring_compact"), (1, 1, "ring_compact"), (4, 2, "prefetch"), (1, 1, "prefetch")])
 @pytest.mark.parametrize("groups,kernel,stride,padding,dilation", [
     (1, (3, 3), (1, 1), (1, 1), (1, 1)),
     (1, (2, 3), (2, 1), (0, 1), (2, 1)),
@@ -165,11 +165,12 @@ def test_summed_cycle_bounds_preserve_the_unrestricted_optimum(monkeypatch):
     assert strengthened.period >= max(edge.delay for edge in bounds)
 
 
-@pytest.mark.parametrize("layout", ["parallel", "packed"])
+@pytest.mark.parametrize("layout", ["parallel", "packed", "ring", "ring_compact", "prefetch"])
 def test_single_tile_window_release(tmp_path, layout):
     source = Value("image", "input", (), Tensor((1, 1, 3, 1), 8, False))
     output = Value("convolution", "quantized_convolution",
         (source, np.ones((1, 1, 3, 1), dtype=np.int32), np.zeros(1, dtype=np.int32), (1, 1), (1, 0),
          (1, 1), 1, np.ones(1, dtype=np.int64), 4, 3, 0, 255), Tensor((1, 1, 3, 1), 8, False))
     graph = Graph(source, output, (source, output))
-    check_schedule(tmp_path, graph, 1, {output.name: {"selected": ActorConfig(1, 1, layout)}})
+    check_schedule(tmp_path, graph, 1, {output.name: {"selected": ActorConfig(1, 1, layout)}},
+                   frames=16 if layout=="prefetch" else 4)

@@ -1,0 +1,108 @@
+{
+  "passed": true,
+  "distinct_modules": 20,
+  "instances": 34,
+  "proofs": {
+    "fc8d71dc2c272de6fec4775f724528b45415ea20d28532c2d2a1a146d3981925": {
+      "module": "actor_1",
+      "multipliers": 16,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_1"
+    },
+    "f23dd63be6d4173e5d205c2115fa6eaeef2b351c6dc45f818daeba15a19ddb33": {
+      "module": "actor_2",
+      "multipliers": 12,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_2"
+    },
+    "c41c9d9d0d5b75c9a30caba1d9bd98f742074802419ec54f7c64a46b51b7ed84": {
+      "module": "actor_3",
+      "multipliers": 0,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_3"
+    },
+    "9362f78322b1b2ca4f2544c9c2bce8f7d6ce278cef6d6cbda38daf4c9c48ac1d": {
+      "module": "actor_4",
+      "multipliers": 6,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_4"
+    },
+    "251fd8fe121f8613dfa70f8a43fd558645f712087e407b9c2b06cb9af08f0ec1": {
+      "module": "actor_5",
+      "multipliers": 0,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_5"
+    },
+    "475b714a3b9d17c374bfd47ed29f59f098c0e7ae27f5d98ca9bc1ddbff4a7401": {
+      "module": "actor_6",
+      "multipliers": 3,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_6"
+    },
+    "5677cb25695af101d51349d468f98d27a62f085e2464c3c584aa764db629ae3e": {
+      "module": "actor_7",
+      "multipliers": 4,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_7"
+    },
+    "38372c1f01900bc5b780e949393f2a21fc3316892496af72fcdb4001f7bcb589": {
+      "module": "actor_8",
+      "multipliers": 4,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_8"
+    },
+    "c5000be744a07336ce6b95e666bf88909b4dcd4b61572f454e4d702972b72f0c": {
+      "module": "actor_9",
+      "multipliers": 1,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_9"
+    },
+    "6e91782fac7476898ca45f63e1e18d298955c8d34801edf648c058d01ff61346": {
+      "module": "actor_10",
+      "multipliers": 16,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_10"
+    },
+    "12b725e16aa6e0f497badffac56fe122ce1b065078b14395832ba27fedd199ea": {
+      "module": "actor_11",
+      "multipliers": 8,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_11"
+    },
+    "61f43f6b8d0ba95202c8c03798993f89b8ef7f05c6b17d2f55b09864f727549c": {
+      "module": "actor_12",
+      "multipliers": 1,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_12"
+    },
+    "b7bb36ecb6fe7ec4e19fa4d47442374866225f70c3e03c57bf5059184edac341": {
+      "module": "actor_13",
+      "multipliers": 16,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_13"
+    },
+    "6aa5fe5d7cd52f7266467fe387f8c6e01c200d629d45183dcec98a56cde79fa7": {
+      "module": "actor_14",
+      "multipliers": 8,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_14"
+    },
+    "aa234d27d747a952e509a22fab801cd5a1cd746f07f3a3d58768080bfec5d570": {
+      "module": "actor_15",
+      "multipliers": 1,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_15"
+    },
+    "9db2c8cd50d39053ad28deeff8af2e2f16f7f6fbfd5a25184a23284ca50cd78a": {
+      "module": "actor_16",
+      "multipliers": 0,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/actor_16"
+    },
+    "2b59e8f9ab6e39977421d7ca8a82186996dc1a31df3939c687f792bcc8ec41b1": {
+      "module": "fifo_actor_0",
+      "multipliers": 0,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/fifo_actor_0"
+    },
+    "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb": {
+      "module": "fifo_actor_1",
+      "multipliers": 0,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/fifo_actor_1"
+    },
+    "a4d4d4165fb86b2611548a91dcf63f1fc52e227d67ccadef463533cab9ca3810": {
+      "module": "fifo_actor_6",
+      "multipliers": 0,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/fifo_actor_6"
+    },
+    "f186471c4164c839d90eea2aba5564d6609e3d33902dccb705214da93be6e321": {
+      "module": "fifo_actor_14",
+      "multipliers": 0,
+      "proofs": "/Users/Obi-wan/Documents/torch2rtl/build/automatic-throughput/clock-margin/proofs/fifo_actor_14"
+    }
+  },
+  "scope": "Functional equivalence of mapped actors; linking and timing have separate checks."
+}

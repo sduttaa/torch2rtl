@@ -6,17 +6,23 @@ The objective is a small, generic compiler for fast FPGA inference with all
 weights and working storage on chip. The first board is the Tang Nano 20K.
 Lattice support follows through the same actor and optimization interfaces.
 
-**Status: the accepted integer model has a routed, fabric-only implementation
-with 35 BRAMs and 30.70 scheduled FPS at 114.75 MHz.** Its validation Dice is
-0.6500655. This is a compiler/simulation/timing result, not a physical-board FPS
-measurement. Reproducible evidence is in
-[the 35-BRAM result](results/bram-reduction/README.md).
+**Status: automatic compilation meets 35 BRAMs, 17,527 routed logic sites and
+35.0000 scheduled FPS at 108 MHz.** Validation Dice remains 0.6500655. The routed
+timing limit is 110.51 MHz; all weights and activations use fabric memory.
+This is a compiler/simulation/timing result, not a physical-board FPS measurement.
+Architecture, buffering and scheduling are compiler-selected from explicit
+model/target/search inputs. Evidence is in
+[the automatic result](results/automatic-throughput/README.md).
+The previous [35-BRAM / 30.70-FPS result](results/bram-reduction/README.md) is preserved.
 The previous [44-BRAM](results/compiler-optimization/README.md) and
 [46-BRAM](results/on-chip-inference/README.md) results are preserved.
 Generic architecture search, physical-memory costing, compact
 resize/concat/convolution fusion, and joint scheduling are documented in
 [compiler improvements](docs/compiler-improvements.md).
-The 35-BRAM requirement is met; the 50-FPS stretch objective remains unmet.
+The current 35-BRAM / 18,000-site / 35-FPS target is met. The earlier 50-FPS
+stretch objective remains unmet. [Automatic search](docs/automatic-throughput.md),
+[template improvements](docs/template-quality.md) and
+[resource attribution](docs/resource-use.md) describe the implementation.
 Exact threshold quantization, source-buffer reuse and the final timing changes
 are documented in [BRAM reduction](docs/bram-reduction.md).
 The [workload findings](docs/workload-feasibility.md) concern the original,
@@ -73,7 +79,7 @@ actor/FIFO configurations. It supports branched raster networks and preserves
 integer overflow and rounding. The `schedule-network` command translates these
 actors into joint schedule/FIFO constraints from explicit cost catalogues; the
 full-model schedule passes RTL deadline checks with finite fabric-only FIFOs.
-The accepted implementation has a verified period of 3,737,193 cycles and uses
+The accepted implementation has a verified period of 3,085,714 cycles and uses
 an explicitly corrected nextpnr database with configuration-specific DSP timing
 guards. Earlier timing-coverage failures and results remain documented in
 [the measured evidence](RESULTS.md).

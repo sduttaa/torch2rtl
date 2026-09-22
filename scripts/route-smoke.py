@@ -147,6 +147,19 @@ for name, command in zip(("synthesis", "packing", "place-route", "pack"), comman
                         "--netlist", str((args.output / "packed.json").resolve()),
                         "--packing-report", str((args.output / "packing-report.json").resolve()),
                         "--output", str((args.output / "capacity.json").resolve())], check=True)
+        capacity=json.loads((args.output/"capacity.json").read_text())
+        site_budget=target["resources"].get("lut_sites",capacity["lut_sites_available"])
+        if capacity["lut_site_lower_bound"]>site_budget:
+            raise ValueError(f"Packed logic needs {capacity['lut_site_lower_bound']} sites; supplied placement budget is {site_budget}")
+    if name == "place-route":
+        subprocess.run([sys.executable,str(Path(__file__).with_name("check-gowin-capacity.py")),
+                        "--netlist",str((args.output/"packed.json").resolve()),
+                        "--packing-report",str((args.output/"packing-report.json").resolve()),
+                        "--routed-netlist",str((args.output/"routed.json").resolve()),
+                        "--output",str((args.output/"capacity.json").resolve())],check=True)
+        capacity=json.loads((args.output/"capacity.json").read_text())
+        if capacity["routed_logic_sites"]>site_budget:
+            raise ValueError(f"Routed logic occupies {capacity['routed_logic_sites']} sites; supplied placement budget is {site_budget}")
 result = json.loads((args.output / "route-report.json").read_text())
 summary = {"fmax": result.get("fmax"), "utilization": result.get("utilization"),
            "tool_timing_checks_passed": True, "timing_coverage_verified": False,

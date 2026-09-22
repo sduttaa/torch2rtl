@@ -79,7 +79,8 @@ def test_compact_view_preserves_values_and_backpressure(tmp_path, lanes, kernel,
     simulate(tmp_path,rtl,lanes*8,lanes*8,source,expected,stalls,max_cycles=200000)
 
 
-def test_hybrid_weight_rom_preserves_the_read_pipeline(tmp_path):
+@pytest.mark.parametrize("prefix",[1,17,32,71])
+def test_hybrid_weight_rom_preserves_the_read_pipeline(tmp_path,prefix):
     from torch2rtl.convolution import emit as emit_convolution
     from torch2rtl.fusion import materialized
     graph=fuse(network(shape=(4,6)),2)
@@ -89,7 +90,7 @@ def test_hybrid_weight_rom_preserves_the_read_pipeline(tmp_path):
     expected=evaluate(direct,image)
     source_words=[word for pixel in image.permute(0,2,3,1).reshape(-1,image.shape[1]) for word in pack(pixel,8,2)]
     result_words=[word for pixel in expected.permute(0,2,3,1).reshape(-1,expected.shape[1]) for word in pack(pixel,8,2)]
-    rtl=emit_convolution(value,2,2,reduction_lanes=2,weight_block_depth=32)
+    rtl=emit_convolution(value,2,2,reduction_lanes=2,weight_block_depth=prefix)
     simulate(tmp_path,rtl,16,16,source_words,result_words,True,max_cycles=50000)
 
 
@@ -100,6 +101,24 @@ def test_fused_view_periodic_deadlines(tmp_path,extra_rows):
              if value is graph.output else ActorConfig()}
              for value in graph.values if value is not graph.input}
     check_schedule(tmp_path,graph,2,options,(1,3,32,128),frames=4)
+
+
+@pytest.mark.parametrize("groups,outputs,extra",[(1,1,0),(1,4,(0,1)),(2,1,0),(2,2,(0,1))])
+@pytest.mark.parametrize("requantization",["overlap","overlap_shift_add"])
+def test_overlapped_quantizer_with_fused_source_lifetimes(tmp_path,groups,outputs,extra,requantization):
+    from dataclasses import replace
+    original=network(shape=(4,6),groups=groups)
+    output=replace(original.output,args=(*original.output.args[:-2],-8,7))
+    graph=fuse(Graph(original.input,output,reachable(output)),2)
+    options={value.name:{"selected":ActorConfig(outputs,2,extra_rows=extra,requantization=requantization)
+             if value is graph.output else ActorConfig()}
+             for value in graph.values if value is not graph.input}
+    check_schedule(tmp_path,graph,2,options,(1,3,32,128),frames=4)
+
+
+@pytest.mark.parametrize('groups,outputs',[(1,4),(2,2)])
+def test_folded_quantizer_with_fused_source_lifetimes(tmp_path,groups,outputs):
+    test_overlapped_quantizer_with_fused_source_lifetimes(tmp_path,groups,outputs,(0,1),'overlap_folded')
 
 
 def test_rolling_source_buffers_overlap_frames_without_external_branch_storage(tmp_path):

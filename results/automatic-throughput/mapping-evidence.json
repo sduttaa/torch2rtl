@@ -1,0 +1,3634 @@
+{
+  "actor_1": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "3ad1b60e4ee74b49dede0815b9a797e31826c7ad44578b687f421bd105ff687b",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 1678,
+      "ff": 990,
+      "bram": 3,
+      "dsp": 16,
+      "lut_sites": 1956
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/d5cb13e49e3ef771e7cedfb215dcca6a1de188466d665bff1c0d7378e3be02eb/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/3d8f20b876f2d232049de7820ba487baebf94bfe9d5662873bf1410eae216de9",
+    "netlist_sha256": "fc8d71dc2c272de6fec4775f724528b45415ea20d28532c2d2a1a146d3981925"
+  },
+  "actor_2": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "f81a9d7b9d9eb5e99cb951d37d43237180d457a26105c84286cf9016e0619484",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 1398,
+      "ff": 647,
+      "bram": 1,
+      "dsp": 12,
+      "lut_sites": 1534
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/268ad6ca1151a6ec8203cb2ef677eeacc405e2ddc25d37a77842f9be6670f38f/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/677d912fd36f0f17b4e7ab36df40f705cca6c9f8e9e8b3fbbf0f1e4c187161cf",
+    "netlist_sha256": "f23dd63be6d4173e5d205c2115fa6eaeef2b351c6dc45f818daeba15a19ddb33"
+  },
+  "actor_3": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "9fbe6dfe58410248eb001eb59774e843d87f11032dbab0e9334ed340a576bbc7",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 189,
+      "ff": 136,
+      "bram": 1,
+      "lut_sites": 264
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/68e6efc9c0299cc9169b774f5fe183ad45b68daec0868dbdd24f3a52bfba4f41/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/bb11c44de6c1cb1b858ef6227d42ea14a2279ab9d6dddf98d09563fae7febf8e",
+    "netlist_sha256": "c41c9d9d0d5b75c9a30caba1d9bd98f742074802419ec54f7c64a46b51b7ed84"
+  },
+  "actor_4": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "c758aa1e04c25e9cec5e076ac047cc9aa84d67babd6ef1b15dd217eaf65fc716",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 778,
+      "ff": 490,
+      "bram": 2,
+      "dsp": 6,
+      "lut_sites": 896
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8dddafdace0230aa5066368821ca576da1b16be89805bb6523b0bc33821242df/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/fa85db35022782958254ea45fed46f555d054813c87112a819e30a4d1c8ab522",
+    "netlist_sha256": "9362f78322b1b2ca4f2544c9c2bce8f7d6ce278cef6d6cbda38daf4c9c48ac1d"
+  },
+  "actor_5": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "765f54949c8236ce36ef2d0b5b93a71f7ece53e518e9e84f49742d188ae35367",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 873,
+      "ff": 486,
+      "lutram_bits": 4096,
+      "lut_sites": 906
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/5b485f2a303407734c92df45e844288af452766e024d62610e19514254ad1878/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/e0ca98693293e13891078afa93a641e7e7a6ff72e3abc8684af061c9b73844b6",
+    "netlist_sha256": "251fd8fe121f8613dfa70f8a43fd558645f712087e407b9c2b06cb9af08f0ec1"
+  },
+  "actor_6": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "e1692f4ac73f71b07f453312d3d8c6bcd3111c42de742b037ceeb6564a8baba5",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 813,
+      "ff": 441,
+      "bram": 3,
+      "dsp": 3,
+      "lut_sites": 914
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/25464892144aed57e8293b7e03f616d7ac392a712593c5d7d04912551cef71bd/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/6abee4641bd9efc13366607c1871e7a65075d03c334ff426ac5331ba77176a9c",
+    "netlist_sha256": "475b714a3b9d17c374bfd47ed29f59f098c0e7ae27f5d98ca9bc1ddbff4a7401"
+  },
+  "actor_7": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "7388289af8981707270dc5a55eed7a3b8718ce63e5bb922d94c540659a312f27",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 1831,
+      "ff": 654,
+      "bram": 3,
+      "dsp": 4,
+      "lut_sites": 1998
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/74bcee916593324b2cdfbf9297ac5c319683267bf58a70be5f63c4b37f3dd0e2/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c9edac99cd21950e3624646d7a920757bf7829ee06472986a2f6ef0de58ee74f",
+    "netlist_sha256": "5677cb25695af101d51349d468f98d27a62f085e2464c3c584aa764db629ae3e"
+  },
+  "actor_8": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "785cd9ed616c3f0b71f9c1dd6dc93356f6344db67a2b16313c0d3c62cb2111a4",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 748,
+      "ff": 436,
+      "bram": 5,
+      "dsp": 4,
+      "lut_sites": 909
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/81a04534afec968de9327c97993367381cfc7947cded5c601c3d47c203a6d63f/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/7e443acace91c3ace5ed3013d1b1f8ef46f66f4c4cf03a55f39cc80cfee8fa13",
+    "netlist_sha256": "38372c1f01900bc5b780e949393f2a21fc3316892496af72fcdb4001f7bcb589"
+  },
+  "actor_9": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "6ab52ea127ed6385a39e24f091b1605e95534a9d3764a88ce8dce6c8ad10106f",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 342,
+      "ff": 192,
+      "lutram_bits": 256,
+      "dsp": 1,
+      "lut_sites": 402
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/24590eac922a081a1bb52c3f6e66508077d7989659f93c83b63bdd79f8eb1c93/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c26ec68a0dce90bed9e5e57ac9bad95e30d8be765a7746506247ee4a4c2279db",
+    "netlist_sha256": "c5000be744a07336ce6b95e666bf88909b4dcd4b61572f454e4d702972b72f0c"
+  },
+  "actor_10": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "c42c5c80b35d794a3daaeb333a009b4ec35751bd49013ef136471ede926bad12",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 1541,
+      "ff": 681,
+      "bram": 6,
+      "dsp": 16,
+      "lut_sites": 1703
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/d0ebe0c8fa90fef90075bb5f930ff51e6ab8f2622a12f7ae5b2919c9cda3009d/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/9c67ff86ec01808b698af7d9f9919c7f53bb4d68f0191beaafc63012baaa7023",
+    "netlist_sha256": "6e91782fac7476898ca45f63e1e18d298955c8d34801edf648c058d01ff61346"
+  },
+  "actor_11": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "66a23bfae92e5898325e4b4135b01b5c8c76f2e457c2261bf397325bfef0aac3",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 735,
+      "ff": 423,
+      "bram": 4,
+      "dsp": 8,
+      "lut_sites": 878
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/38bdd1cb90fc237b3ccd91536cf291bf9f07616f91a1df4bcc3b92ab96157561/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/39cb1425f4ee01dddac50dd8e5a4f42833f82c211c5265324b0be68dd486b3d2",
+    "netlist_sha256": "12b725e16aa6e0f497badffac56fe122ce1b065078b14395832ba27fedd199ea"
+  },
+  "actor_12": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "79b34117eb3b247b627067cb3834bdd626001dd0c07d995a2a6fbe2347ba2602",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 269,
+      "ff": 154,
+      "lutram_bits": 256,
+      "dsp": 1,
+      "lut_sites": 307
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/034ef786571b45f2a617de53cf288141c7f066ec1bf6f95a42fd0c870c94b9d2/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c4b4fd4c40510051d01dfae4718efc51123fedca6d017c5742959dde9505d4ac",
+    "netlist_sha256": "61f43f6b8d0ba95202c8c03798993f89b8ef7f05c6b17d2f55b09864f727549c"
+  },
+  "actor_13": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "db9f4bc24841c60ef26db0466f345cee658377aaab70c69259005606990723bd",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 2363,
+      "ff": 1015,
+      "dsp": 16,
+      "bram": 5,
+      "lut_sites": 2520
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/0c3393f8d160faee959c22ceb6d7349063d6d9bbcec6cfe176cc376cdc2274a2/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/0dff76b61eed4578a8c14927fb94b97e39f52574af0ef39db7c962ff77ca6d5c",
+    "netlist_sha256": "b7bb36ecb6fe7ec4e19fa4d47442374866225f70c3e03c57bf5059184edac341"
+  },
+  "actor_14": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "4d20388508ccfbb5d5b348ac185e65eb4644dbb00061ae01d4e578993ecdadc4",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 903,
+      "ff": 477,
+      "bram": 1,
+      "dsp": 8,
+      "lut_sites": 1018
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/5f0d5b6ba60c8b0ee4a0b528b4ff3905d28ce492a66b926dd3981c647a85461a/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/8ced34104ae29d154f0eaf891c80e927788780260107e7ae0270410f311ec1ef",
+    "netlist_sha256": "6aa5fe5d7cd52f7266467fe387f8c6e01c200d629d45183dcec98a56cde79fa7"
+  },
+  "actor_15": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "2fa21e17cbb85e920e4d7dc9bad18dbc3ae8257483735e92a79a87671d5edcef",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 449,
+      "ff": 226,
+      "bram": 1,
+      "dsp": 1,
+      "lut_sites": 511
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/de9a03ecdb6a3de5d3f9651fcde46687674a9931514ea137629d4998c0587f1c/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/87ac92bfed9ce5939a2a624c59508db20280ac93c60c05f2d7378f3b249f7768",
+    "netlist_sha256": "aa234d27d747a952e509a22fab801cd5a1cd746f07f3a3d58768080bfec5d570"
+  },
+  "actor_16": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "fd4941b5df851652fb4e21ed7db91128064484cb8c5f85354b5724a44194f4df",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 6,
+      "ff": 3,
+      "lut_sites": 8
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/330cb0cc342b2d75dce674cd34bc189d4bdeb7639a06d8b729c845c7b9b521e5/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/2c86f47a0466e96d321673f33546fa622130bbf428f8f681463965233bd3cb91",
+    "netlist_sha256": "9db2c8cd50d39053ad28deeff8af2e2f16f7f6fbfd5a25184a23284ca50cd78a"
+  },
+  "fifo_actor_0": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "d174c7312ab5392976261a78143539b7d165d8b66c1d2ca910df296c864ba1f2",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 31,
+      "ff": 50,
+      "lut_sites": 55
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/a6acc31160478289488c46199a5f47a52a32797d3d9078131209792afc6d8f1a/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/a81665f2ff9c15066ec5ad252a3e8a9d23f8ea7a2d3f60e7fa5d73106012bc70",
+    "netlist_sha256": "2b59e8f9ab6e39977421d7ca8a82186996dc1a31df3939c687f792bcc8ec41b1"
+  },
+  "fifo_actor_1": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_2": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_3": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_4": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_5": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_6": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "2d184bdb8c11b6c8007537f83532ad0dcbffc983ae248199eb6ebe82c448ec0a",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 4,
+      "ff": 17,
+      "lut_sites": 20
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/018aba1eca63176c5f5513a58ec0d7a6c134437b79fe9730099d3b529e96c3cb/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/7dd6504b776011996a2d68f7e0050cbf53432ffb1d2780057ea99825760876b3",
+    "netlist_sha256": "a4d4d4165fb86b2611548a91dcf63f1fc52e227d67ccadef463533cab9ca3810"
+  },
+  "fifo_actor_7": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_8": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_9": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_10": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_11": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "2d184bdb8c11b6c8007537f83532ad0dcbffc983ae248199eb6ebe82c448ec0a",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 4,
+      "ff": 17,
+      "lut_sites": 20
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/018aba1eca63176c5f5513a58ec0d7a6c134437b79fe9730099d3b529e96c3cb/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/7dd6504b776011996a2d68f7e0050cbf53432ffb1d2780057ea99825760876b3",
+    "netlist_sha256": "a4d4d4165fb86b2611548a91dcf63f1fc52e227d67ccadef463533cab9ca3810"
+  },
+  "fifo_actor_12": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_13": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_14": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "4f88f4a3ed45ab813a65b3915f01c9109dc6d2150eac115ed8a027f9f1b40cbf",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 15,
+      "ff": 18,
+      "lut_sites": 23
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/5a35cfa1ae1e82bc923d3f40700343a2ef03c125345d72d573a652036cc1be8c/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/7cbd7833589560de34d7226433e01e9c4ab45de84c828bfa387fae247b4d6bad",
+    "netlist_sha256": "f186471c4164c839d90eea2aba5564d6609e3d33902dccb705214da93be6e321"
+  },
+  "fifo_actor_15": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "2d184bdb8c11b6c8007537f83532ad0dcbffc983ae248199eb6ebe82c448ec0a",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 4,
+      "ff": 17,
+      "lut_sites": 20
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/018aba1eca63176c5f5513a58ec0d7a6c134437b79fe9730099d3b529e96c3cb/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/7dd6504b776011996a2d68f7e0050cbf53432ffb1d2780057ea99825760876b3",
+    "netlist_sha256": "a4d4d4165fb86b2611548a91dcf63f1fc52e227d67ccadef463533cab9ca3810"
+  },
+  "fifo_actor_16": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "88c5517c1591a741a8b3016971208f3eb290d88494c020dae04d54e268b14623",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 23,
+      "ff": 34,
+      "lut_sites": 39
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/8482618aac6ef8a95befb7cc5e6d88a05d3c986759294b1a9779c3ba865f10c9/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/c37abac5a777a08bf3141540ae35e5ea3f6e9d38f3d6241b94ae4839fdd84a52",
+    "netlist_sha256": "4d63962d3bcc85df131e0cdc5a78931b025e2105b1c01e2fe35d6a5491feefdb"
+  },
+  "fifo_actor_17": {
+    "identity": {
+      "source": {
+        "source": {
+          "rtl_sha256": "4f88f4a3ed45ab813a65b3915f01c9109dc6d2150eac115ed8a027f9f1b40cbf",
+          "synthesis": {
+            "command": "synth_gowin",
+            "family": "gw2a",
+            "flags": [
+              "-nowidelut"
+            ],
+            "timeout_seconds": 180
+          },
+          "cell_costs": {
+            "LUT[1234]": {
+              "lut": 1
+            },
+            "ALU": {
+              "lut": 1
+            },
+            "DFF*": {
+              "ff": 1
+            },
+            "MULT9X9": {
+              "dsp": 1
+            },
+            "MULT18X18": {
+              "dsp": 2
+            },
+            "MULT36X36": {
+              "dsp": 8
+            },
+            "DPX9B": {
+              "bram": 1
+            },
+            "SDPX9B": {
+              "bram": 1
+            },
+            "SPX9B": {
+              "bram": 1
+            },
+            "SPX9": {
+              "bram": 1
+            },
+            "DPB": {
+              "bram": 1
+            },
+            "SDPB": {
+              "bram": 1
+            },
+            "SP": {
+              "bram": 1
+            },
+            "RAM16SDP1": {
+              "lut": 1,
+              "lutram_bits": 16
+            },
+            "RAM16SDP2": {
+              "lut": 2,
+              "lutram_bits": 32
+            },
+            "RAM16SDP4": {
+              "lut": 4,
+              "lutram_bits": 64
+            },
+            "MUX2_LUT*": {},
+            "IBUF": {},
+            "OBUF": {},
+            "GND": {},
+            "VCC": {}
+          },
+          "tool": "Yosys 0.69+75 (git sha1 f0b945f63-dirty, Release, Clang /usr/local/osxcross/target/bin/aarch64-apple-darwin25.5-clang++ 21.1.8)"
+        },
+        "mapping": {
+          "pack_product_registers": true,
+          "lut_mapping": "area",
+          "timeout_seconds": 180
+        },
+        "mapper_sha256": "ddb08a8304ca6ef0a3ba6e6fe5ccde9fc60aa16a0b8beb6575ad1bd8cbde5bac"
+      },
+      "analysis": {
+        "lut_sites": "gowin"
+      },
+      "packer": {
+        "executable": "nextpnr-himbaechel",
+        "device": "GW2AR-LV18QN88C8/I7",
+        "family": "GW2A-18C",
+        "chipdb": "/Users/Obi-wan/Documents/torch2rtl/.tools/build/nextpnr-chipdb/packed-bram-dsp.bin"
+      },
+      "packer_identity": {
+        "version": "\"nextpnr-himbaechel\" -- Next Generation Place and Route (Version nextpnr-0.11.1-30-g3e53a0bf)",
+        "chipdb_sha256": "3cbf697f806e32dcb1f939bc5c9d5f423c7d664392ec0199ef590ee3162b8f2b"
+      },
+      "analyzer_sha256": "c6ec8d412b2ec681ca50c6cdc335d881751d1c89bd9c6c15def2d0503d41a1dc"
+    },
+    "resources": {
+      "lut": 15,
+      "ff": 18,
+      "lut_sites": 23
+    },
+    "netlist_path": "/Users/Obi-wan/Documents/torch2rtl/build/characterization-cache/5a35cfa1ae1e82bc923d3f40700343a2ef03c125345d72d573a652036cc1be8c/netlist.json",
+    "evidence": "Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites",
+    "cache_hit": true,
+    "cache_path": "build/characterization-cache/7cbd7833589560de34d7226433e01e9c4ab45de84c828bfa387fae247b4d6bad",
+    "netlist_sha256": "f186471c4164c839d90eea2aba5564d6609e3d33902dccb705214da93be6e321"
+  }
+}

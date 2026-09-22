@@ -96,3 +96,12 @@ def test_decision_search_matches_exhaustive_schedules():
         validate_solution(model, replace(solution, offsets={"a": 0}))
     with pytest.raises(ValueError, match="resource totals"):
         validate_solution(model, replace(solution, resources={"invented": 1}))
+
+
+def test_requested_period_still_requires_a_valid_complete_schedule():
+    model=replace(choice_problem(),preferred_period=6)
+    solution=cp_sat.solve(model,Limits(seconds=5,stop_at_period=6))
+    assert solution.period<=6
+    validate_solution(model,solution)
+    with pytest.raises(ValueError,match="Stopping period"):
+        cp_sat.solve(model,Limits(stop_at_period=0))

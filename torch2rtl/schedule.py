@@ -57,6 +57,9 @@ class Problem:
     preferred_options: dict[str, str] = field(default_factory=dict)
     preferred_period: int | None = None
     preferred_offsets: dict[str, int] = field(default_factory=dict)
+    # Each clause excludes the simultaneous selection of these option sets.
+    # Used only for combinations already proved infeasible by the event model.
+    exclusions: tuple[tuple[tuple[str, tuple[str, ...]], ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -64,6 +67,7 @@ class Limits:
     seconds: float = 30
     workers: int = 1
     seed: int = 0
+    stop_at_period: int | None = None
 
 
 @dataclass(frozen=True)
@@ -118,6 +122,13 @@ def validate(problem):
                 raise ValueError(f"Unknown option guard: {choice}/{option}")
 
     guard(tuple(problem.preferred_options.items()))
+    for clause in problem.exclusions:
+        if not clause or len({group for group, _ in clause}) != len(clause):
+            raise ValueError("Exclusions need distinct nonempty choice groups")
+        for group, options in clause:
+            if not options or len(set(options)) != len(options):
+                raise ValueError("Exclusions need distinct nonempty option sets")
+            guard(tuple((group, option) for option in options))
 
     for dependency in problem.dependencies:
         if dependency.before not in names or dependency.after not in names:
@@ -185,6 +196,9 @@ def validate_solution(problem, solution):
         raise ValueError("Solver returned a resource overrun")
     if solution.resources != usage:
         raise ValueError("Solver resource totals disagree with selected choices")
+    if any(all(solution.selected[group] in options for group, options in clause)
+           for clause in problem.exclusions):
+        raise ValueError("Solver returned an excluded choice combination")
 
     def active(when):
         return all(solution.selected[group] == option for group, option in when)

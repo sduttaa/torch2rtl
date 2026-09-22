@@ -119,11 +119,12 @@ def configuration(actor, lanes, outputs, reduction_lanes=None, requantization="a
     encoded_multipliers = [value & ((1 << (multiplier_bytes*8))-1) for value in multipliers]
     active_products = np.any(np.array(weights).reshape(-1, outputs, reduction_lanes) != 0, axis=0)
     thresholds=threshold_table(multipliers,offset,shift,low,high,accumulator_bits)
-    if requantization not in ("auto","multiply","threshold"):
+    shift_add=requantization in ("overlap_shift_add","overlap_folded")
+    if requantization not in ("auto","multiply","threshold","overlap","overlap_shift_add","overlap_folded"):
         raise ValueError("Unknown requantization implementation")
-    if requantization == "threshold" and thresholds is None:
+    if requantization in ("threshold","overlap") and thresholds is None:
         raise ValueError("Threshold requantization requires a small monotone integer output range")
-    if requantization == "multiply" or (requantization == "auto" and thresholds is not None and
+    if requantization == "multiply" or shift_add or (requantization == "auto" and thresholds is not None and
             thresholds[0]+1 > accumulator_bytes*ceil(multiplier_bytes/reduction_lanes)+3):
         thresholds=None
     # A dot-product lane needs a requantizer mux only if some coefficient uses it.
@@ -132,7 +133,7 @@ def configuration(actor, lanes, outputs, reduction_lanes=None, requantization="a
         for byte in range(multiplier_bytes):
             if (coefficient >> (byte*8)) & 255:
                 requant_products[index % outputs, byte % reduction_lanes] = True
-    if thresholds is None:
+    if thresholds is None and not shift_add:
         active_products |= requant_products
     else:
         requant_products[:]=False
@@ -158,6 +159,7 @@ def configuration(actor, lanes, outputs, reduction_lanes=None, requantization="a
                   "OUTPUT_SIGNED": int(actor.tensor.signed),
                   "REDUCTION_LANES": reduction_lanes,
                   "ACCUMULATOR_BYTES": accumulator_bytes, "MULTIPLIER_BYTES": multiplier_bytes,
+                  "MULTIPLIER_BITS": multiplier_bits,
                   "ACCUMULATOR_BITS": accumulator_bits, "INNER_BITS": max(inner_bits, 9),
                   "MULTIPLIER_SIGNED": multiplier_signed, "REQUANT_BITS": max(requant_bits, 9),
                   "SHIFT": shift, "OFFSET": packed([offset], 64), "LOW": packed([low], 64), "HIGH": packed([high], 64),
@@ -165,16 +167,105 @@ def configuration(actor, lanes, outputs, reduction_lanes=None, requantization="a
                   "MULTIPLIERS": packed(encoded_multipliers, padded_multiplier_bits),
                   "PRODUCT_MASK": packed(active_products.flatten().tolist(), 1),
                   "REQUANT_MASK": packed(requant_products.flatten().tolist(), 1)}
+    parameters["PIPELINED_POOL"]=int(pool[0]*pool[1]>1 and kh*kw*channel_words>=4)
     if thresholds is not None:
         bits,table=thresholds
         parameters.update(THRESHOLD_BITS=bits,THRESHOLDS=packed(table,accumulator_bits+2))
+    if requantization == "overlap" or shift_add:
+        parameters["OVERLAP_QUANTIZER"] = 1
+        if requantization == "overlap_folded":
+            _,compute,service,_=timing(parameters)
+            quantizers=min(count for count in range(1,outputs+1)
+                           if outputs%count==0 and outputs//count*service<compute)
+            if quantizers==outputs:
+                raise ValueError("No quantizer sharing fits this compute tile")
+            parameters["QUANTIZER_LANES"]=quantizers
+        timing(parameters)
     return parameters
 
 
-def emit(actor, lanes, outputs, weight_memory="auto", line_memory="auto", line_layout="parallel", reduction_lanes=None, weight_block_depth=None, requantization="auto"):
+def timing(parameters):
+    """Cycle constants shared by the geometry screen and event contract."""
+    p=parameters
+    blocks=p["GROUPS"]*ceil((p["OUTPUT_CHANNELS"]//p["GROUPS"])/p["OUTPUT_LANES"])
+    dot=p["KERNEL_H"]*p["KERNEL_W"]*ceil((p["INPUT_CHANNELS"]//p["GROUPS"])/p["REDUCTION_LANES"])
+    pool=p["POOL_H"]*p["POOL_W"]
+    extra=int(p["REDUCTION_LANES"]>1)
+    saved=(pool-1)*(1+extra) if p.get("PIPELINED_POOL") else 0
+    release=pool*(dot+2)+(pool-1)*extra-2-saved
+    if p.get("OVERLAP_QUANTIZER"):
+        compute=pool*(dot+2+extra)+1+int(pool>1)-saved
+        quantizer=p.get("THRESHOLD_BITS",0) or p.get("MULTIPLIER_BITS",8*p["MULTIPLIER_BYTES"])
+        quantizer+=2
+        quantizer*=p["OUTPUT_LANES"]//p.get("QUANTIZER_LANES",p["OUTPUT_LANES"])
+        if compute<quantizer+1:
+            raise ValueError("Overlapped quantization requires a compute tile at least as long as its quantizer service interval")
+        return blocks,compute,quantizer,release
+    quantizer=p["THRESHOLD_BITS"]+1 if p.get("THRESHOLD_BITS") else p["ACCUMULATOR_BYTES"]*ceil(p["MULTIPLIER_BYTES"]/p["REDUCTION_LANES"])+3
+    return blocks,pool*(dot+2+extra)+quantizer+int(pool>1)-saved,0,release
+
+
+def window_source(layout,bank_width=None):
+    """Render only the selected address implementation; reuse identical RTL."""
+    root=Path(__file__).parent/"templates"
+    if bank_width is not None and (type(bank_width) is not int or bank_width<1 or layout not in ("ring","ring_compact","prefetch")):
+        raise ValueError("Width banking requires a positive bank width and a ring window")
+    if layout=="prefetch":
+        return (root/"window_prefetch.sv").read_text().replace("@BANK_WIDTH@",str(bank_width or "STORAGE_BITS"))+(root/"window_storage.sv").read_text()
+    if layout not in ("ring","ring_compact"):
+        return (root/"window.sv").read_text()
+    compact=layout=="ring_compact"
+    next_index="write_index == INDEX_BITS'(DEPTH-1) ? INDEX_BITS'(0) : write_index+1'b1"
+    def location(offset):
+        if not compact:
+            return f"wire [INDEX_BITS-1:0] location = DEPTH == 1 ? INDEX_BITS'(0) : origin+{offset};"
+        # Two additions run in parallel. The registered biased origin avoids
+        # an add/compare/subtract chain on the synchronous RAM address path.
+        return f"""wire [INDEX_BITS:0] wrapped = origin_bias+{{1'b0,{offset}}};
+      wire [INDEX_BITS-1:0] location = wrapped[INDEX_BITS] ? origin+{offset} : wrapped[INDEX_BITS-1:0];"""
+    values={
+        "DEPTH":"SPAN" if compact else "1 << $clog2(SPAN)",
+        "ADDRESS_STATE":("\n    reg [INDEX_BITS:0] origin_bias;\n    wire [INDEX_BITS-1:0] next_index = "+next_index+";") if compact else "",
+        "RESET":("if (rst) begin write_index <= 0; origin <= 0; origin_bias <= -(INDEX_BITS+1)'(SPAN); end"
+                 if compact else "if (rst) begin write_index <= 0; origin <= 0; end"),
+        "NEXT_INDEX":"next_index" if compact else "DEPTH == 1 ? INDEX_BITS'(0) : write_index+1'b1",
+        "ORIGIN_UPDATE":("if (pending_output) begin origin <= next_index; origin_bias <= {1'b0,next_index}-(INDEX_BITS+1)'(SPAN); end"
+                         if compact else "if (pending_output) origin <= DEPTH == 1 ? INDEX_BITS'(0) : write_index+INDEX_BITS'(1-SPAN);"),
+        "PIPELINED_LOCATION":location("offset"),
+        "ASYNC_LOCATION":location("coordinates[window_address]"),
+    }
+    source=(root/"window_ring.sv").read_text()
+    for name,value in values.items():
+        source=source.replace("@"+name+"@",value)
+    if bank_width is not None:
+        replacements={
+            '(* ram_style=MEMORY_STYLE, no_rw_check *) reg [WORD_BITS-1:0] memory [0:DEPTH-1];':f'''localparam integer STORAGE_BITS=(CHANNELS<LANES ? CHANNELS : LANES)*BITS;
+    wire [STORAGE_BITS-1:0] banked_data;
+    wire [WORD_BITS-1:0] stored_data=WORD_BITS'(banked_data);
+    wire [INDEX_BITS-1:0] read_location;
+    window_storage #(.WIDTH(STORAGE_BITS), .DEPTH(DEPTH), .BANK_WIDTH({bank_width}),
+      .PIPELINED_READ(PIPELINED_READ), .MEMORY_STYLE(MEMORY_STYLE)) storage (
+      .clk(clk), .write_enable(!rst && commit), .write_address(write_index),
+      .write_data(pending_data[STORAGE_BITS-1:0]), .read_address(read_location), .read_data(banked_data));''',
+            'if (!rst && commit) memory[write_index] <= pending_data;':'',
+            'reg [WORD_BITS-1:0] data, forwarded_data;':'''wire [WORD_BITS-1:0] data=stored_data;
+      reg [WORD_BITS-1:0] forwarded_data;
+      assign read_location=location;''',
+            'data <= memory[location];':'',
+            'assign window_data = memory[location];':'assign read_location=location;\n      assign window_data=stored_data;',
+        }
+        for before,after in replacements.items():
+            if source.count(before)!=1:
+                raise ValueError("Window memory rendering contract changed")
+            source=source.replace(before,after)
+        source+=(root/"window_storage.sv").read_text()
+    return source
+
+
+def emit(actor, lanes, outputs, weight_memory="auto", line_memory="auto", line_layout="parallel", reduction_lanes=None, weight_block_depth=None, requantization="auto", line_bank_width=None):
     if weight_memory not in ("auto", "block", "distributed", "logic") or line_memory not in ("auto", "block", "distributed"):
         raise ValueError("Unknown memory mapping option")
-    if line_layout not in ("parallel", "packed"):
+    if line_layout not in ("parallel", "packed", "ring", "ring_compact", "prefetch"):
         raise ValueError("Unknown line memory layout")
     parameters = configuration(actor, lanes, outputs, reduction_lanes, requantization)
     if weight_block_depth is not None:
@@ -186,7 +277,8 @@ def emit(actor, lanes, outputs, weight_memory="auto", line_memory="auto", line_l
         parameters["WEIGHT_BLOCK_DEPTH"] = weight_block_depth
     assignments = [f".{key}({value})" for key, value in parameters.items()]
     assignments += [f'.WEIGHT_MEMORY("{weight_memory}")', f'.LINE_MEMORY("{line_memory}")']
-    assignments.append(f'.PACKED_LINES({int(line_layout == "packed")})')
+    layout={"parallel":0,"packed":1,"ring":2,"ring_compact":2,"prefetch":3}[line_layout]
+    assignments.append(f'.PACKED_LINES({layout})')
     wrapper = f"""
 module inference (
   input wire clk, input wire rst,
@@ -199,4 +291,4 @@ module inference (
 endmodule
 """
     root = Path(__file__).parent / "templates"
-    return wrapper + (root / "convolution.sv").read_text() + (root / "window.sv").read_text()
+    return wrapper + (root / "convolution.sv").read_text() + window_source(line_layout,line_bank_width)

@@ -139,3 +139,43 @@ def test_shared_choice_delay_matches_explicit_conditional_edges(values,budget):
         Dependency("start","end",delay,when=(("actor",option),)) for option,delay in values))
     first,second=solve(compact),solve(explicit)
     assert (first.status,first.period,first.selected) == (second.status,second.period,second.selected)
+
+
+def test_fixed_proposal_cycle_identifies_contract_and_fifo():
+    from torch2rtl.precedence import blocking_cycle
+    model=pipeline((2,))
+    model=replace(model,choices={**model.choices,"reduction":(Option("barrier"),),
+                                 "unrelated":(Option("unused"),)},
+        dependencies=(Dependency("w2","r0",1,when=(("reduction","barrier"),)),))
+    result=solve(model,Limits(seconds=5))
+    assert result.status=="INFEASIBLE"
+    conflict=blocking_cycle(model)
+    assert set(conflict["choices"])=={("fifo","2"),("reduction","barrier")}
+    assert conflict["frames"]==0 and conflict["delay"]>0
+    # Removing either cause makes this complete model feasible.
+    assert solve(replace(model,dependencies=())).period is not None
+    roomy=replace(model,choices={**model.choices,"fifo":(Option("5",{"slots":5}),)},
+                  fifos=(replace(model.fifos[0],depths={"5":5}),))
+    assert solve(roomy,Limits(seconds=5)).period is not None
+    assert blocking_cycle(roomy) is None
+    periodic=replace(model,dependencies=(Dependency("w0","w2",30,when=(("reduction","barrier"),)),))
+    conflict=blocking_cycle(periodic)
+    assert conflict and ("reduction","barrier") in conflict["choices"]
+    assert conflict["delay"]>periodic.period_limit*conflict["frames"]
+    assert solve(periodic).status=="INFEASIBLE"
+
+
+def test_exclusions_reject_equivalent_choices_but_allow_other_contracts():
+    choices={"actor":(Option("blocked"),Option("same_contract"),Option("working",{"cost":1})),
+             "queue":(Option("small"),Option("large",{"cost":2}))}
+    model=Problem(("epoch",),choices,(),(),{"cost":2},10,0,"epoch",
+                  resource_weights={"cost":1},
+                  exclusions=((("actor",("blocked","same_contract")),("queue",("small",))),))
+    result=solve(model)
+    assert result.selected=={"actor":"working","queue":"small"}
+    from torch2rtl.schedule import validate_solution
+    with pytest.raises(ValueError,match="excluded choice"):
+        validate_solution(model,replace(result,selected={"actor":"blocked","queue":"small"},resources={"cost":0}))
+    from torch2rtl.precedence import blocking_cycle
+    with pytest.raises(ValueError,match="fixed choices"):
+        blocking_cycle(model)

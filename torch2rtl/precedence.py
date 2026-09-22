@@ -83,3 +83,121 @@ def domains(problem):
         for position in range(rows[source], rows[source+1]):
             distance[source] = max(distance[source], min(ceiling, distance[targets[position]]+delays[position]))
     return lower, distance
+
+
+def blocking_cycle(problem, rounds=8):
+    """Explain a rejected fixed proposal with a positive dependency cycle.
+
+    This returns only a directly checked infeasibility witness, never a valid
+    schedule. CP-SAT still selects and verifies every accepted implementation.
+    Within-frame DAG passes make the common periodic case inexpensive; failure
+    to find a witness leaves the complete solver responsible for the problem.
+    """
+    if any(len(options)!=1 for options in problem.choices.values()):
+        raise ValueError("Cycle explanations require fixed choices")
+    selected={group:options[0].name for group,options in problem.choices.items()}
+    index={name:position for position,name in enumerate(problem.events)}
+    sources,targets,delays,frames,owners=(array("q") for _ in range(5))
+    guards=[()]
+    guard_ids={():0}
+
+    def append(before,after,delay,advance,when):
+        if any(selected[group]!=name for group,name in when):
+            return
+        if when not in guard_ids:
+            guard_ids[when]=len(guards)
+            guards.append(when)
+        sources.append(index[before]);targets.append(index[after])
+        delays.append(delay);frames.append(advance);owners.append(guard_ids[when])
+
+    for edge in problem.dependencies:
+        delay,when=edge.delay,edge.when
+        if isinstance(delay,ChoiceDelay):
+            value=dict(delay.values).get(selected[delay.choice])
+            if value is None:
+                continue
+            when=when+((delay.choice,selected[delay.choice]),)
+            delay=value
+        append(edge.before,edge.after,delay,edge.frames,when)
+    for fifo in problem.fifos:
+        name=selected[fifo.choice]
+        when=fifo.when+((fifo.choice,name),)
+        if fifo.order_transfers:
+            for stream in (fifo.writes,fifo.reads):
+                for before,after in zip(stream,stream[1:]):
+                    append(before,after,1,0,when)
+                append(stream[-1],stream[0],1,1,when)
+        count=len(fifo.writes)
+        for position,(write,read) in enumerate(zip(fifo.writes,fifo.reads)):
+            append(write,read,fifo.forward_delays.get(name,1),0,when)
+            frame,word=divmod(position-fifo.depths[name],count)
+            append(fifo.reads[word],write,fifo.replacement_delay,-frame,when)
+    del index
+    count=len(problem.events)
+    degree,incoming=(array("q",[0])*count for _ in range(2))
+    wrapped=array("q")
+    for edge,(source,target,advance) in enumerate(zip(sources,targets,frames)):
+        if advance:
+            wrapped.append(edge)
+        else:
+            degree[source]+=1;incoming[target]+=1
+    rows=array("q",[0])
+    for size in degree:
+        rows.append(rows[-1]+size)
+    adjacency=array("q",[0])*rows[-1]
+    cursor=rows[:-1]
+    for edge,(source,advance) in enumerate(zip(sources,frames)):
+        if not advance:
+            adjacency[cursor[source]]=edge;cursor[source]+=1
+    del degree,cursor
+    order=array("q",(node for node,value in enumerate(incoming) if not value))
+    for source in order:
+        for position in range(rows[source],rows[source+1]):
+            target=targets[adjacency[position]]
+            incoming[target]-=1
+            if not incoming[target]:
+                order.append(target)
+    acyclic=len(order)==count
+    if not acyclic:
+        order.extend(node for node,value in enumerate(incoming) if value)
+    del incoming
+    distance,previous=array("q",[0])*count,array("q",[-1])*count
+    for _ in range(rounds):
+        changed=False
+        for source in order:
+            for position in range(rows[source],rows[source+1]):
+                edge=adjacency[position];target=targets[edge]
+                value=distance[source]+delays[edge]
+                if value>distance[target]:
+                    distance[target]=value;previous[target]=edge
+                    changed=changed or not acyclic
+        for edge in wrapped:
+            target=targets[edge]
+            value=distance[sources[edge]]+delays[edge]-frames[edge]*problem.period_limit
+            if value>distance[target]:
+                changed=True;distance[target]=value;previous[target]=edge
+        if not changed:
+            return None
+        marks=array("q",[0])*count
+        for start in range(count):
+            if marks[start] or previous[start]<0:
+                continue
+            node=start
+            while previous[node]>=0 and not marks[node]:
+                marks[node]=start+1;node=sources[previous[node]]
+            if previous[node]<0 or marks[node]!=start+1:
+                continue
+            first=node;delay=advance=0;cause=set()
+            while True:
+                edge=previous[node]
+                assert targets[edge]==node
+                delay+=delays[edge];advance+=frames[edge]
+                cause.update(guards[owners[edge]])
+                node=sources[edge]
+                if node==first:
+                    break
+            # Adding these closed-cycle inequalities cancels every event
+            # offset. Keep a cut only when their exact integer sum conflicts.
+            if delay>advance*problem.period_limit:
+                return {"choices":tuple(sorted(cause)),"delay":delay,"frames":advance}
+    return None
