@@ -10,10 +10,13 @@ from collections import Counter
 from copy import deepcopy
 from dataclasses import replace
 from threading import Lock
+from time import monotonic
 
 from .catalogue import absorb_input_buffers, prepare, retain
 from .cp_sat import solve
-from .flow import characterize
+from .flow import characterize, counters
+from .cache import write_json
+from .exploration import refine
 from .memory import fifo_latency
 from .frontend import load
 from .graph import actors, read
@@ -42,6 +45,10 @@ def measure(graph,catalogue,target,cache,progress=print,workers=1):
     if type(workers) is not int or workers<1:
         raise ValueError("Positive characterization worker count required")
     jobs=[(name,label,spec) for name,options in catalogue["actor_options"].items() for label,spec in options.items()]
+    progress(f"Characterize {len(jobs)} actor options with {workers} workers; reuse exact cache hits")
+    progress("Synthesis reports below describe individual candidates, not whole-design utilization")
+    counts=Counter()
+    reported_actors=set()
     cache_locks={}
     cache_lock=Lock()
     def run(job):
@@ -60,8 +67,9 @@ def measure(graph,catalogue,target,cache,progress=print,workers=1):
         except (ValueError,subprocess.CalledProcessError) as error:
             return job,None,str(error)
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        for (name,label,spec),evidence,error in executor.map(run,jobs):
+        for completed,((name,label,spec),evidence,error) in enumerate(executor.map(run,jobs),1):
             if error is not None:
+                counts["rejected"]+=1
                 catalogue.setdefault("rejected_measurements",[]).append({"actor":name,"option":label,"error":str(error)})
                 del catalogue["actor_options"][name][label]
                 progress(f"Actor {name}/{label}: rejected; {error}")
@@ -69,11 +77,22 @@ def measure(graph,catalogue,target,cache,progress=print,workers=1):
             spec["estimated_resources"]=spec["resources"]
             spec["resources"]=evidence["resources"]
             spec["measurement"]={key:value for key,value in evidence.items() if key != "resources"}
-            progress(f"Actor {name}/{label}: {'cached' if evidence['cache_hit'] else 'measured'}")
+            counts["cached" if evidence["cache_hit"] else "measured"]+=1
+            resources=", ".join(f"{key}={value:,}" for key,value in sorted(evidence["resources"].items()))
+            source="cached" if evidence["cache_hit"] else "characterized"
+            progress(f"Synthesis {name}/{label}: {resources} ({source})")
+            if name not in reported_actors:
+                progress(f"Synthesis evidence: {Path(evidence['cache_path'])/'report.json'}")
+                reported_actors.add(name)
+            if completed%10==0 or completed==len(jobs):
+                progress(f"Actors {completed}/{len(jobs)}: {counts['cached']} cached, {counts['measured']} measured, {counts['rejected']} rejected")
     for name,options in catalogue["actor_options"].items():
         if not options:
             raise ValueError(f"No characterized implementation remains for {name}")
     widths={name:fifo_width(source,catalogue["lanes"]) for name,source,*_ in edges(graph)}
+    total=sum(len(options) for options in catalogue["fifo_options"].values())
+    completed=0
+    progress(f"Characterize {total} FIFO options")
     for edge,options in catalogue["fifo_options"].items():
         for label,spec in options.items():
             parameters={"WIDTH":widths[edge],"DEPTH":spec["depth"],"MEMORY_STYLE":'"'+spec["memory"]+'"'}
@@ -82,6 +101,9 @@ def measure(graph,catalogue,target,cache,progress=print,workers=1):
             spec["estimated_resources"]=spec["resources"]
             spec["resources"]=evidence["resources"]
             spec["measurement"]={key:value for key,value in evidence.items() if key != "resources"}
+            completed+=1
+            if completed%25==0 or completed==total:
+                progress(f"FIFOs {completed}/{total} characterized")
     catalogue["resource_provenance"]="Exact RTL/target/tool keyed actor and FIFO synthesis; whole-design mapping and routing still required"
     return catalogue
 
@@ -285,11 +307,29 @@ def automatic_buffer_plan(graph,catalogue,target,search,directory,limits,progres
 
 
 def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule",progress=print):
+    started=monotonic()
+    before=counters()
+    status="failed"
+    try:
+        result=_optimize(model,target,search,directory,cache,limits,stage,progress)
+        status="completed"
+        return result
+    finally:
+        after=counters()
+        write_json(Path(directory)/"compile-metrics.json",{
+            "elapsed_seconds":monotonic()-started,"status":status,
+            "tool_jobs":{key:value-before.get(key,0) for key,value in after.items()},
+            "scope":"This invocation only; exact cache hits do not count as synthesis jobs"})
+
+
+def _optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule",progress=print):
     directory=Path(directory)
     directory.mkdir(parents=True,exist_ok=True)
     model=Path(model).resolve()
     digest=hashlib.sha256(model.read_bytes()).hexdigest()
+    progress(f"Import exported model through torch-mlir: {model}")
     _,module=load(model)
+    progress("Form fused actors and generate implementation candidates")
     graph=actors(read(module),search.get("fusions",()),search["lanes"])
     if search.get("automatic_buffering") and any(search.get(key) for key in ("initial_configuration","initial_schedule","absorb_input_fifos")):
         raise ValueError("Automatic buffering requires a cold compile without an external configuration or schedule seed")
@@ -299,6 +339,7 @@ def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule
         if initial is None:
             raise ValueError("Input-buffer absorption requires an initial_configuration seed")
         initial=absorb_input_buffers(graph,catalogue,initial,target,search.get("absorbed_fifo_max_words",8))
+    progress("Look up cached implementation costs")
     reuse_measured_costs(graph,catalogue,target,cache)
     (directory/"model.mlir").write_text(str(module))
     (directory/"search.json").write_text(json.dumps(search,indent=2)+"\n")
@@ -306,9 +347,13 @@ def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule
     def save():
         (directory/"catalogue.json").write_text(json.dumps(catalogue,indent=2)+"\n")
     save()
+    progress("Screen candidate resources and throughput")
     bound=solve(relaxation(catalogue,target),Limits(seconds=min(limits.seconds,10)))
     if bound.period is not None:
-        retain(catalogue,bound,search["max_actor_options"],search.get("retention_period_slack",1.25))
+        initial_limit=search.get("initial_actor_options",search["max_actor_options"])
+        if type(initial_limit) is not int or not 1 <= initial_limit <= search["max_actor_options"]:
+            raise ValueError("initial_actor_options must be between 1 and max_actor_options")
+        retain(catalogue,bound,initial_limit,search.get("retention_period_slack",1.25))
         save()
     screen={"relaxation":summary(bound),"whole_design_verified":False,
             "optimistic_fps_bound":target["clock_hz"]/bound.period_bound if bound.period_bound>0 else None,
@@ -336,13 +381,15 @@ def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule
             break
         retain(expanded,candidate,search["max_actor_options"],search.get("retention_period_slack",1.25),
                incumbent if incumbent.period is not None else None)
+        expanded=refine(catalogue,expanded,incumbent,candidate,target,
+                        search.get("refinement_options",search["max_actor_options"]),search["max_actor_options"])
         missing=sum("measurement" not in spec for options in expanded["actor_options"].values() for spec in options.values())
         history.append({"round":iteration+1,"period":candidate.period,"uncached_actor_options":missing})
         catalogue=expanded
-        progress(f"Characterization refinement {iteration+1}: {missing} new actor costs")
-        measure(graph,catalogue,target,cache,progress,search.get("characterization_workers",1))
         if not missing:
             break
+        progress(f"Characterization refinement {iteration+1}: {missing} new actor costs within the global measurement budget")
+        measure(graph,catalogue,target,cache,progress,search.get("characterization_workers",1))
     catalogue["screen"]["characterization_refinement"]=history
     prune_fifos(catalogue)
     if initial is not None:
@@ -352,6 +399,10 @@ def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule
     save()
     measured_bound=solve(relaxation(catalogue,target),Limits(seconds=min(limits.seconds,10)))
     (directory/"measured-bound.json").write_text(json.dumps(summary(measured_bound),indent=2)+"\n")
+    if measured_bound.period is not None:
+        progress("Synthesis-based resource proposal; joint scheduling and whole-design fit still pending")
+        for resource,budget in target["resources"].items():
+            progress(f"  {resource}: {measured_bound.resources.get(resource,0):,} / {budget:,} target budget")
     if stage == "measure":
         return {"resource_provenance":catalogue["resource_provenance"],"catalogue":str(directory/"catalogue.json")}
     if measured_bound.period is None:
@@ -370,6 +421,8 @@ def optimize(model,target,search,directory,cache,limits=Limits(),stage="schedule
         catalogue["automatic_buffering"]={"source":"fresh compiler CP-SAT plan","external_architecture_seed":False,
                                           "planning_report":str(directory/"buffer-planning/report.json")}
         save()
+    if search.get("clock_candidates_hz"):
+        return clock_plans(graph,catalogue,target,search,directory,cache,limits,progress)
     return finish(graph,catalogue,target,search,directory,cache,limits,progress)
 
 
@@ -378,28 +431,48 @@ def finish(graph,catalogue,target,search,directory,cache,limits=Limits(),progres
     directory=Path(directory)
     def save():
         (directory/"catalogue.json").write_text(json.dumps(catalogue,indent=2)+"\n")
+    fallback_catalogue=deepcopy(catalogue)
     catalogue["stop_after_feasible"]=bool(search.get("stop_at_required_fps",False))
     catalogue["proposal_attempts"]=search.get("proposal_attempts",4)
+    if "joint_event_limit" in search:
+        catalogue["joint_event_limit"]=search["joint_event_limit"]
     if catalogue["stop_after_feasible"] and "required_fps" not in target:
         raise ValueError("Stopping at requested throughput requires target.required_fps")
+    progress("Search objective: stop when requested FPS is reached" if catalogue["stop_after_feasible"] else
+             "Search objective: maximize throughput within resource limits and solver budget; requested FPS is not a stopping point")
     if "required_fps" in target:
         requested=target["required_fps"]
         if not isinstance(requested,(int,float)) or not math.isfinite(requested) or requested<=0:
             raise ValueError("Required throughput must be a positive finite number")
-        catalogue["period_limit"]=min(catalogue["period_limit"],math.floor(target["clock_hz"]/requested))
-        if catalogue["period_limit"]<1:
-            raise ValueError("Required throughput exceeds one inference per clock")
+        original_limit=catalogue["period_limit"]
+        catalogue["period_limit"]=max(1,min(original_limit,math.floor(target["clock_hz"]/requested)))
         final_bound=solve(relaxation(catalogue,target),limits)
         catalogue["period_lower_bound"]=max(1,math.ceil(final_bound.period_bound))
         (directory/"throughput-screen.json").write_text(json.dumps(summary(final_bound),indent=2)+"\n")
         save()
         if final_bound.period is None:
-            return {"status":final_bound.status,"stage":"throughput_resource_screen","required_fps_met":False,
-                    "scope":"Retained characterized options at the supplied clock; no global infeasibility claim"}
+            progress("Requested FPS is outside the screened resource tradeoff; solve for the best available period")
+            catalogue["period_limit"]=original_limit
+            catalogue["stop_after_feasible"]=False
+            catalogue.pop("period_lower_bound",None)
+    progress("Prove and prune resource-infeasible choices")
     removed=prune_unsupported(catalogue,target,limits)
     progress(f"Resource proofs removed {removed} impossible choices before event scheduling")
     save()
+    progress("Solve joint actor scheduling and FIFO occupancy; validate and emit RTL")
     report=compile_network(graph,catalogue,target,directory/"schedule",limits)
+    if not report["solver_verified"] and "required_fps" in target and catalogue["period_limit"]<original_limit:
+        progress("No verified schedule at the requested FPS; retry within the supplied period limit")
+        catalogue=fallback_catalogue
+        catalogue["period_limit"]=original_limit
+        catalogue["stop_after_feasible"]=False
+        catalogue["proposal_attempts"]=search.get("proposal_attempts",4)
+        if "joint_event_limit" in search:
+            catalogue["joint_event_limit"]=search["joint_event_limit"]
+        catalogue.pop("period_lower_bound",None)
+        prune_unsupported(catalogue,target,limits)
+        save()
+        report=compile_network(graph,catalogue,target,directory/"schedule",limits)
     report["automatic_architecture_selection"]={
         "external_configuration_seed":bool(search.get("initial_configuration")),
         "external_schedule_seed":bool(search.get("initial_schedule")),
@@ -407,6 +480,7 @@ def finish(graph,catalogue,target,search,directory,cache,limits=Limits(),progres
         "scope":"Bounded compiler search; no global optimality claim"}
     if report["solver_verified"]:
         report["scheduled_fps"]=target["clock_hz"]/report["solution"]["period"]
+        progress(f"Verified schedule: {report['scheduled_fps']:.4f} FPS at {target['clock_hz']/1e6:.2f} MHz; physical verification pending")
         if "required_fps" in target:
             report["required_fps"]=target["required_fps"]
             report["required_fps_met"]=report["scheduled_fps"]>=target["required_fps"]
@@ -417,4 +491,27 @@ def finish(graph,catalogue,target,search,directory,cache,limits=Limits(),progres
         prepare_link(graph,configuration,target,cache,directory/"schedule/mapped")
         report["mapped_network"]=str(directory/"schedule/mapped")
         (directory/"schedule/report.json").write_text(json.dumps(report,indent=2)+"\n")
+    return report
+
+
+def clock_plans(graph,catalogue,target,search,directory,cache,limits,progress):
+    """Schedule a small legal clock set with one shared measured catalogue."""
+    clocks=search["clock_candidates_hz"]
+    if not isinstance(clocks,list) or not clocks or any(type(hz) is not int or hz<=0 for hz in clocks) or len(set(clocks))!=len(clocks):
+        raise ValueError("clock_candidates_hz must contain unique positive integer frequencies")
+    plans=[]
+    for frequency in clocks:
+        location=directory/f"clock-{frequency}"
+        location.mkdir(parents=True,exist_ok=True)
+        candidate_target={**target,"clock_hz":frequency}
+        write_json(location/"target.json",candidate_target)
+        write_json(location/"search.json",search)
+        progress(f"Schedule clock candidate {frequency/1e6:g} MHz using shared characterized costs")
+        report=finish(graph,deepcopy(catalogue),candidate_target,search,location,cache,limits,progress)
+        plans.append({"clock_hz":frequency,"directory":str(location.resolve()),
+                      "solver_verified":report.get("solver_verified",False),
+                      "scheduled_fps":report.get("scheduled_fps"),
+                      "resources":report.get("solution",{}).get("resources",{})})
+    report={"clock_plans":plans,"scope":"Scheduled predictions; final routing determines clock feasibility"}
+    write_json(directory/"clock-plans.json",report)
     return report

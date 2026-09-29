@@ -1,0 +1,34 @@
+[
+  {
+    "name": "convolution-pool-head", "shape": [1, 3, 6, 8], "seed": 41, "frames": 3,
+    "nodes": [
+      {"name":"stem","op":"conv","inputs":["input"],"channels":4,"kernel":[3,3],"padding":1,"offset":8,"shift":4,"low":0,"high":255},
+      {"name":"pool","op":"pool","inputs":["stem"],"kernel":2},
+      {"name":"head","op":"conv","inputs":["pool"],"channels":3,"kernel":[1,1],"offset":4,"shift":3,"low":-128,"high":127}
+    ], "output":"head"
+  },
+  {
+    "search":{"lanes":1,"reduction_lanes":[1]},
+    "name": "depthwise-pointwise", "shape": [1, 4, 5, 7], "seed": 53, "frames": 3,
+    "nodes": [
+      {"name":"depthwise","op":"conv","inputs":["input"],"channels":4,"groups":4,"kernel":[3,3],"padding":1,"offset":8,"shift":4,"low":0,"high":255},
+      {"name":"pointwise","op":"conv","inputs":["depthwise"],"channels":6,"kernel":[1,1],"offset":4,"shift":3,"low":-128,"high":127}
+    ], "output":"pointwise"
+  },
+  {
+    "name": "resize-concat-branch", "shape": [1, 4, 6, 8], "seed": 67, "frames": 3,
+    "nodes": [
+      {"name":"pool","op":"pool","inputs":["input"],"kernel":2},
+      {"name":"resize","op":"resize","inputs":["pool"],"size":[6,8],"mode":"nearest"},
+      {"name":"join","op":"concat","inputs":["resize","input"],"multipliers":[3,2],"offset":4,"shift":3,"low":0,"high":255},
+      {"name":"head","op":"conv","inputs":["join"],"channels":6,"kernel":[3,3],"padding":1,"offset":8,"shift":4,"low":-128,"high":127}
+    ], "output":"head"
+  },
+  {
+    "name": "ragged-dilated", "shape": [1, 3, 5, 9], "seed": 79, "frames": 3,
+    "nodes": [
+      {"name":"dilated","op":"conv","inputs":["input"],"channels":5,"kernel":[3,3],"padding":2,"dilation":2,"offset":8,"shift":4,"low":0,"high":255},
+      {"name":"head","op":"conv","inputs":["dilated"],"channels":1,"kernel":[1,1],"offset":4,"shift":3,"low":-128,"high":127}
+    ], "output":"head"
+  }
+]

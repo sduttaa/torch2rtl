@@ -67,6 +67,7 @@ module integer_convolution #(
   input wire external_available, input wire [LANES*8-1:0] external_data,
   output wire external_release,
   output wire [WINDOW_BITS-1:0] external_address, external_alternate, external_first,
+  output wire [BLOCK_BITS+STEP_BITS-1:0] external_request, external_next_request, external_first_request,
   output wire external_select, external_active
 );
   localparam [2:0] IDLE = 0, DOT = 1, DOT_DRAIN = 2, RQ = 3, RQ_DRAIN = 4, POST = 5, POOL_WAIT = 6;
@@ -173,6 +174,11 @@ module integer_convolution #(
       8'(stored_window[storage_lane*INPUT_BITS +: INPUT_BITS]);
   end endgenerate
   assign external_release = release_window;
+  // The fused view composes step-to-word and word-to-coordinate maps at
+  // elaboration. Export the registers directly, avoiding cascaded ROM muxes.
+  assign external_request = {read_block,read_step};
+  assign external_next_request = {read_block,STEP_BITS'(SECOND_STEP)};
+  assign external_first_request = {read_block,{STEP_BITS{1'b0}}};
   assign external_address = window_address;
   assign external_alternate = alternate_address;
   assign external_first = first_address;

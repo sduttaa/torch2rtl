@@ -48,7 +48,8 @@ def main():
         from .optimize import optimize
         from .schedule import Limits
         report = optimize(args.model,json.loads(args.target.read_text()),json.loads(args.search.read_text()),
-                          args.output,args.cache,Limits(seconds=args.seconds,workers=args.workers),args.stage)
+                          args.output,args.cache,Limits(seconds=args.seconds,workers=args.workers),args.stage,
+                          progress=lambda message: print(f"[progress] {message}",flush=True))
         print(json.dumps(report,indent=2))
         return
     if args.command == "schedule-network":

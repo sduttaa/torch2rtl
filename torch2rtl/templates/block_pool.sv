@@ -10,7 +10,6 @@ module integer_block_pool #(
   localparam integer OUTPUT_HEIGHT = HEIGHT / KERNEL_H,
   localparam integer WORDS = OUTPUT_WIDTH * CHANNEL_WORDS,
   localparam integer ADDRESS_BITS = WORDS <= 1 ? 1 : $clog2(WORDS),
-  localparam integer BASE_BITS = $clog2(WORDS+1),
   localparam integer CHANNEL_BITS = CHANNEL_WORDS <= 1 ? 1 : $clog2(CHANNEL_WORDS),
   localparam integer ROW_BITS = HEIGHT <= 1 ? 1 : $clog2(HEIGHT),
   localparam integer COLUMN_BITS = WIDTH <= 1 ? 1 : $clog2(WIDTH),
@@ -26,9 +25,10 @@ module integer_block_pool #(
   reg [Y_BITS-1:0] block_y;
   reg [X_BITS-1:0] block_x;
   reg [CHANNEL_BITS-1:0] channel_word, pending_channel;
-  reg [BASE_BITS-1:0] column_base;
+  // Address arithmetic runs when advancing the raster, before the RAM read.
+  // Rewind channel words within a horizontal block; advance at its boundary.
+  reg [ADDRESS_BITS-1:0] address;
   wire included = 32'(row) < OUTPUT_HEIGHT*KERNEL_H && 32'(column) < OUTPUT_WIDTH*KERNEL_W;
-  wire [ADDRESS_BITS-1:0] address = included ? ADDRESS_BITS'(column_base + channel_word) : 0;
   wire last_channel = channel_word == CHANNEL_BITS'(CHANNEL_WORDS-1);
   wire last_x = block_x == X_BITS'(KERNEL_W-1);
   wire last_y = block_y == Y_BITS'(KERNEL_H-1);
@@ -61,7 +61,7 @@ module integer_block_pool #(
       block_y <= 0;
       block_x <= 0;
       channel_word <= 0;
-      column_base <= 0;
+      address <= 0;
       pending <= 0;
       output_pending <= 0;
     end else begin
@@ -85,13 +85,15 @@ module integer_block_pool #(
         pending_channel <= channel_word;
         forwarded <= advance && pending_included && pending_address == address;
         forwarded_data <= maximum;
+        if (last_channel && !last_x)
+          address <= address - ADDRESS_BITS'(CHANNEL_WORDS-1);
+        else address <= address + 1'b1;
         if (last_channel) begin
           channel_word <= 0;
           block_x <= last_x ? X_BITS'(0) : block_x + 1'b1;
-          if (last_x) column_base <= column_base + BASE_BITS'(CHANNEL_WORDS);
           if (column == COLUMN_BITS'(WIDTH-1)) begin
             column <= 0;
-            column_base <= 0;
+            address <= 0;
             block_x <= 0;
             row <= row == ROW_BITS'(HEIGHT-1) ? ROW_BITS'(0) : row + 1'b1;
             block_y <= row == ROW_BITS'(HEIGHT-1) || last_y ? Y_BITS'(0) : block_y + 1'b1;

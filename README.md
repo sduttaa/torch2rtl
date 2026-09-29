@@ -56,6 +56,66 @@ developer tools supply the native compiler and SDK.
 
 ## Run
 
+On the configured Mac, compile and verify an exported model with:
+
+```sh
+source ./env.sh
+python scripts/compile-and-verify.py --job inputs/automatic-job.json
+```
+
+For a compact presentation input, use the same compiler with:
+
+```sh
+python scripts/compile-and-verify.py --job inputs/demo-job.json
+```
+
+`demo-job.json` contains only `model`, `target` and `setup`. The setup file
+supplies reusable search, toolchain and verification settings; fields in the
+compact job override those defaults. All paths inside either file are relative
+to the repository root, or absolute. Setup files contain complete settings;
+nested setup references are not supported. The resolved job is saved with the
+build. The supplied compact job resolves to exactly the same inputs as the full
+job, including all acceptance checks and automatic architecture selection.
+
+For a faster demo that skips the optional characterization refinement round:
+
+```sh
+python scripts/compile-and-verify.py --job inputs/demo-fast-job.json
+```
+
+This job uses `inputs/demo-fast-search.json`: `characterization_rounds` is 1
+instead of 2. It retains 20 candidate options per actor, the same solver budget,
+automatic buffer characterization and all verification checks. The original
+profiles are unchanged. Less exploration can reduce the chance of finding an
+implementation meeting the target; no speedup or successful fit is guaranteed.
+
+The script creates a fresh directory under `build/` and runs automatic
+compilation, simulation, mapping proofs, synthesis, routing and bitstream
+packing. It prints resource usage, scheduled FPS and the paths to `harness.fs`,
+`result.json` and `summary.txt` automatically. The supplied job contains the
+model path, target, search, toolflow and matching verification evidence.
+Each stage prints live progress and elapsed-time updates every 15 seconds while
+running; full tool output remains in the build directory's `logs/` files.
+Candidate synthesis resource reports print during characterization, marking
+new and cached measurements. A resource proposal prints before joint scheduling,
+and whole-design synthesis/packing utilization prints before placement/routing.
+Those intermediate reports are labeled separately from final routed resources
+and verified timing; they are not a completed-build certificate.
+If routing misses the requested frequency, the flow continues verification and
+reports `min(requested clock, routed Fmax) / inference period` as estimated FPS.
+The report marks the missed target instead of failing the process for performance
+alone. Numerical, capacity, hold-timing and other tool failures remain fatal.
+A clock-missed result does not produce a flashable bitstream: the clock must be
+adjusted and timing verified first. The report retains the nominal scheduled FPS
+separately; neither number is a physical-board measurement.
+The default solver limit is 600 seconds per solve, not a total build deadline;
+override it with `--seconds`, and use `--build` or `--output` for explicit paths.
+This job requires the existing local tool installation and retained verification
+inputs. The bitstream uses a counter-source/checksum harness; camera/HDMI
+integration and physical-board FPS measurements remain separate work.
+
+For the lower-level compiler commands:
+
 ```sh
 source ./env.sh
 python -m torch2rtl inspect /path/to/model.pt2 \
@@ -106,3 +166,12 @@ The solver interface is plain dataclasses; OR-Tools is confined to `cp_sat.py`.
 `inputs/target.json` and `inputs/smoke.cst` materialize the user's initial board
 selection as external data. They are never loaded by default. Compiler source
 contains no board, pin, resource-budget or model-name lookup table.
+
+Clock-aware builds, bounded characterization and the small regression suite are
+available; see [timing, search and benchmarks](docs/timing-search-benchmarks.md). The existing
+single-clock demo jobs remain valid. Use `inputs/demo-clock-job.json` for the
+explicit two-clock, bounded-retry example, or run the inexpensive suite with:
+
+```sh
+python scripts/benchmark.py --target inputs/throughput-target.json --output build/benchmarks
+```

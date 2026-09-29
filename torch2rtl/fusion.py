@@ -231,8 +231,14 @@ def emit(value, lanes, outputs, memories, reduction_lanes, requantization="auto"
         parameters["WEIGHT_BLOCK_DEPTH"]=prefix
     ports = len(sources)
     bits = lanes*8
-    window_words = parameters["KERNEL_H"]*parameters["KERNEL_W"]*ceil(view.tensor.shape[1]/lanes)
-    address_bits = max(1, (window_words-1).bit_length())
+    group_inputs=parameters["INPUT_CHANNELS"]//parameters["GROUPS"]
+    group_words=ceil(group_inputs/parameters["REDUCTION_LANES"])
+    tiles=ceil((parameters["OUTPUT_CHANNELS"]//parameters["GROUPS"])/outputs)
+    blocks=parameters["GROUPS"]*tiles
+    steps=parameters["KERNEL_H"]*parameters["KERNEL_W"]*group_words
+    step_bits=max(1,(steps-1).bit_length())
+    request_bits=max(1,(blocks-1).bit_length())+step_bits
+    view_request_bits=step_bits if parameters["GROUPS"]==1 else request_bits
     oh, ow = value.tensor.shape[2:]
     lines = [f"""module inference (
 input wire clk, rst,
@@ -240,7 +246,7 @@ input wire [{ports*bits-1}:0] in_data,
 input wire [{ports-1}:0] in_valid, output wire [{ports-1}:0] in_ready,
 output wire [{bits-1}:0] out_data, output wire out_valid, input wire out_ready);
 wire available, release_window, select_alternate, active_dot;
-wire [{address_bits-1}:0] window_address, alternate_address, first_address;
+wire [{request_bits-1}:0] request, alternate_request, first_request;
 wire [{bits-1}:0] window_data;
 wire [{ports-1}:0] ready, finished;
 reg done;
@@ -287,6 +293,8 @@ wire [{ports*bits-1}:0] branch_data;
             "CHANNELS": channels, "TOTAL_CHANNEL_WORDS": ceil(view.tensor.shape[1]/lanes),
             "WORD_OFFSET": word_offset, "WORDS": g["words"], "DEPTH": g["depth"],
             "CROSS_FRAME":int(g["rolling"]),
+            "GROUP_INPUTS":group_inputs,"GROUP_WORDS":group_words,
+            "SUBWORDS":lanes//parameters["REDUCTION_LANES"],"TILES":tiles,"BLOCKS":blocks,
             "ROW_WORDS":g["row_words"],"LAST_USED_COLUMN":g["last_used_column"],
             "FIRST_COLUMN":g["first_columns"][0],
             "MEMORY_STYLE": '"'+memories.get("line", "auto")+'"',
@@ -312,7 +320,7 @@ view_rows #({assignments}) rows_{port} (
 .output_row(output_row), .output_column(output_column),
 .in_data(bounded_input_{port}), .in_valid(in_valid[{port}]), .in_ready(in_ready[{port}]),
 .ready(ready[{port}]), .finished(finished[{port}]),
-.window_address(window_address), .alternate_address(alternate_address), .first_address(first_address),
+.request(request[{view_request_bits-1}:0]), .alternate_request(alternate_request[{view_request_bits-1}:0]), .first_request(first_request[{view_request_bits-1}:0]),
 .select_alternate(select_alternate), .active_dot(active_dot),
 .window_data(stored_{port}));""")
         for lane in range(lanes):
@@ -327,7 +335,8 @@ view_rows #({assignments}) rows_{port} (
 .clk(clk), .rst(rst), .in_data({bits}'(0)), .in_valid(1'b0), .in_ready(),
 .out_data(out_data), .out_valid(out_valid), .out_ready(out_ready),
 .external_available(available), .external_data(window_data), .external_release(release_window),
-.external_address(window_address), .external_alternate(alternate_address), .external_first(first_address),
+.external_address(), .external_alternate(), .external_first(),
+.external_request(request), .external_next_request(alternate_request), .external_first_request(first_request),
 .external_select(select_alternate), .external_active(active_dot));
 endmodule""")
     root = Path(__file__).parent/'templates'

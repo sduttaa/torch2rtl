@@ -10,6 +10,22 @@ import hashlib
 import os
 import signal
 from functools import lru_cache
+from threading import Lock
+
+from .cache import entry
+
+_counts=Counter()
+_count_lock=Lock()
+
+
+def counters():
+    with _count_lock:
+        return dict(_counts)
+
+
+def count(stage):
+    with _count_lock:
+        _counts[stage]+=1
 
 
 def synthesis_command(config, top):
@@ -30,6 +46,7 @@ def synthesis_command(config, top):
 
 
 def synthesize(rtl, directory, target):
+    count("synthesis_jobs")
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "inference.sv").write_text(rtl)
@@ -92,22 +109,15 @@ def characterize(rtl,target,cache,cached_only=False):
                   "analyzer_sha256":hashlib.sha256(Path(packing.__file__).read_bytes()).hexdigest()}
         key=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
         directory=Path(cache)/key
-        report=directory/"report.json"
-        if report.exists():
-            record=json.loads(report.read_text())
-            if record.get("identity") == identity and "resources" in record:
-                return {**record,"cache_hit":True,"cache_path":str(directory)}
-        if cached_only:
-            return None
-        directory.mkdir(parents=True,exist_ok=True)
-        netlist=Path(base["cache_path"])/"netlist.json"
-        if not netlist.exists():
-            netlist=netlist.with_name("registered.json")
-        resources=packing.characterize(netlist,directory,target,base["resources"])
-        record={"identity":identity,"resources":resources,"netlist_path":str(netlist),
-                "evidence":"Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites"}
-        report.write_text(json.dumps(record,indent=2)+"\n")
-        return {**record,"cache_hit":False,"cache_path":str(directory)}
+        def produce():
+            count("packing_jobs")
+            netlist=Path(base["cache_path"])/"netlist.json"
+            if not netlist.exists():
+                netlist=netlist.with_name("registered.json")
+            resources=packing.characterize(netlist,directory,target,base["resources"])
+            return {"resources":resources,"netlist_path":str(netlist),
+                    "evidence":"Mapped and packed RTL including carry padding, distributed-memory blockers, and mandatory FF sites"}
+        return entry(directory,identity,produce,cached_only)
     if target.get("characterize_netlist_mapping"):
         from . import gowin
         raw=characterize(rtl,{**target,"characterize_netlist_mapping":False},cache,cached_only)
@@ -117,32 +127,18 @@ def characterize(rtl,target,cache,cached_only=False):
                   "mapper_sha256":hashlib.sha256(Path(gowin.__file__).read_bytes()).hexdigest()}
         key=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
         directory=Path(cache)/key
-        report=directory/"report.json"
-        if report.exists():
-            record=json.loads(report.read_text())
-            if record.get("identity") == identity and "resources" in record:
-                return {**record,"cache_hit":True,"cache_path":str(directory)}
-        if cached_only:
-            return None
-        mapped=gowin.map_netlist(Path(raw["cache_path"])/"netlist.json",directory,target)
-        resources=resource_usage(json.loads(mapped.read_text()),target)
-        record={"identity":identity,"resources":resources,"raw_cache_path":raw["cache_path"],
-                "evidence":"actor RTL synthesis and selected netlist mapping"}
-        report.write_text(json.dumps(record,indent=2)+"\n")
-        return {**record,"cache_hit":False,"cache_path":str(directory)}
+        def produce():
+            count("mapping_jobs")
+            mapped=gowin.map_netlist(Path(raw["cache_path"])/"netlist.json",directory,target)
+            resources=resource_usage(json.loads(mapped.read_text()),target)
+            return {"resources":resources,"raw_cache_path":raw["cache_path"],
+                    "evidence":"actor RTL synthesis and selected netlist mapping"}
+        return entry(directory,identity,produce,cached_only)
     identity={"rtl_sha256":hashlib.sha256(rtl.encode()).hexdigest(),
               "synthesis":target["synthesis"],"cell_costs":target["cell_costs"],
               "tool":tool_identity()}
     key=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()
     directory=Path(cache)/key
-    report=directory/"report.json"
-    if report.exists():
-        record=json.loads(report.read_text())
-        if record.get("identity") == identity and "resources" in record:
-            return {**record,"cache_hit":True,"cache_path":str(directory)}
-    if cached_only:
-        return None
-    resources=synthesize(rtl,directory,target)
-    record={"identity":identity,"resources":resources,"evidence":"actor RTL synthesis"}
-    report.write_text(json.dumps(record,indent=2)+"\n")
-    return {**record,"cache_hit":False,"cache_path":str(directory)}
+    def produce():
+        return {"resources":synthesize(rtl,directory,target),"evidence":"actor RTL synthesis"}
+    return entry(directory,identity,produce,cached_only)

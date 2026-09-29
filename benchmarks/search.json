@@ -1,0 +1,13 @@
+{
+  "lanes":2,"output_lanes":[1,2],"reduction_lanes":[1,2],
+  "line_layouts":["parallel","prefetch"],"weight_memories":["block","logic"],
+  "line_memories":["block"],"storage_memories":["block","distributed"],
+  "row_buffers":[1,2],"extra_rows":[0],"hybrid_weights":false,
+  "fifo_max_words":256,"fifo_linear_max_words":8,"fifo_small_depths":[1,2,8],
+  "fifo_memories":["block","distributed"],"max_actor_options":4,
+  "initial_actor_options":3,"refinement_options":4,"characterization_rounds":2,
+  "retention_period_slack":1.25,"period_limit":100000,"offset_limit":200000,
+  "fusions":["convolution_pool","resize_concat_convolution"],
+  "requantizations":["multiply","overlap"],"automatic_buffering":false,
+  "characterization_workers":2,"stop_at_required_fps":false
+}

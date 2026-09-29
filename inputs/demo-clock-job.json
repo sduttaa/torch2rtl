@@ -1,0 +1,10 @@
+{
+  "setup": "inputs/automatic-job.json",
+  "search": "inputs/demo-fast-search.json",
+  "clock_candidates": [
+    {"clock_hz": 108000000, "clock_rtl": "inputs/throughput-pll.sv"},
+    {"clock_hz": 96000000, "clock_rtl": "inputs/throughput-pll-96.sv"}
+  ],
+  "implementation_attempts": 2,
+  "timing_margin": 0.05
+}

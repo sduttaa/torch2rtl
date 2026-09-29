@@ -287,7 +287,8 @@ module inference (
 );
   integer_convolution #({', '.join(assignments)}) actor (
     .external_available(1'b0), .external_data({lanes*8}'(0)), .external_release(),
-    .external_address(), .external_alternate(), .external_first(), .external_select(), .external_active(), .*);
+    .external_address(), .external_alternate(), .external_first(),
+    .external_request(), .external_next_request(), .external_first_request(), .external_select(), .external_active(), .*);
 endmodule
 """
     root = Path(__file__).parent / "templates"

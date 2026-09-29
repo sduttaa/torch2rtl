@@ -6,6 +6,10 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import sys
+
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
+from torch2rtl.reporting import reported_fps, timing_checks_passed
 
 
 def read(path):
@@ -48,6 +52,9 @@ frames=simulation["frame_completion_cycles"]
 bram=flow["utilization"][args.bram_resource]["used"]
 dsp=flow["utilization"][args.dsp_resource]["used"]
 fmax=flow["fmax"][args.clock_net]
+timing_passes=timing_checks_passed(flow["fmax"])
+rate_estimate=reported_fps(target["clock_hz"],period,fmax["achieved"])
+bitstream=build/"route/harness.fs"
 automatic=schedule["automatic_architecture_selection"]
 gates={
     "unchanged_model":digest(model)==config["model_sha256"]==accuracy["model_sha256"]==reference["model_sha256"],
@@ -66,11 +73,13 @@ gates={
     "logic_margin":capacity["routed_logic_sites"]<=target["resources"].get("lut_sites",capacity["lut_sites_available"]),
     "dsp_configuration_guard":guard["passed"] and guard["cells"]==dsp,
     "used_pin_coverage":not pins["missing_used_pins"],
-    "route_timing":flow["tool_timing_checks_passed"] and
-        fmax["achieved"]>=fmax["constraint"]>=target["clock_hz"]/1e6,
-    "bitstream_packed":(build/"route/harness.fs").stat().st_size>0,
+    "timing_report_consistent":flow["tool_timing_checks_passed"]==timing_passes,
+    "clock_constraint":fmax["constraint"]>=target["clock_hz"]/1e6,
+    "clock_configuration":read(build/"route/clock-verification.json")["matches"],
+    "route_timing":timing_passes,
+    "bitstream_packed":bitstream.is_file() and bitstream.stat().st_size>0,
     "bram_requirement":bram<=target["resources"]["bram"],
-    "throughput_requirement":rate>=target["required_fps"],
+    "throughput_requirement":rate_estimate>=target["required_fps"],
 }
 source_identity=build/"source-equivalence"
 timing_identity=build/"route/timing-database-identity.json"
@@ -87,8 +96,13 @@ if (source_identity/"report.json").exists():
         digest(source_identity/"before/inference.sv")==identity["before"]["rtl_sha256"] and
         digest(source_identity/"after/inference.sv")==identity["after"]["rtl_sha256"]==
         digest(build/"schedule/inference.sv"))
-if not all(gates.values()):
-    raise ValueError("Result gates failed: "+", ".join(name for name,passed in gates.items() if not passed))
+performance_gates={"route_timing","throughput_requirement"}
+if not timing_passes:
+    performance_gates.add("bitstream_packed")
+failures=[name for name,passed in gates.items() if not passed and name not in performance_gates]
+if failures:
+    raise ValueError("Result gates failed: "+", ".join(failures))
+bitstream_ready=timing_passes and gates["bitstream_packed"]
 files={
     "inference.sv":build/"schedule/inference.sv",
     "configuration.json":build/"schedule/configuration.json",
@@ -102,8 +116,10 @@ files={
     "pll.sv":args.clock_rtl,"constraints.cst":args.constraints,
 }
 for name in ("capacity.json","route-report.json","toolflow-summary.json","dsp-timing-guard.json",
-             "pin-coverage.json","harness.fs","harness.sv","clocks.py"):
+             "pin-coverage.json","harness.sv","clocks.py","clock-verification.json"):
     files[name]=build/"route"/name
+if bitstream_ready:
+    files["harness.fs"]=bitstream
 if timing_identity.exists():
     files["timing-database-identity.json"]=timing_identity
 if (build/"resource-breakdown.json").exists():
@@ -135,13 +151,20 @@ result={
     "logic_sites_available":capacity["lut_sites_available"],
     "routed_logic_sites":capacity["routed_logic_sites"],
     "logic_sites_reserved":capacity["routed_logic_sites_free"],
-    "reported_fmax":flow["fmax"],"compiled_result_passes":True,"gates":gates,
+    "reported_fmax":flow["fmax"],"compiled_result_passes":all(gates.values()),"gates":gates,
+    "report_completed":True,"reported_fps":rate_estimate,
+    "performance_target_met":gates["throughput_requirement"],"configured_clock_timing_met":timing_passes,
+    "bitstream_ready":bitstream_ready,
+    "status":"verified" if all(gates.values()) else "completed_with_performance_warning",
+    "performance_scope":"Minimum of requested clock and routed Fmax divided by verified cycles per inference; timing-derived estimate, not board measurement. A missed clock target requires clock adjustment before hardware use.",
     "automatic_architecture_selection":automatic,"physical_board_measured":False,
     "timing_scope":"Configuration-scoped DSP timing database and used-pin structural audit; not independent timing signoff.",
     "harness_scope":"Counter-source/checksum harness; no host/camera transport or board measurement.",
     "evidence":{name:{"path":str(path.resolve()),"sha256":digest(path)} for name,path in evidence.items()},
 }
 args.output.mkdir(parents=True,exist_ok=True)
+if not bitstream_ready:
+    (args.output/"harness.fs").unlink(missing_ok=True)
 for name,path in files.items():
     (args.output/name).parent.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(path,args.output/name)
@@ -149,4 +172,5 @@ for name,path in files.items():
 sources=sorted([*root.glob("torch2rtl/*.py"),*root.glob("torch2rtl/templates/*.sv"),*root.glob("scripts/*.py")])
 (args.output/"compiler-source-hashes.json").write_text(json.dumps(
     {str(path.relative_to(root)):digest(path) for path in sources},indent=2)+"\n")
-print(json.dumps({"gates":gates,"bram":bram,"scheduled_fps":rate,"fmax":fmax},indent=2))
+print(json.dumps({"status":result["status"],"gates":gates,"bram":bram,"reported_fps":rate_estimate,
+                  "scheduled_fps_at_requested_clock":rate,"bitstream_ready":bitstream_ready,"fmax":fmax},indent=2))

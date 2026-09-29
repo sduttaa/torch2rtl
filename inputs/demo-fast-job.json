@@ -1,0 +1,6 @@
+{
+  "model": "results/on-chip-inference/model.pt2",
+  "target": "inputs/throughput-target.json",
+  "setup": "inputs/automatic-job.json",
+  "search": "inputs/demo-fast-search.json"
+}

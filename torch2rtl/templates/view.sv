@@ -17,6 +17,12 @@ module view_rows #(
   localparam integer X_BITS=OUTPUT_WIDTH <= 1 ? 1 : $clog2(OUTPUT_WIDTH),
   localparam integer WINDOW_WORDS=KERNEL_H*KERNEL_W*TOTAL_CHANNEL_WORDS,
   localparam integer WINDOW_BITS=WINDOW_WORDS <= 1 ? 1 : $clog2(WINDOW_WORDS),
+  parameter integer GROUP_INPUTS=LANES, GROUP_WORDS=1, SUBWORDS=1, TILES=1, BLOCKS=1,
+  localparam integer DOT_STEPS=KERNEL_H*KERNEL_W*GROUP_WORDS,
+  localparam integer STEP_BITS=DOT_STEPS <= 1 ? 1 : $clog2(DOT_STEPS),
+  localparam integer BLOCK_BITS=BLOCKS <= 1 ? 1 : $clog2(BLOCKS),
+  localparam integer REQUEST_BITS=STEP_BITS+(BLOCKS == TILES ? 0 : BLOCK_BITS),
+  localparam integer REQUESTS=1 << REQUEST_BITS,
   parameter integer TABLE_COUNT=1,
   parameter integer ROW_WORDS=1, LAST_USED_COLUMN=OUTPUT_WIDTH-1, FIRST_COLUMN=0,
   localparam integer TABLE_BITS=TABLE_COUNT <= 1 ? 1 : $clog2(TABLE_COUNT),
@@ -41,7 +47,7 @@ module view_rows #(
   input wire [X_BITS-1:0] output_column,
   input wire [LANES*8-1:0] in_data, input wire in_valid, output wire in_ready,
   output wire ready, finished,
-  input wire [WINDOW_BITS-1:0] window_address, alternate_address, first_address,
+  input wire [REQUEST_BITS-1:0] request, alternate_request, first_request,
   input wire select_alternate, active_dot,
   output wire [LANES*OUTPUT_BITS-1:0] window_data
 );
@@ -126,7 +132,8 @@ module view_rows #(
       if (column_included[first_tap]) first_column=COUNT_BITS'(column_taps[first_tap]);
   end
   localparam integer COORD_BITS=2*ADDRESS_BITS+CHANNEL_BITS+1;
-  wire [COORD_BITS-1:0] coordinates [0:WINDOW_WORDS-1];
+  wire [COORD_BITS-2:0] coordinates [0:REQUESTS-1];
+  wire [REQUESTS-1:0] included_rows, included_columns, included_channels;
   genvar ky,kx,y,x,word;
   generate
     for (ky=0; ky<KERNEL_H; ky=ky+1) begin: row_tap
@@ -168,16 +175,40 @@ module view_rows #(
       assign column_taps[kx]=location;
       assign column_included[kx]=present;
     end
-    for (word=0; word<WINDOW_WORDS; word=word+1) begin: coordinate
-      localparam integer Y=word/(KERNEL_W*TOTAL_CHANNEL_WORDS);
-      localparam integer X=(word/TOTAL_CHANNEL_WORDS)%KERNEL_W;
-      localparam integer CHANNEL=word%TOTAL_CHANNEL_WORDS;
-      if (CHANNEL >= WORD_OFFSET && CHANNEL < WORD_OFFSET+CHANNEL_WORDS) begin: present
-        assign coordinates[word]={row_included[Y] && column_included[X],CHANNEL_BITS'(CHANNEL-WORD_OFFSET),
-                                  row_taps[Y],column_taps[X]};
-      end else assign coordinates[word]=0;
+    // Compose both constant maps. Padding unreachable requests to powers of
+    // two makes the runtime index a concatenation of existing registers.
+    for (word=0; word<REQUESTS; word=word+1) begin: coordinate
+      localparam integer BLOCK=BLOCKS == TILES ? 0 : word >> STEP_BITS;
+      localparam integer STEP=word % (1 << STEP_BITS);
+      localparam integer WINDOW=(STEP/GROUP_WORDS)*TOTAL_CHANNEL_WORDS+
+                                (STEP%GROUP_WORDS)/SUBWORDS+(BLOCK/TILES)*(GROUP_INPUTS/LANES);
+      localparam integer Y=WINDOW/(KERNEL_W*TOTAL_CHANNEL_WORDS);
+      localparam integer X=(WINDOW/TOTAL_CHANNEL_WORDS)%KERNEL_W;
+      localparam integer CHANNEL=WINDOW%TOTAL_CHANNEL_WORDS;
+      // Out-of-range requests have the same undefined value as the original
+      // array reads. They must not add validity logic to reachable requests.
+      if (BLOCK >= BLOCKS || STEP >= DOT_STEPS) begin: unused
+        assign coordinates[word]='x;
+        assign included_rows[word]=1'bx;
+        assign included_columns[word]=1'bx;
+        assign included_channels[word]=1'bx;
+      end else begin: present
+        // Only validity depends on which concatenated branch owns a word.
+        // Invalid coordinates never read RAM and their output is masked to
+        // zero, so gating every address bit adds needless decode depth.
+        localparam INCLUDED=CHANNEL >= WORD_OFFSET && CHANNEL < WORD_OFFSET+CHANNEL_WORDS;
+        assign coordinates[word]={CHANNEL_BITS'(CHANNEL-WORD_OFFSET),row_taps[Y],column_taps[X]};
+        assign included_rows[word]=row_included[Y];
+        assign included_columns[word]=column_included[X];
+        assign included_channels[word]=INCLUDED;
+      end
     end
   endgenerate
+  function automatic [COORD_BITS-1:0] select_coordinates(input [REQUEST_BITS-1:0] address);
+    // Factor validity after coordinate selection instead of distributing its
+    // three-way conjunction across every entry in the address multiplexer.
+    select_coordinates={included_rows[address] && included_columns[address] && included_channels[address],coordinates[address]};
+  endfunction
   reg [COORD_BITS-1:0] requested, alternate;
   reg selected, valid;
   reg [CHANNEL_BITS-1:0] read_channel;
@@ -192,8 +223,8 @@ module view_rows #(
   always @(posedge clk) begin
     // Select startup after decoding, keeping the actor-state signal out of
     // the prefetch address and its large coordinate multiplexer.
-    requested <= active_dot ? coordinates[window_address] : coordinates[first_address];
-    alternate <= coordinates[alternate_address];
+    requested <= active_dot ? select_coordinates(request) : select_coordinates(first_request);
+    alternate <= select_coordinates(alternate_request);
     selected <= select_alternate;
     valid <= active[COORD_BITS-1];
     read_channel <= active[2*ADDRESS_BITS +: CHANNEL_BITS];

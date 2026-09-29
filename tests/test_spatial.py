@@ -12,6 +12,7 @@ from rtl_check import pack, simulate
 
 
 @pytest.mark.parametrize("stalls", [False, True])
+@pytest.mark.parametrize("reset_after", [None, 13])
 @pytest.mark.parametrize("shape,kernel,stride,padding,dilation,lanes,bits,signed", [
     ((5, 7, 3), (2, 2), (2, 2), (0, 0), (1, 1), 2, 8, False),
     ((7, 9, 5), (3, 3), (2, 2), (1, 1), (2, 2), 4, 8, True),
@@ -23,7 +24,7 @@ from rtl_check import pack, simulate
     ((4, 9, 5), (1, 3), (1, 3), (0, 0), (1, 1), 3, 8, True),
     ((9, 4, 5), (3, 1), (3, 1), (0, 0), (1, 1), 3, 8, False),
 ])
-def test_max_pool_stream(tmp_path, shape, kernel, stride, padding, dilation, lanes, bits, signed, stalls):
+def test_max_pool_stream(tmp_path, shape, kernel, stride, padding, dilation, lanes, bits, signed, stalls, reset_after):
     height, width, channels = shape
     generator = np.random.default_rng(73)
     source = Value("input", "input", (), Tensor((1, channels, height, width), bits, signed))
@@ -38,7 +39,8 @@ def test_max_pool_stream(tmp_path, shape, kernel, stride, padding, dilation, lan
                               for word in pack(pixel, bits, lanes))
     actor = Value("pool", "max_pool2d", (source, kernel, stride, padding, dilation, False),
                   Tensor(tuple(expected.shape), bits, signed))
-    simulate(tmp_path, emit_pool(actor, lanes), lanes*bits, lanes*bits, input_words, expected_words, stalls)
+    simulate(tmp_path, emit_pool(actor, lanes), lanes*bits, lanes*bits, input_words, expected_words, stalls,
+             reset_after=reset_after)
 
 
 @pytest.mark.parametrize("stalls", [False, True])

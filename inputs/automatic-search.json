@@ -76,6 +76,7 @@
   "automatic_buffering": true,
   "characterization_workers": 2,
   "characterization_rounds": 2,
-  "stop_at_required_fps": true,
+  "stop_at_required_fps": false,
+  "joint_event_limit": 1000000,
   "banked_lines": true
 }

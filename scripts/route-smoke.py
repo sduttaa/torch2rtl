@@ -14,7 +14,9 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from torch2rtl.flow import synthesis_command
+from torch2rtl.clocking import verify_clock
 from torch2rtl.gowin import map_netlist
+from torch2rtl.reporting import frequency_miss_only, timing_checks_passed
 
 parser = argparse.ArgumentParser(description=__doc__)
 source = parser.add_mutually_exclusive_group(required=True)
@@ -46,7 +48,7 @@ else:
     input_bits, output_bits = args.input_bits, args.output_bits
     rtl = args.mapped_network/"structure.sv" if args.mapped_network else args.rtl
 args.output.mkdir(parents=True, exist_ok=True)
-for name in ("routed.json", "route-report.json", "harness.fs"):
+for name in ("routed.json", "route-report.json", "harness.fs", "toolflow-summary.json"):
     (args.output / name).unlink(missing_ok=True)
 clock, reset, clock_setup = "clk", "rst", ""
 if args.clock_rtl:
@@ -110,8 +112,19 @@ commands = [
     ["gowin_pack", "-d", pnr["family"], "-o", "harness.fs", "routed.json"],
 ]
 for name, command in zip(("synthesis", "packing", "place-route", "pack"), commands):
+    if name=="pack" and not timing_checks_passed(json.loads((args.output/"route-report.json").read_text()).get("fmax")):
+        print("[progress] Requested clock missed; retaining the performance report without a clock-safe bitstream",flush=True)
+        continue
+    print(f"[progress] {name} started",flush=True)
     with (args.output / f"{name}.log").open("w") as log:
-        subprocess.run(command, cwd=args.output, stdout=log, stderr=subprocess.STDOUT, check=True)
+        completed=subprocess.run(command, cwd=args.output, stdout=log, stderr=subprocess.STDOUT)
+    if completed.returncode:
+        route_report=args.output/"route-report.json"
+        if (name!="place-route" or not frequency_miss_only(completed.returncode,(args.output/f"{name}.log").read_text())
+                or not route_report.is_file() or not (args.output/"routed.json").is_file()
+                or timing_checks_passed(json.loads(route_report.read_text()).get("fmax"))):
+            raise subprocess.CalledProcessError(completed.returncode,command)
+        print("[progress] Routing completed below the requested frequency; reporting achieved timing and continuing checks",flush=True)
     if name == "synthesis":
         if args.mapped_network:
             linked=json.loads((args.output/"netlist.json").read_text())
@@ -134,10 +147,20 @@ for name, command in zip(("synthesis", "packing", "place-route", "pack"), comman
             mapped=(args.output/"linked-flat.json").resolve()
         else:
             mapped = map_netlist(args.output / "netlist.json", args.output / "mapping", target).resolve()
+        if args.clock_rtl:
+            clock_report=verify_clock(json.loads(mapped.read_text()),args.reference_clock_hz,target["clock_hz"])
+            (args.output/"clock-verification.json").write_text(json.dumps(clock_report,indent=2)+"\n")
+            print(f"[progress] Clock RTL verified: {clock_report['implemented_clock_hz']/1e6:g} MHz",flush=True)
         for following in commands[1:3]:
             following[following.index("--json")+1] = str(mapped)
     if name == "packing":
         utilization = json.loads((args.output / "packing-report.json").read_text())["utilization"]
+        print("[progress] Whole-design synthesis/packing report; placement and timing pending",flush=True)
+        print("[progress] Resource                 Used    Physical capacity",flush=True)
+        for resource,row in sorted(utilization.items()):
+            if row["available"]>1 and row["used"]:
+                print(f"[progress] {resource:<22} {row['used']:>7,} {row['available']:>20,}",flush=True)
+        print(f"[progress] Report: {(args.output/'packing-report.json').resolve()}",flush=True)
         # Zero-capacity report entries include virtual bookkeeping cells.
         exceeded = {resource: row for resource, row in utilization.items()
                     if row["available"] > 0 and row["used"] > row["available"]}
@@ -149,6 +172,7 @@ for name, command in zip(("synthesis", "packing", "place-route", "pack"), comman
                         "--output", str((args.output / "capacity.json").resolve())], check=True)
         capacity=json.loads((args.output/"capacity.json").read_text())
         site_budget=target["resources"].get("lut_sites",capacity["lut_sites_available"])
+        print(f"[progress] Logic-site lower bound: {capacity['lut_site_lower_bound']:,} / {site_budget:,} target budget",flush=True)
         if capacity["lut_site_lower_bound"]>site_budget:
             raise ValueError(f"Packed logic needs {capacity['lut_site_lower_bound']} sites; supplied placement budget is {site_budget}")
     if name == "place-route":
@@ -162,7 +186,7 @@ for name, command in zip(("synthesis", "packing", "place-route", "pack"), comman
             raise ValueError(f"Routed logic occupies {capacity['routed_logic_sites']} sites; supplied placement budget is {site_budget}")
 result = json.loads((args.output / "route-report.json").read_text())
 summary = {"fmax": result.get("fmax"), "utilization": result.get("utilization"),
-           "tool_timing_checks_passed": True, "timing_coverage_verified": False,
+           "tool_timing_checks_passed": timing_checks_passed(result.get("fmax")), "timing_coverage_verified": False,
            "physical_board_measured": False,
            "scope": "Tool-reported timing only; primitive and path coverage require separate verification."}
 (args.output / "toolflow-summary.json").write_text(json.dumps(summary, indent=2) + "\n")

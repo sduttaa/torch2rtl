@@ -136,11 +136,13 @@ schedule still comes from CP-SAT. Individual options are removed only when a res
 relaxation proves that no feasible combination can include them; timeouts keep
 the option.
 
-The `stop_at_required_fps` search input ends objective refinement once a complete
-schedule meets the supplied `required_fps` target. This current experiment uses
-it to prioritize verification of the requested result. It does not fix any
-actor or FIFO choices and does not claim a global throughput optimum. Omit it
-or set it false to continue minimizing the period within the solver budget.
+The optional `stop_at_required_fps` search input ends objective refinement once a
+complete schedule meets the supplied `required_fps` target. The supplied automatic
+and demo search files set it false: the compiler continues minimizing the period
+within the solver budget even after reaching the target. The target remains a
+reporting threshold, with a slower-design fallback if necessary. Setting this
+option true explicitly trades further throughput search for faster completion;
+it also enables target-based early stopping during clock exploration.
 Fully fixed buffer-planning graphs use a direct period search. All stages use
 CP-SAT, and every returned schedule is independently checked against its
 constraints.
@@ -170,8 +172,10 @@ python scripts/compile-and-verify.py --job inputs/automatic-job.json \
 
 `--verify-only` continues from an existing automatically generated compile
 after checking that its model, target and search inputs match the job. It does
-not accept an architecture override. Packaging refuses the result unless every
-acceptance gate passes. The job's timing-audit paths refer to the installed,
+not accept an architecture override. Numerical, resource and timing-audit gates
+remain mandatory. A routed frequency/FPS shortfall completes with a performance
+warning and a timing-derived FPS estimate; it does not produce a clock-safe
+bitstream at the missed clock. The job's timing-audit paths refer to the installed,
 configuration-scoped toolchain evidence under Documents.
 
 The active target reserves logic capacity explicitly through its `lut_sites`

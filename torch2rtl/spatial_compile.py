@@ -22,6 +22,9 @@ def summary(solution):
 def compile_network(graph, catalogue, target, directory, limits=Limits(), validate_only=False):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
+    joint_limit=catalogue.get("joint_event_limit")
+    if joint_limit is not None and (type(joint_limit) is not int or joint_limit<1):
+        raise ValueError("joint_event_limit must be a positive integer")
     if catalogue.get("stop_after_feasible"):
         limits=replace(limits,stop_at_period=catalogue.get("preferred_period",catalogue["period_limit"]))
     if validate_only and not catalogue.get("initial_schedule"):
@@ -188,10 +191,10 @@ def compile_network(graph, catalogue, target, directory, limits=Limits(), valida
                                 for name,options in fifos.items()}
                 report.update(status="CHECKING_PROPOSAL",stage="joint_schedule",resource_preflight=summary(preflight))
                 (directory/"report.json").write_text(json.dumps(report,indent=2)+"\n")
-                proposed=problem(graph,catalogue["lanes"],proposed_actors,proposed_fifos,target["resources"],
-                                 catalogue["period_limit"],catalogue["offset_limit"],{},catalogue.get("fixed_resources"))
-                proposed=replace(proposed,dependencies=proposed.dependencies+(
-                    Dependency(proposed.anchor,proposed.anchor,catalogue["period_limit"],1),))
+                fixed=problem(graph,catalogue["lanes"],proposed_actors,proposed_fifos,target["resources"],
+                              catalogue["period_limit"],catalogue["offset_limit"],{},catalogue.get("fixed_resources"))
+                proposed=replace(fixed,dependencies=fixed.dependencies+(
+                    Dependency(fixed.anchor,fixed.anchor,catalogue["period_limit"],1),))
                 candidate=solve(proposed,replace(limits,
                     seconds=max(1,min(limits.seconds/3,limits.seconds-seed_seconds))))
                 seed_seconds+=candidate.seconds
@@ -200,11 +203,25 @@ def compile_network(graph, catalogue, target, directory, limits=Limits(), valida
                 if candidate.period is not None:
                     incumbent=replace(candidate,status="FEASIBLE",resource_optimal=False,
                                       period_bound=catalogue.get("period_lower_bound",0))
+                    if limits.stop_at_period is None and seed_seconds<limits.seconds:
+                        # Optimize the automatically selected proposal before
+                        # expanding every guarded implementation alternative.
+                        # Its optimum is not a bound on other architectures.
+                        improved=solve(replace(fixed,preferred_period=incumbent.period),replace(limits,
+                            seconds=max(1,min(limits.seconds/3,limits.seconds-seed_seconds))))
+                        seed_seconds+=improved.seconds
+                        report["proposal_period_search"]=summary(improved)
+                        if improved.period is not None and improved.period<incumbent.period:
+                            incumbent=replace(improved,status="FEASIBLE",resource_optimal=False,
+                                              period_bound=catalogue.get("period_lower_bound",0))
+                        del improved
+                    del candidate,proposed,fixed
                     break
                 if candidate.status!="INFEASIBLE":
+                    del candidate,proposed,fixed
                     break
                 conflict=blocking_cycle(proposed)
-                del proposed
+                del candidate,proposed,fixed
                 report["proposal_attempts"][-1]["blocking_cycle"]=conflict
                 if not conflict or not conflict["choices"]:
                     break
@@ -263,7 +280,10 @@ def compile_network(graph, catalogue, target, directory, limits=Limits(), valida
             report["search_skipped"]=True
         else:
             varying=any(len(options)>1 for options in model.choices.values())
+            joint_limited=varying and joint_limit is not None and len(model.events)>joint_limit
             if varying and (incumbent is None or incumbent.period is None):
+                if joint_limited:
+                    raise ValueError("Joint event budget exceeded without a feasible proposal; increase joint_event_limit or proposal_attempts")
                 # Actor-only bootstrap can miss the necessary memory tradeoff.
                 # Find a fully joint feasible design at the ceiling before
                 # attempting tighter periods with no complete schedule hint.
@@ -284,6 +304,13 @@ def compile_network(graph, catalogue, target, directory, limits=Limits(), valida
                 if incumbent is not None and limits.stop_at_period is not None and incumbent.period<=limits.stop_at_period:
                     solution=incumbent
                     report["objective_search_stopped"]="Requested throughput reached; no global optimum claimed"
+                elif incumbent is not None and incumbent.period<=catalogue.get("period_lower_bound",0):
+                    solution=incumbent
+                    report["period_bound_reached"]=True
+                elif joint_limited:
+                    solution=incumbent
+                    report["joint_search_limited"]={"event_limit":joint_limit,
+                        "scope":"Period optimized for the automatic proposal; joint alternative search exceeds the input event budget"}
                 else:
                     solution = solve(model,replace(limits,seconds=max(1,remaining)))
         if incumbent is not None and incumbent.period is not None and (solution.period is None or incumbent.period<solution.period):
